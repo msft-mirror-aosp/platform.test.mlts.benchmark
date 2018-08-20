@@ -2,6 +2,8 @@ package com.example.android.nn.benchmark;
 
 import android.app.Application;
 
+import com.android.nn.benchmark.core.TestModelsListLoader;
+
 import java.io.IOException;
 
 public class BenchmarkApplication extends Application {

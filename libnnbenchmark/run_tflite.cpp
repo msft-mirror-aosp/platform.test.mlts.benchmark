@@ -21,6 +21,7 @@
 #include <android/log.h>
 #include <cstdio>
 #include <sys/time.h>
+#include <dlfcn.h>
 
 #define LOG_TAG "NN_BENCHMARK"
 
@@ -37,7 +38,28 @@ long long currentTimeInUsec() {
     return ((tv.tv_sec * 1000000L) + tv.tv_usec);
 }
 
-} // namespace
+// Workaround for build systems that make difficult to pick the correct NDK API level.
+// NDK tracing methods are dynamically loaded from libandroid.so.
+typedef void *(*fp_ATrace_beginSection)(const char *sectionName);
+typedef void *(*fp_ATrace_endSection)();
+struct TraceFunc {
+    fp_ATrace_beginSection ATrace_beginSection;
+    fp_ATrace_endSection ATrace_endSection;
+};
+TraceFunc setupTraceFunc() {
+  void *lib = dlopen("libandroid.so", RTLD_NOW | RTLD_LOCAL);
+  if (lib == nullptr) {
+      FATAL("unable to open libandroid.so");
+  }
+  return {
+      reinterpret_cast<fp_ATrace_beginSection>(dlsym(lib, "ATrace_beginSection")),
+      reinterpret_cast<fp_ATrace_endSection>(dlsym(lib, "ATrace_endSection"))
+  };
+}
+static TraceFunc kTraceFunc { setupTraceFunc() };
+
+
+}  // namespace
 
 BenchmarkModel::BenchmarkModel(const char* modelfile) {
     // Memory map the model. NOTE this needs lifetime greater than or equal
@@ -79,8 +101,18 @@ bool BenchmarkModel::setInput(const uint8_t* dataPtr, size_t length) {
     }
     return true;
 }
+void BenchmarkModel::saveInferenceOutput(InferenceResult* result) {
+      int output = mTfliteInterpreter->outputs()[0];
+      auto* output_tensor = mTfliteInterpreter->tensor(output);
 
-float BenchmarkModel::getOutputError(const uint8_t* expected_data, size_t length) {
+      result->inferenceOutput.insert(result->inferenceOutput.end(),
+                                     output_tensor->data.uint8,
+                                     output_tensor->data.uint8 + output_tensor->bytes);
+
+}
+
+void BenchmarkModel::getOutputError(const uint8_t* expected_data, size_t length,
+                                    InferenceResult* result) {
       int output = mTfliteInterpreter->outputs()[0];
       auto* output_tensor = mTfliteInterpreter->tensor(output);
       if (output_tensor->bytes != length) {
@@ -89,12 +121,14 @@ float BenchmarkModel::getOutputError(const uint8_t* expected_data, size_t length
 
       size_t elements_count = 0;
       float err_sum = 0.0;
+      float max_error = 0.0;
       switch (output_tensor->type) {
           case kTfLiteUInt8: {
               uint8_t* output_raw = mTfliteInterpreter->typed_tensor<uint8_t>(output);
               elements_count = output_tensor->bytes;
               for (size_t i = 0;i < output_tensor->bytes; ++i) {
                   float err = ((float)output_raw[i]) - ((float)expected_data[i]);
+                  if (err > max_error) max_error = err;
                   err_sum += err*err;
               }
               break;
@@ -105,6 +139,7 @@ float BenchmarkModel::getOutputError(const uint8_t* expected_data, size_t length
               elements_count = output_tensor->bytes / sizeof(float);
               for (size_t i = 0;i < output_tensor->bytes / sizeof(float); ++i) {
                   float err = output_raw[i] - expected[i];
+                  if (err > max_error) max_error = err;
                   err_sum += err*err;
               }
               break;
@@ -112,7 +147,8 @@ float BenchmarkModel::getOutputError(const uint8_t* expected_data, size_t length
           default:
               FATAL("Output sensor type %d not supported", output_tensor->type);
       }
-      return err_sum / elements_count;
+      result->meanSquareError = err_sum / elements_count;
+      result->maxSingleError = max_error;
 }
 
 bool BenchmarkModel::resizeInputTensors(std::vector<int> shape) {
@@ -140,26 +176,41 @@ bool BenchmarkModel::runInference(bool use_nnapi) {
 bool BenchmarkModel::benchmark(const std::vector<InferenceInOut> &inOutData,
                                int inferencesMaxCount,
                                float timeout,
-                               std::vector<InferenceResult> *result) {
+                               int flags,
+                               std::vector<InferenceResult> *results) {
 
     if (inOutData.size() == 0) {
         FATAL("Input/output vector is empty");
     }
 
     float inferenceTotal = 0.0;
+    const bool use_nnapi = !(flags & FLAG_NO_NNAPI);
     for(int i = 0;i < inferencesMaxCount; i++) {
         const InferenceInOut & data = inOutData[i % inOutData.size()];
-        setInput(data.input, data.input_size);
 
         long long startTime = currentTimeInUsec();
-        if (!runInference(true)) {
+        // For NNAPI systrace usage documentation, see
+        // frameworks/ml/nn/common/include/Tracing.h.
+        kTraceFunc.ATrace_beginSection("[NN_LA_PE]BenchmarkModel::benchmark");
+        setInput(data.input, data.input_size);
+        const bool success = runInference(use_nnapi);
+        kTraceFunc.ATrace_endSection();
+        long long endTime = currentTimeInUsec();
+        if (!success) {
             __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Inference %d failed", i);
             return false;
         }
-        long long endTime = currentTimeInUsec();
 
         float inferenceTime = static_cast<float>(endTime - startTime) / 1000000.0f;
-        result->push_back( {inferenceTime, getOutputError(data.output,data.output_size) } );
+        InferenceResult result { inferenceTime, 0.0f, 0.0f, {}};
+        if ((flags & FLAG_IGNORE_GOLDEN_OUTPUT) == 0) {
+            getOutputError(data.output, data.output_size, &result);
+        }
+
+        if ((flags & FLAG_DISCARD_INFERENCE_OUTPUT) == 0) {
+            saveInferenceOutput(&result);
+        }
+        results->push_back(result);
 
         // Timeout?
         inferenceTotal += inferenceTime;

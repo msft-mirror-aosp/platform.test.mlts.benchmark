@@ -14,18 +14,19 @@
  * limitations under the License.
  */
 
-package com.example.android.nn.benchmark;
+package com.android.nn.benchmark.core;
 
-public class BenchmarkException extends Exception {
-    public BenchmarkException(String name) {
-        super(name);
-    }
+public class InferenceResult {
+    public float mComputeTimeSec;
+    public float mMeanSquaredError;
+    public float mMaxSingleError;
+    public byte[] mInferenceOutput;
 
-    public BenchmarkException(String name, Throwable cause) {
-        super(name, cause);
+    public InferenceResult(float computeTimeSec, float meanSquaredError,
+            float maxSingleError, byte[] inferenceOutput) {
+        this.mComputeTimeSec = computeTimeSec;
+        this.mMeanSquaredError = meanSquaredError;
+        this.mMaxSingleError = maxSingleError;
+        this.mInferenceOutput = inferenceOutput;
     }
-
-    public BenchmarkException(Exception cause) {
-        super(cause);
-    }
-};
+}

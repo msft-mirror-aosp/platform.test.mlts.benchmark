@@ -16,12 +16,24 @@
 
 package com.example.android.nn.benchmark;
 
-public class InferenceResult {
-    public float mComputeTimeSec;
-    public float mMeanSquaredError;
+import android.test.suitebuilder.annotation.LargeTest;
+import com.android.nn.benchmark.core.TestModels.TestModelEntry;
+import org.junit.Test;
+import org.junit.runners.Parameterized;
+import org.junit.runner.RunWith;
 
-    public InferenceResult(float computeTimeSec, float meanSquaredError) {
-        this.mComputeTimeSec = computeTimeSec;
-        this.mMeanSquaredError = meanSquaredError;
+@RunWith(Parameterized.class)
+public class TFLiteTest  extends NNTest {
+
+    public TFLiteTest(TestModelEntry model) {
+        super(model);
+    }
+
+    @Test
+    @LargeTest
+    public void testTFLite10Seconds() {
+        TestAction ta = new TestAction(mModel, WARMUP_REPEATABLE_SECONDS,
+            RUNTIME_REPEATABLE_SECONDS, true);
+        runTest(ta, mModel.getTestName());
     }
 }

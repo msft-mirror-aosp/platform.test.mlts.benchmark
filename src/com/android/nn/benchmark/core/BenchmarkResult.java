@@ -14,22 +14,26 @@
  * limitations under the License.
  */
 
-package com.example.android.nn.benchmark;
+package com.android.nn.benchmark.core;
 
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import java.util.List;
+
 public class BenchmarkResult implements Parcelable {
     public float mTotalTimeSec;
-    public float mTotalError;
+    public float mSumOfMSEs;
+    public float mMaxSingleError;
     public int mIterations;
     public float mTimeStdDeviation;
     public String mTestInfo;
 
     public BenchmarkResult(float totalTimeSec, int iterations, float timeVarianceSec,
-            float totalError, String testInfo) {
+            float sumOfMSEs, float maxSingleError, String testInfo) {
         mTotalTimeSec = totalTimeSec;
-        mTotalError = totalError;
+        mSumOfMSEs = sumOfMSEs;
+        mMaxSingleError = maxSingleError;
         mIterations = iterations;
         mTimeStdDeviation = timeVarianceSec;
         mTestInfo = testInfo;
@@ -37,7 +41,8 @@ public class BenchmarkResult implements Parcelable {
 
     protected BenchmarkResult(Parcel in) {
         mTotalTimeSec = in.readFloat();
-        mTotalError = in.readFloat();
+        mSumOfMSEs = in.readFloat();
+        mMaxSingleError = in.readFloat();
         mIterations = in.readInt();
         mTimeStdDeviation = in.readFloat();
         mTestInfo = in.readString();
@@ -51,7 +56,8 @@ public class BenchmarkResult implements Parcelable {
     @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeFloat(mTotalTimeSec);
-        dest.writeFloat(mTotalError);
+        dest.writeFloat(mSumOfMSEs);
+        dest.writeFloat(mMaxSingleError);
         dest.writeInt(mIterations);
         dest.writeFloat(mTimeStdDeviation);
         dest.writeString(mTestInfo);
@@ -81,10 +87,39 @@ public class BenchmarkResult implements Parcelable {
                 "mTestInfo='" + mTestInfo + '\'' +
                 ", getMeanTimeSec()=" + getMeanTimeSec() +
                 ", mTotalTimeSec=" + mTotalTimeSec +
-                ", mTotalError=" + mTotalError +
+                ", mSumOfMSEs=" + mSumOfMSEs +
+                ", mMaxSingleError=" + mMaxSingleError +
                 ", mIterations=" + mIterations +
                 ", mTimeStdDeviation=" + mTimeStdDeviation +
                 '}';
+    }
+
+    public static BenchmarkResult fromInferenceResults(String testInfo, List<InferenceResult> inferenceResults) {
+        float totalTime = 0;
+        int iterations = 0;
+        float sumOfMSEs = 0;
+        float maxSingleError = 0;
+
+        for (InferenceResult iresult : inferenceResults) {
+            iterations++;
+            totalTime += iresult.mComputeTimeSec;
+            sumOfMSEs += iresult.mMeanSquaredError;
+            if (iresult.mMaxSingleError > maxSingleError) {
+              maxSingleError = iresult.mMaxSingleError;
+            }
+        }
+
+        float inferenceMean = (totalTime / iterations);
+
+        float variance = 0.0f;
+        for (InferenceResult iresult : inferenceResults) {
+            float v = (iresult.mComputeTimeSec - inferenceMean);
+            variance += v * v;
+        }
+        variance /= iterations;
+
+        return new BenchmarkResult(totalTime, iterations, (float) Math.sqrt(variance),
+                sumOfMSEs, maxSingleError, testInfo);
     }
 }
 

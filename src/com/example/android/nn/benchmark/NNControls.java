@@ -31,6 +31,9 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import com.android.nn.benchmark.core.BenchmarkResult;
+import com.android.nn.benchmark.core.TestModels;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;

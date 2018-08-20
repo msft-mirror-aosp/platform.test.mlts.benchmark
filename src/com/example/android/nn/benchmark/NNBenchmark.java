@@ -19,8 +19,15 @@ package com.example.android.nn.benchmark;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Trace;
 import android.util.Log;
 import android.widget.TextView;
+
+import com.android.nn.benchmark.core.BenchmarkException;
+import com.android.nn.benchmark.core.BenchmarkResult;
+import com.android.nn.benchmark.core.InferenceResult;
+import com.android.nn.benchmark.core.NNTestBase;
+import com.android.nn.benchmark.core.TestModels;
 
 import java.util.List;
 import java.io.IOException;
@@ -66,55 +73,52 @@ public class NNBenchmark extends Activity {
 
         // Method to retreive benchmark results for instrumentation tests.
         BenchmarkResult getInstrumentationResult(
-            TestModels.TestModelEntry t, float warmupTimeSeconds, float runTimeSeconds)
+            TestModels.TestModelEntry t, float warmupTimeSeconds, float runTimeSeconds,
+            boolean noNNAPI)
                 throws BenchmarkException, IOException {
             mTest = changeTest(t);
-            return getBenchmark(warmupTimeSeconds, runTimeSeconds);
+            return getBenchmark(warmupTimeSeconds, runTimeSeconds, noNNAPI);
         }
 
         // Run one loop of kernels for at least the specified minimum time.
         // The function returns the average time in ms for the test run
-        private BenchmarkResult runBenchmarkLoop(float minTime)
+        private BenchmarkResult runBenchmarkLoop(float minTime, boolean noNNAPI)
                 throws BenchmarkException, IOException {
             // Run the kernel
-            List<InferenceResult> inferenceResults = mTest.runBenchmark(minTime);
-            float totalTime = 0;
-            int iterations = 0;
-            float totalError = 0;
-
-            for (InferenceResult iresult : inferenceResults) {
-                iterations++;
-                totalTime += iresult.mComputeTimeSec;
-                totalError += iresult.mMeanSquaredError;
-            }
-
-            float inferenceMean = (totalTime / iterations);
-
-            float variance = 0.0f;
-            for (InferenceResult iresult : inferenceResults) {
-                float v = (iresult.mComputeTimeSec - inferenceMean);
-                variance += v * v;
-            }
-            variance /= iterations;
-
-            return new BenchmarkResult(totalTime, iterations, (float) Math.sqrt(variance),
-                    totalError, mTest.getTestInfo());
+            List<InferenceResult> inferenceResults = mTest.runBenchmark(minTime, noNNAPI);
+            return BenchmarkResult.fromInferenceResults(mTest.getTestInfo(), inferenceResults);
         }
 
 
         // Get a benchmark result for a specific test
-        private BenchmarkResult getBenchmark(float warmupTimeSeconds, float runTimeSeconds)
+        private BenchmarkResult getBenchmark(float warmupTimeSeconds, float runTimeSeconds,
+            boolean noNNAPI)
                 throws BenchmarkException, IOException {
             mDoingBenchmark = true;
 
             long result = 0;
 
             // We run a short bit of work before starting the actual test
-            // this is to let any power management do its job and respond
-            runBenchmarkLoop(warmupTimeSeconds);
+            // this is to let any power management do its job and respond.
+            // For NNAPI systrace usage documentation, see
+            // frameworks/ml/nn/common/include/Tracing.h.
+            try {
+                final String traceName = "[NN_LA_PWU]runBenchmarkLoop";
+                Trace.beginSection(traceName);
+                runBenchmarkLoop(warmupTimeSeconds, noNNAPI);
+            } finally {
+                Trace.endSection();
+            }
 
             // Run the actual benchmark
-            BenchmarkResult r = runBenchmarkLoop(runTimeSeconds);
+            BenchmarkResult r;
+            try {
+                final String traceName = "[NN_LA_PBM]runBenchmarkLoop";
+                Trace.beginSection(traceName);
+                r = runBenchmarkLoop(runTimeSeconds, noNNAPI);
+            } finally {
+                Trace.endSection();
+            }
 
             Log.v(TAG, "Test: " + r.toString());
 
@@ -170,7 +174,7 @@ public class NNBenchmark extends Activity {
                                 warmupTime = 2.f;
                                 runTime = 10.f;
                             }
-                            mTestResults[ct] = getBenchmark(warmupTime, runTime);
+                            mTestResults[ct] = getBenchmark(warmupTime, runTime, false);
                         }
                         onBenchmarkFinish(mRun);
                     } else {

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.nn.benchmark;
+package com.android.nn.benchmark.core;
 
 import java.util.List;
 import java.util.ArrayList;
