@@ -14,26 +14,39 @@
  * limitations under the License.
  */
 
-package com.example.android.nn.benchmark;
+package com.android.nn.benchmark.app;
 
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Trace;
 import android.util.Log;
+import android.util.Pair;
+import android.view.WindowManager;
 import android.widget.TextView;
 
 import com.android.nn.benchmark.core.BenchmarkException;
 import com.android.nn.benchmark.core.BenchmarkResult;
+import com.android.nn.benchmark.core.InferenceInOutSequence;
 import com.android.nn.benchmark.core.InferenceResult;
 import com.android.nn.benchmark.core.NNTestBase;
 import com.android.nn.benchmark.core.TestModels;
+import com.android.nn.benchmark.core.UnsupportedSdkException;
 
 import java.util.List;
 import java.io.IOException;
 
 public class NNBenchmark extends Activity {
     protected static final String TAG = "NN_BENCHMARK";
+
+    public static final String EXTRA_ENABLE_LONG = "enable long";
+    public static final String EXTRA_ENABLE_PAUSE = "enable pause";
+    public static final String EXTRA_DISABLE_NNAPI = "disable NNAPI";
+    public static final String EXTRA_DEMO = "demo";
+    public static final String EXTRA_TESTS = "tests";
+
+    public static final String EXTRA_RESULTS_TESTS = "tests";
+    public static final String EXTRA_RESULTS_RESULTS = "results";
 
     private int mTestList[];
     private BenchmarkResult mTestResults[];
@@ -42,58 +55,73 @@ public class NNBenchmark extends Activity {
     private boolean mToggleLong;
     private boolean mTogglePause;
 
-    // In demo mode this is used to count updates in the pipeline.  It's
-    // incremented when work is submitted to RS and decremented when invalidate is
-    // called to display a result.
-    private boolean mDemoMode;
+    private boolean mUseNNApi;
+    private boolean mCompleteInputSet;
+
+    protected void setUseNNApi(boolean useNNApi) {
+        mUseNNApi = useNNApi;
+    }
+
+    protected void setCompleteInputSet(boolean completeInputSet) {
+        mCompleteInputSet = completeInputSet;
+    }
 
     // Initialize the parameters for Instrumentation tests.
     protected void prepareInstrumentationTest() {
         mTestList = new int[1];
         mTestResults = new BenchmarkResult[1];
-        mDemoMode = false;
-        mProcessor = new Processor(!mDemoMode);
+        mProcessor = new Processor();
     }
 
     /////////////////////////////////////////////////////////////////////////
     // Processor is a helper thread for running the work without
     // blocking the UI thread.
     class Processor extends Thread {
-
         private float mLastResult;
         private boolean mRun = true;
         private boolean mDoingBenchmark;
         private NNTestBase mTest;
 
-        private boolean mBenchmarkMode;
-
-        Processor(boolean benchmarkMode) {
-            mBenchmarkMode = benchmarkMode;
-        }
-
-        // Method to retreive benchmark results for instrumentation tests.
+        // Method to retrieve benchmark results for instrumentation tests.
         BenchmarkResult getInstrumentationResult(
-            TestModels.TestModelEntry t, float warmupTimeSeconds, float runTimeSeconds,
-            boolean noNNAPI)
+                TestModels.TestModelEntry t, float warmupTimeSeconds, float runTimeSeconds)
                 throws BenchmarkException, IOException {
             mTest = changeTest(t);
-            return getBenchmark(warmupTimeSeconds, runTimeSeconds, noNNAPI);
+            return getBenchmark(warmupTimeSeconds, runTimeSeconds);
         }
 
         // Run one loop of kernels for at least the specified minimum time.
         // The function returns the average time in ms for the test run
-        private BenchmarkResult runBenchmarkLoop(float minTime, boolean noNNAPI)
+        private BenchmarkResult runBenchmarkLoop(float minTime, boolean completeInputSet)
                 throws BenchmarkException, IOException {
             // Run the kernel
-            List<InferenceResult> inferenceResults = mTest.runBenchmark(minTime, noNNAPI);
-            return BenchmarkResult.fromInferenceResults(mTest.getTestInfo(), inferenceResults);
+            Pair<List<InferenceInOutSequence>, List<InferenceResult>> results;
+            if (minTime > 0.f) {
+                if (completeInputSet) {
+                    results = mTest.runBenchmarkCompleteInputSet(1, minTime);
+                } else {
+                    results = mTest.runBenchmark(minTime);
+                }
+            } else {
+                results = mTest.runInferenceOnce();
+            }
+            return BenchmarkResult.fromInferenceResults(
+                    mTest.getTestInfo(),
+                    mUseNNApi ? BenchmarkResult.BACKEND_TFLITE_NNAPI
+                            : BenchmarkResult.BACKEND_TFLITE_CPU,
+                    results.first, results.second, mTest.getEvaluator());
         }
 
 
         // Get a benchmark result for a specific test
-        private BenchmarkResult getBenchmark(float warmupTimeSeconds, float runTimeSeconds,
-            boolean noNNAPI)
-                throws BenchmarkException, IOException {
+        private BenchmarkResult getBenchmark(float warmupTimeSeconds, float runTimeSeconds)
+            throws BenchmarkException, IOException {
+            try {
+                mTest.checkSdkVersion();
+            } catch (UnsupportedSdkException e) {
+                return new BenchmarkResult(e.getMessage());
+            }
+
             mDoingBenchmark = true;
 
             long result = 0;
@@ -105,7 +133,7 @@ public class NNBenchmark extends Activity {
             try {
                 final String traceName = "[NN_LA_PWU]runBenchmarkLoop";
                 Trace.beginSection(traceName);
-                runBenchmarkLoop(warmupTimeSeconds, noNNAPI);
+                runBenchmarkLoop(warmupTimeSeconds, false);
             } finally {
                 Trace.endSection();
             }
@@ -115,7 +143,7 @@ public class NNBenchmark extends Activity {
             try {
                 final String traceName = "[NN_LA_PBM]runBenchmarkLoop";
                 Trace.beginSection(traceName);
-                r = runBenchmarkLoop(runTimeSeconds, noNNAPI);
+                r = runBenchmarkLoop(runTimeSeconds, mCompleteInputSet);
             } finally {
                 Trace.endSection();
             }
@@ -136,53 +164,54 @@ public class NNBenchmark extends Activity {
                 }
 
                 try {
-                    if (mBenchmarkMode) {
-                        // Loop over the tests we want to benchmark
-                        for (int ct = 0; (ct < mTestList.length) && mRun; ct++) {
+                    // Loop over the tests we want to benchmark
+                    for (int ct = 0; (ct < mTestList.length) && mRun; ct++) {
 
-                            // For reproducibility we wait a short time for any sporadic work
-                            // created by the user touching the screen to launch the test to pass.
-                            // Also allows for things to settle after the test changes.
-                            try {
-                                sleep(250);
-                            } catch (InterruptedException e) {
-                            }
+                        // For reproducibility we wait a short time for any sporadic work
+                        // created by the user touching the screen to launch the test to pass.
+                        // Also allows for things to settle after the test changes.
+                        try {
+                            sleep(250);
+                        } catch (InterruptedException e) {
+                        }
 
-                            // If we just ran a test, we destroy it here to relieve some memory
-                            // pressure
+                        // If we just ran a test, we destroy it here to relieve some memory
+                        // pressure
 
-                            if (mTest != null) {
-                                mTest.destroy();
-                            }
+                        if (mTest != null) {
+                            mTest.destroy();
+                        }
 
-                            // Select the next test
-                            mTest = changeTest(mTestList[ct]);
-                            // If the user selected the "long pause" option, wait
-                            if (mTogglePause) {
-                                for (int i = 0; (i < 100) && mRun; i++) {
-                                    try {
-                                        sleep(100);
-                                    } catch (InterruptedException e) {
-                                    }
+                        // Select the next test
+                        mTest = changeTest(mTestList[ct]);
+
+                        // If the user selected the "long pause" option, wait
+                        if (mTogglePause) {
+                            for (int i = 0; (i < 100) && mRun; i++) {
+                                try {
+                                    sleep(100);
+                                } catch (InterruptedException e) {
                                 }
                             }
-
-                            // Run the test
-                            float warmupTime = 0.3f;
-                            float runTime = 1.f;
-                            if (mToggleLong) {
-                                warmupTime = 2.f;
-                                runTime = 10.f;
-                            }
-                            mTestResults[ct] = getBenchmark(warmupTime, runTime, false);
                         }
-                        onBenchmarkFinish(mRun);
-                    } else {
-                        // Run the kernel
-                        mTest.runOneInference();
+
+                        // Run the test
+                        float warmupTime = 0.3f;
+                        float runTime = 1.f;
+                        if (mToggleLong) {
+                            warmupTime = 2.f;
+                            runTime = 10.f;
+                        }
+                        try {
+                            mTestResults[ct] = getBenchmark(warmupTime, runTime);
+                        } catch (BenchmarkException e) {
+                            // Displays the error to the user.
+                            mTestResults[ct] = new BenchmarkResult(e.getMessage());
+                        }
                     }
-                } catch (IOException | BenchmarkException e) {
-                    e.printStackTrace();
+                    onBenchmarkFinish(mRun);
+                } catch (IOException e) {
+                    Log.e(TAG, "Exception during benchmark run", e);
                     break;
                 }
             }
@@ -212,8 +241,9 @@ public class NNBenchmark extends Activity {
     public Processor mProcessor;
 
     NNTestBase changeTest(TestModels.TestModelEntry t) {
-        NNTestBase tb = t.createNNTestBase();
-        tb.createBaseTest(this);
+        NNTestBase tb = t.createNNTestBase(mUseNNApi,
+                false /* enableIntermediateTensorsDump */);
+        tb.setupModel(this);
         return tb;
     }
 
@@ -228,6 +258,7 @@ public class NNBenchmark extends Activity {
         textView.setTextSize(20);
         textView.setText("NN BenchMark Running.");
         setContentView(textView);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
     @Override
@@ -241,8 +272,8 @@ public class NNBenchmark extends Activity {
     public void onBenchmarkFinish(boolean ok) {
         if (ok) {
             Intent intent = new Intent();
-            intent.putExtra("tests", mTestList);
-            intent.putExtra("results", mTestResults);
+            intent.putExtra(EXTRA_RESULTS_TESTS, mTestList);
+            intent.putExtra(EXTRA_RESULTS_RESULTS, mTestResults);
             setResult(RESULT_OK, intent);
         } else {
             setResult(RESULT_CANCELED);
@@ -254,18 +285,14 @@ public class NNBenchmark extends Activity {
     protected void onResume() {
         super.onResume();
         Intent i = getIntent();
-        mTestList = i.getIntArrayExtra("tests");
-
-        mToggleLong = i.getBooleanExtra("enable long", false);
-        mTogglePause = i.getBooleanExtra("enable pause", false);
-        mDemoMode = i.getBooleanExtra("demo", false);
+        mTestList = i.getIntArrayExtra(EXTRA_TESTS);
+        mToggleLong = i.getBooleanExtra(EXTRA_ENABLE_LONG, false);
+        mTogglePause = i.getBooleanExtra(EXTRA_ENABLE_PAUSE, false);
+        setUseNNApi(!i.getBooleanExtra(EXTRA_DISABLE_NNAPI, false));
 
         if (mTestList != null) {
             mTestResults = new BenchmarkResult[mTestList.length];
-            mProcessor = new Processor(!mDemoMode);
-            if (mDemoMode) {
-                mProcessor.mTest = changeTest(mTestList[0]);
-            }
+            mProcessor = new Processor();
             mProcessor.start();
         }
     }

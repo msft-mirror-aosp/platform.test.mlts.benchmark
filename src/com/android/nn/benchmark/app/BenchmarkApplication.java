@@ -1,4 +1,4 @@
-package com.example.android.nn.benchmark;
+package com.android.nn.benchmark.app;
 
 import android.app.Application;
 

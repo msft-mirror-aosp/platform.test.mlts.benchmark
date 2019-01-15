@@ -30,17 +30,20 @@ import java.io.Reader;
 /** Helper class to register test model definitions from assets data */
 public class TestModelsListLoader {
 
-    /** Parse list of models in form of json data.
+    /**
+     * Parse list of models in form of json data.
      *
      * Example input:
-     *  { "models" : [
-     *    {"name" : "modelName",
-     *     "testName" : "testName",
-     *     "baselineSec" : 0.03,
-     *     "inputSize" : [1,2,3,4],
-     *     "inputOutpus" : [ {"input": "input1", "output": "output2", dataSize: 4} ]
-     *    }
-     *  ]}
+     * { "models" : [
+     * {"name" : "modelName",
+     * "testName" : "testName",
+     * "baselineSec" : 0.03,
+     * "evaluator": "TopK",
+     * "inputSize" : [1,2,3,4],
+     * "dataSize" : 4,
+     * "inputOutputs" : [ {"input": "input1", "output": "output2"} ]
+     * }
+     * ]}
      */
     static public void parseJSONModelsList(String jsonStringInput) throws JSONException {
         JSONObject jsonRootObject = new JSONObject(jsonStringInput);
@@ -51,10 +54,29 @@ public class TestModelsListLoader {
 
             String name = jsonTestModelEntry.getString("name");
             String testName = name;
-            try {
+            if (jsonTestModelEntry.has("testName")) {
                 testName = jsonTestModelEntry.getString("testName");
-            } catch (JSONException ignored) {}
+            }
+            String modelFile = name;
+            if (jsonTestModelEntry.has("modelFile")) {
+                modelFile = jsonTestModelEntry.getString("modelFile");
+            }
             double baseline = jsonTestModelEntry.getDouble("baselineSec");
+            int minSdkVersion = 0;
+            if (jsonTestModelEntry.has("minSdkVersion")) {
+                minSdkVersion = jsonTestModelEntry.getInt("minSdkVersion");
+            }
+            EvaluatorConfig evaluator = null;
+            if (jsonTestModelEntry.has("evaluator")) {
+                JSONObject evaluatorJson = jsonTestModelEntry.getJSONObject("evaluator");
+                evaluator = new EvaluatorConfig(evaluatorJson.getString("className"),
+                        evaluatorJson.has("outputMeanStdDev")
+                                ? evaluatorJson.getString("outputMeanStdDev")
+                                : null,
+                        evaluatorJson.has("expectedTop1")
+                                ? evaluatorJson.getDouble("expectedTop1")
+                                : null);
+            }
             JSONArray jsonInputSize = jsonTestModelEntry.getJSONArray("inputSize");
             if (jsonInputSize.length() != 4) {
                 throw new JSONException(
@@ -64,22 +86,71 @@ public class TestModelsListLoader {
                     jsonInputSize.getInt(1),
                     jsonInputSize.getInt(2),
                     jsonInputSize.getInt(3)};
+            int dataSize = jsonTestModelEntry.getInt("dataSize");
 
-            JSONArray jsonInputOutputs = jsonTestModelEntry.getJSONArray("inputOutputs");
-            InferenceInOut.FromAssets[] inputOutputs =
-                    new InferenceInOut.FromAssets[jsonInputOutputs.length()];
+            InferenceInOutSequence.FromAssets[] inputOutputs = null;
+            if (jsonTestModelEntry.has("inputOutputs")) {
+                JSONArray jsonInputOutputs = jsonTestModelEntry.getJSONArray("inputOutputs");
+                inputOutputs =
+                        new InferenceInOutSequence.FromAssets[jsonInputOutputs.length()];
 
-            for (int j = 0; j < jsonInputOutputs.length(); j++) {
-                JSONObject jsonInputOutput = jsonInputOutputs.getJSONObject(j);
-                String input = jsonInputOutput.getString("input");
-                String output = jsonInputOutput.getString("output");
-                int dataSize = jsonInputOutput.getInt("dataSize");
-                inputOutputs[j] = new InferenceInOut.FromAssets(input, output, dataSize);
+                for (int j = 0; j < jsonInputOutputs.length(); j++) {
+                    JSONObject jsonInputOutput = jsonInputOutputs.getJSONObject(j);
+                    String input = jsonInputOutput.getString("input");
+                    int inputSizeBytes = inputSize[0] * inputSize[1] * inputSize[2] * inputSize[3] *
+                            dataSize;
+
+                    String[] outputs = null;
+                    String output = jsonInputOutput.optString("output", null);
+                    if (output != null) {
+                        outputs = new String[]{output};
+                    } else {
+                        JSONArray outputArray = jsonInputOutput.getJSONArray("outputs");
+                        if (outputArray != null) {
+                            outputs = new String[outputArray.length()];
+                            for (int k = 0; k < outputArray.length(); ++k) {
+                                outputs[k] = outputArray.getString(k);
+                            }
+                        }
+                    }
+
+                    inputOutputs[j] = new InferenceInOutSequence.FromAssets(input, outputs,
+                            dataSize,
+                            inputSizeBytes);
+                }
+            }
+            InferenceInOutSequence.FromDataset[] datasets = null;
+            if (jsonTestModelEntry.has("dataset")) {
+                JSONObject jsonDataset = jsonTestModelEntry.getJSONObject("dataset");
+                String inputPath = jsonDataset.getString("inputPath");
+                String groundTruth = jsonDataset.getString("groundTruth");
+                String labels = jsonDataset.getString("labels");
+                String preprocessor = jsonDataset.getString("preprocessor");
+                if (inputSize[0] != 1 || inputSize[1] != inputSize[2] || inputSize[3] != 3) {
+                    throw new IllegalArgumentException("Datasets only support square images," +
+                            "input size [1, D, D, 3], given " + inputSize[0] +
+                            ", " + inputSize[1] + ", " + inputSize[2] + ", " + inputSize[3]);
+                }
+                float quantScale = 0.f;
+                float quantZeroPoint = 0.f;
+                if (dataSize == 1) {
+                    if (!jsonTestModelEntry.has("inputScale") ||
+                            !jsonTestModelEntry.has("inputZeroPoint")) {
+                        throw new IllegalArgumentException("Quantized test model must include " +
+                                "inputScale and inputZeroPoint for reading a dataset");
+                    }
+                    quantScale = (float) jsonTestModelEntry.getDouble("inputScale");
+                    quantZeroPoint = (float) jsonTestModelEntry.getDouble("inputZeroPoint");
+                }
+                datasets = new InferenceInOutSequence.FromDataset[]{
+                        new InferenceInOutSequence.FromDataset(inputPath, labels, groundTruth,
+                                preprocessor, dataSize, quantScale, quantZeroPoint, inputSize[1])
+                };
             }
 
             TestModels.registerModel(
                     new TestModels.TestModelEntry(name, (float) baseline, inputSize,
-                            inputOutputs, testName));
+                            inputOutputs, datasets, testName, modelFile, evaluator, minSdkVersion));
         }
     }
 
@@ -97,6 +168,7 @@ public class TestModelsListLoader {
 
     /** Parse all ".json" files in root assets directory */
     private static final String MODELS_LIST_ROOT = "models_list";
+
     static public void parseFromAssets(AssetManager assetManager) throws IOException {
         for (String file : assetManager.list(MODELS_LIST_ROOT)) {
             if (!file.endsWith(".json")) {

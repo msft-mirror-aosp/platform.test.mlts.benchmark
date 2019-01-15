@@ -16,8 +16,19 @@
 
 package com.android.nn.benchmark.core;
 
-public class BenchmarkException extends Exception {
-    public BenchmarkException(String message) {
-        super(message);
-    }
-};
+import android.content.res.AssetManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
+/** Interface for dataset image preprocessors */
+public interface ImageProcessorInterface {
+    void preprocess(int datasize, float quantScale, float quantZeroPoint,
+                    int imageDimension, AssetManager assetManager,
+                    String imageFileName, File cacheDir, ByteBuffer outputBuffer)
+            throws IOException;
+}

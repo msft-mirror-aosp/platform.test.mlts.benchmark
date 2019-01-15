@@ -16,99 +16,35 @@
 
 package com.android.nn.benchmark.core;
 
-import java.io.IOException;
-
-import android.content.res.AssetManager;
-
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.nio.ByteOrder;
+import java.nio.ByteBuffer;
 
 /** Input and expected output pair for inference benchmark */
 public class InferenceInOut {
     // TODO: Support multiple inputs/outputs
 
+    // Input can be passed either directly as a byte array or indirectly through
+    // the input creator. This is needed to pass datasets that can not fit into
+    // memory at once.
     public byte[] mInput;
-    public byte[] mExpectedOutput;
+    public byte[][] mExpectedOutputs;
+    public int  mExpectedClass;
+    public InputCreatorInterface mInputCreator;
 
-    public InferenceInOut(byte[] input, byte[] expectedOutput) {
-        this.mInput = input;
-        this.mExpectedOutput = expectedOutput;
+    public interface InputCreatorInterface {
+        public abstract void createInput(ByteBuffer buffer);
     }
 
-    /** Helper class, generates {@link InferenceInOut} from android assets */
-    public static class FromAssets {
-        public String mInputAssetName;
-        public String mOutputAssetName;
-        public int mDataBytesSize;
-
-        public FromAssets(String inputAssetName, String outputAssetName, int dataBytesSize) {
-            this.mInputAssetName = inputAssetName;
-            this.mOutputAssetName = outputAssetName;
-            this.mDataBytesSize = dataBytesSize;
-        }
-
-        public InferenceInOut readAssets(AssetManager assetManager) throws IOException {
-            return new InferenceInOut(
-                    readAsset(assetManager, mInputAssetName, mDataBytesSize),
-                    readAsset(assetManager, mOutputAssetName, mDataBytesSize));
-        }
-
-
-        /** Reverse endianness on array of 4 byte elements */
-        static void invertOrder4(byte[] data) {
-            if (data.length % 4 != 0) {
-                throw new IllegalArgumentException("Data is not 4 byte aligned");
-            }
-            for (int i = 0; i < data.length; i += 4) {
-                byte a = data[i];
-                byte b = data[i + 1];
-                data[i] = data[i + 3];
-                data[i + 1] = data[i + 2];
-                data[i + 2] = b;
-                data[i + 3] = a;
-            }
-        }
-
-        /** Reverse endianness on array of 2 byte elements */
-        static void invertOrder2(byte[] data) {
-            if (data.length % 2 != 0) {
-                throw new IllegalArgumentException("Data is not 2 byte aligned");
-            }
-            for (int i = 0; i < data.length; i += 2) {
-                byte a = data[i];
-                data[i] = data[i + 1];
-                data[i + 1] = a;
-            }
-        }
-
-        /** Read input/output data in native byte order */
-        private static byte[] readAsset(AssetManager assetManager, String assetFilename,
-                int dataBytesSize)
-                throws IOException {
-            try (InputStream in = assetManager.open(assetFilename)) {
-                byte[] buffer = new byte[8192];
-                int bytesRead;
-                ByteArrayOutputStream output = new ByteArrayOutputStream();
-                while ((bytesRead = in.read(buffer)) != -1) {
-                    output.write(buffer, 0, bytesRead);
-                }
-
-                byte[] result = output.toByteArray();
-                // Do we need to swap data endianess?
-                if (dataBytesSize > 1 && ByteOrder.nativeOrder() != ByteOrder.LITTLE_ENDIAN) {
-                    if (dataBytesSize == 4) {
-                        invertOrder4(result);
-                    } if (dataBytesSize == 2) {
-                        invertOrder2(result);
-                    } else {
-                        throw new IllegalArgumentException(
-                                "Byte order swapping for " + dataBytesSize
-                                        + " bytes is not implmemented (yet)");
-                    }
-                }
-                return result;
-            }
-        }
+    public InferenceInOut(byte[] input, byte[][] expectedOutputs, int expectedClass) {
+        mInput = input;
+        mExpectedOutputs = expectedOutputs;
+        mExpectedClass = expectedClass;
+        mInputCreator = null;
+    }
+    public InferenceInOut(InputCreatorInterface inputCreator, byte[][] expectedOutputs,
+                          int expectedClass) {
+        mInput = null;
+        mExpectedOutputs = expectedOutputs;
+        mExpectedClass = expectedClass;
+        mInputCreator = inputCreator;
     }
 }

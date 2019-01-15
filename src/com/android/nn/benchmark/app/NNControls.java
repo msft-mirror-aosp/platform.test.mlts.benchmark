@@ -14,15 +14,13 @@
  * limitations under the License.
  */
 
-package com.example.android.nn.benchmark;
+package com.android.nn.benchmark.app;
 
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Parcelable;
 import android.text.method.ScrollingMovementMethod;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -33,15 +31,12 @@ import android.widget.TextView;
 
 import com.android.nn.benchmark.core.BenchmarkResult;
 import com.android.nn.benchmark.core.TestModels;
+import com.android.nn.benchmark.util.TestExternalStorageActivity;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.ArrayList;
 
 public class NNControls extends Activity {
-    public final String RESULT_FILE = "nn_benchmark_result.csv";
+    private static final String TAG = NNControls.class.getSimpleName();
 
     private ListView mTestListView;
     private TextView mResultView;
@@ -49,9 +44,10 @@ public class NNControls extends Activity {
     private ArrayAdapter<String> mTestListAdapter;
     private ArrayList<String> mTestList = new ArrayList<String>();
 
-    private boolean mSettings[] = {false, false};
+    private boolean mSettings[] = {false, false, false};
     private static final int SETTING_LONG_RUN = 0;
     private static final int SETTING_PAUSE = 1;
+    private static final int SETTING_DISABLE_NNAPI = 2;
 
     private float mResults[];
     private String mInfo[];
@@ -66,6 +62,8 @@ public class NNControls extends Activity {
     }
 
     void init() {
+        TestExternalStorageActivity.testWriteExternalStorage(this, true);
+
         for (TestModels.TestModelEntry testModel : TestModels.modelsList()) {
             mTestList.add(testModel.toString());
         }
@@ -102,8 +100,9 @@ public class NNControls extends Activity {
 
     Intent makeBasicLaunchIntent() {
         Intent intent = new Intent(this, NNBenchmark.class);
-        intent.putExtra("enable long", mSettings[SETTING_LONG_RUN]);
-        intent.putExtra("enable pause", mSettings[SETTING_PAUSE]);
+        intent.putExtra(NNBenchmark.EXTRA_ENABLE_LONG, mSettings[SETTING_LONG_RUN]);
+        intent.putExtra(NNBenchmark.EXTRA_ENABLE_PAUSE, mSettings[SETTING_PAUSE]);
+        intent.putExtra(NNBenchmark.EXTRA_DISABLE_NNAPI, mSettings[SETTING_DISABLE_NNAPI]);
         return intent;
     }
 
@@ -128,54 +127,13 @@ public class NNControls extends Activity {
         }
 
         Intent intent = makeBasicLaunchIntent();
-        intent.putExtra("tests", testList);
+        intent.putExtra(NNBenchmark.EXTRA_TESTS, testList);
         startActivityForResult(intent, 0);
     }
 
-    float rebase(float v, TestModels.TestModelEntry t) {
-        if (v > 0.001) {
-            v = t.mBaselineSec / v;
-        }
-        return v;
-    }
-
     String getResultShortSummary(BenchmarkResult br, TestModels.TestModelEntry t) {
-        java.text.DecimalFormat df = new java.text.DecimalFormat("######.##");
-
-        return df.format(rebase(br.getMeanTimeSec(), t)) +
-                "X, n=" + br.mIterations + ", μ=" + df.format(br.getMeanTimeSec() * 1000.0)
-                + "ms, σ=" + df.format(br.mTimeStdDeviation * 1000.0) + "ms";
+        return br.getSummary(t.mBaselineSec);
     }
-
-    private void writeResults() {
-        // write result into a file
-        File externalStorage = Environment.getExternalStorageDirectory();
-        if (!externalStorage.canWrite()) {
-            Log.v(NNBenchmark.TAG, "sdcard is not writable");
-            return;
-        }
-        File resultFile = new File(externalStorage, RESULT_FILE);
-        resultFile.setWritable(true, false);
-        try {
-            BufferedWriter rsWriter = new BufferedWriter(new FileWriter(resultFile));
-            Log.v(NNBenchmark.TAG, "Saved results in: " + resultFile.getAbsolutePath());
-            java.text.DecimalFormat df = new java.text.DecimalFormat("######.##");
-
-            int modelsCount = TestModels.modelsList().size();
-            for (int ct = 0; ct < modelsCount; ct++) {
-                TestModels.TestModelEntry t = TestModels.modelsList().get(ct);
-                final float r = mResults[ct];
-                float r2 = rebase(r, t);
-                String s = new String("" + t.toString() + ", " + df.format(r) + ", " +
-                        df.format(r2));
-                rsWriter.write(s + "\n");
-            }
-            rsWriter.close();
-        } catch (IOException e) {
-            Log.v(NNBenchmark.TAG, "Unable to write result file " + e.getMessage());
-        }
-    }
-
 
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == 0) {
@@ -184,9 +142,8 @@ public class NNControls extends Activity {
                 mResults = new float[size];
                 mInfo = new String[size];
 
-                Parcelable r[] = data.getParcelableArrayExtra("results");
-                String inf[] = data.getStringArrayExtra("testinfo");
-                int id[] = data.getIntArrayExtra("tests");
+                Parcelable r[] = data.getParcelableArrayExtra(NNBenchmark.EXTRA_RESULTS_RESULTS);
+                int id[] = data.getIntArrayExtra(NNBenchmark.EXTRA_RESULTS_TESTS);
 
                 String mOutResult = "";
                 for (int ct = 0; ct < id.length; ct++) {
@@ -201,7 +158,6 @@ public class NNControls extends Activity {
                 }
 
                 mResultView.setText(mOutResult);
-                writeResults();
             }
         }
     }

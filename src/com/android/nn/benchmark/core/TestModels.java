@@ -33,23 +33,43 @@ public class TestModels {
         /** 4 element array with shape of input data */
         public final int[] mInputShape;
 
-        /** Asset input/output pairs */
-        public final InferenceInOut.FromAssets[] mInOutAssets;
+        /** File pair asset input/output pairs */
+        public final InferenceInOutSequence.FromAssets[] mInOutAssets;
+
+        /** Dataset inputs */
+        public final InferenceInOutSequence.FromDataset[] mInOutDatasets;
 
         /** Readable name for test output */
         public final String mTestName;
 
+        /** Name of model file, so that the same file can be reused */
+        public final String mModelFile;
+
+        /** The evaluator to use for validating the results. */
+        public final EvaluatorConfig mEvaluator;
+
+        /** Min SDK version that the model can run on. */
+        public final int mMinSdkVersion;
+
         public TestModelEntry(String modelName, float baselineSec, int[] inputShape,
-                InferenceInOut.FromAssets[] inOutAssets, String testName) {
+                              InferenceInOutSequence.FromAssets[] inOutAssets,
+                              InferenceInOutSequence.FromDataset[] inOutDatasets,
+                              String testName, String modelFile, EvaluatorConfig evaluator,
+                              int minSdkVersion) {
             mModelName = modelName;
             mBaselineSec = baselineSec;
             mInputShape = inputShape;
             mInOutAssets = inOutAssets;
+            mInOutDatasets  = inOutDatasets;
             mTestName = testName;
+            mModelFile = modelFile;
+            mEvaluator = evaluator;
+            mMinSdkVersion = minSdkVersion;
         }
 
-        public NNTestBase createNNTestBase() {
-            return new NNTestBase(mModelName, mInputShape, mInOutAssets);
+        public NNTestBase createNNTestBase(boolean useNNApi, boolean enableIntermediateTensorsDump) {
+            return new NNTestBase(mModelName, mModelFile, mInputShape, mInOutAssets, mInOutDatasets,
+                    mEvaluator, useNNApi, enableIntermediateTensorsDump, mMinSdkVersion);
         }
 
         public String toString() {

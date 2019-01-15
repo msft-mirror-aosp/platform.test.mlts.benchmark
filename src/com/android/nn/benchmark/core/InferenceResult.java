@@ -18,15 +18,20 @@ package com.android.nn.benchmark.core;
 
 public class InferenceResult {
     public float mComputeTimeSec;
-    public float mMeanSquaredError;
-    public float mMaxSingleError;
-    public byte[] mInferenceOutput;
+    public float[] mMeanSquaredErrors;
+    public float[] mMaxSingleErrors;
+    public byte[][] mInferenceOutput;
+    public int mInputOutputSequenceIndex;
+    public int mInputOutputIndex;
 
-    public InferenceResult(float computeTimeSec, float meanSquaredError,
-            float maxSingleError, byte[] inferenceOutput) {
-        this.mComputeTimeSec = computeTimeSec;
-        this.mMeanSquaredError = meanSquaredError;
-        this.mMaxSingleError = maxSingleError;
-        this.mInferenceOutput = inferenceOutput;
+    public InferenceResult(float computeTimeSec, float[] meanSquaredErrors,
+            float[] maxSingleErrors, byte[][] inferenceOutput, int inputOutputSequenceIndex,
+            int inputOutputIndex) {
+        mComputeTimeSec = computeTimeSec;
+        mMeanSquaredErrors = meanSquaredErrors;
+        mMaxSingleErrors = maxSingleErrors;
+        mInferenceOutput = inferenceOutput;
+        mInputOutputSequenceIndex = inputOutputSequenceIndex;
+        mInputOutputIndex = inputOutputIndex;
     }
 }

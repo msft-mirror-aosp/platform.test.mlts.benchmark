@@ -22,6 +22,6 @@
     </target_preparer>
 
     <test class="com.android.tradefed.testtype.AndroidJUnitTest" >
-        <option name="package" value="com.example.android.nn.benchmark" />
+        <option name="package" value="com.android.nn.benchmark.app" />
     </test>
 </configuration>

@@ -14,26 +14,24 @@
  * limitations under the License.
  */
 
-package com.example.android.nn.benchmark;
+package com.android.nn.benchmark.core;
 
-import android.test.suitebuilder.annotation.LargeTest;
-import com.android.nn.benchmark.core.TestModels.TestModelEntry;
-import org.junit.Test;
-import org.junit.runners.Parameterized;
-import org.junit.runner.RunWith;
+/**
+ * Mean and standard deviation pair, used for (de)normalization.
+ */
+public class MeanStdDev {
+    public static final int ELEMENT_SIZE_BYTES = 4;
+    public static final int DATA_SIZE_BYTES = 2 * ELEMENT_SIZE_BYTES;
 
-@RunWith(Parameterized.class)
-public class TFLiteTest  extends NNTest {
+    public float mean;
+    public float stdDev;
 
-    public TFLiteTest(TestModelEntry model) {
-        super(model);
+    public MeanStdDev(float mean, float stdDev) {
+        this.mean = mean;
+        this.stdDev = stdDev;
     }
 
-    @Test
-    @LargeTest
-    public void testTFLite10Seconds() {
-        TestAction ta = new TestAction(mModel, WARMUP_REPEATABLE_SECONDS,
-            RUNTIME_REPEATABLE_SECONDS, true);
-        runTest(ta, mModel.getTestName());
+    public float denormalize(float value) {
+        return value * stdDev + mean;
     }
 }

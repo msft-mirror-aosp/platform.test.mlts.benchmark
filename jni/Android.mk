@@ -1,5 +1,4 @@
-#
-# Copyright (C) 2015 The Android Open Source Project
+# Copyright (C) 2018 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,27 +14,16 @@
 #
 
 LOCAL_PATH := $(call my-dir)
-
 include $(CLEAR_VARS)
 
-LOCAL_STATIC_JAVA_LIBRARIES := androidx.test.rules
-LOCAL_JAVA_LIBRARIES := android.test.runner.stubs android.test.base.stubs
-
-LOCAL_MODULE_TAGS := tests
-LOCAL_COMPATIBILITY_SUITE += device-tests
-
-LOCAL_SRC_FILES := $(call all-java-files-under, src)
-LOCAL_PACKAGE_NAME := NeuralNetworksApiBenchmark
-LOCAL_JNI_SHARED_LIBRARIES := libnnbenchmark_jni
-
+LOCAL_MODULE := libnnbenchmark_jni
+LOCAL_SRC_FILES := benchmark_jni.cpp run_tflite.cpp
+LOCAL_C_INCLUDES := external/flatbuffers/include external/tensorflow
+LOCAL_SHARED_LIBRARIES := libandroid liblog
+LOCAL_STATIC_LIBRARIES := libtflite_static
+LOCAL_CFLAGS := -Wno-sign-compare -Wno-unused-parameter
 LOCAL_SDK_VERSION := 27
-LOCAL_ASSET_DIR := $(LOCAL_PATH)/../models/assets
+LOCAL_NDK_STL_VARIANT := c++_static
 
-GOOGLE_TEST_MODELS_DIR := vendor/google/tests/mlts/models/assets
-ifneq ($(wildcard $(GOOGLE_TEST_MODELS_DIR)),)
-LOCAL_ASSET_DIR += $(GOOGLE_TEST_MODELS_DIR)
-endif
-
-include $(BUILD_PACKAGE)
-
+include $(BUILD_SHARED_LIBRARY)
 include $(call all-makefiles-under,$(LOCAL_PATH))

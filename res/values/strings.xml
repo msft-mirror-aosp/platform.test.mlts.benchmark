@@ -36,6 +36,7 @@
         name="settings_array">
         <item>Run each test longer, 10 seconds</item>
         <item>Pause 10 seconds between tests</item>
+        <item>Disable NNAPI</item>
     </string-array>
 
 </resources>

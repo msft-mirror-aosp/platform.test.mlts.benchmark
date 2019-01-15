@@ -16,8 +16,17 @@
 
 package com.android.nn.benchmark.core;
 
-public class BenchmarkException extends Exception {
-    public BenchmarkException(String message) {
-        super(message);
-    }
-};
+import java.util.List;
+
+/**
+ * Inference accuracy evaluators.
+ */
+
+public interface EvaluatorInterface {
+    void EvaluateAccuracy(
+            List<InferenceInOutSequence> inferenceInOuts,
+            List<InferenceResult> inferenceResults,
+            List<String> outKeys,
+            List<Float> outValues,
+            List<String> outValidationErrors);
+}

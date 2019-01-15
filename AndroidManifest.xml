@@ -15,14 +15,17 @@
 -->
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.android.nn.benchmark">
+		  package="com.android.nn.benchmark.app"
+          android:versionCode="1"
+          android:versionName="0.1">
 
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-sdk android:minSdkVersion="27" />
     <application android:label="NeuralNetworksBenchmark"
                  android:name=".BenchmarkApplication"
                  android:hardwareAccelerated="true">
-        <uses-library android:name="android.test.runner" />
+        <uses-library android:name="android.test.runner" android:required="false"/>
+        <uses-library android:name="android.test.base" android:required="false"/>
         <activity android:name=".NNBenchmark">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -34,7 +37,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:exported="true" android:name="com.android.nn.benchmark.util.DumpAllTensors">
+        </activity>
+        <activity android:exported="true" android:name="com.android.nn.benchmark.util.TestExternalStorageActivity">
+        </activity>
     </application>
-    <instrumentation android:name="android.support.test.runner.AndroidJUnitRunner"
-        android:targetPackage="com.example.android.nn.benchmark"/>
+    <instrumentation android:name="androidx.test.runner.AndroidJUnitRunner"
+        android:targetPackage="com.android.nn.benchmark.app"/>
 </manifest>
