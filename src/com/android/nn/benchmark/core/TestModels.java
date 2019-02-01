@@ -30,7 +30,7 @@ public class TestModels {
         /** Expected inference performance in seconds */
         public final float mBaselineSec;
 
-        /** 4 element array with shape of input data */
+        /** Shape of input data */
         public final int[] mInputShape;
 
         /** File pair asset input/output pairs */

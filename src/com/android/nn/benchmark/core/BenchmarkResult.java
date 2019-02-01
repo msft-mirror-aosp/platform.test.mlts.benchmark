@@ -108,6 +108,10 @@ public class BenchmarkResult implements Parcelable {
         mBenchmarkError = benchmarkError;
     }
 
+    public boolean hasValidationErrors() {
+        return mValidationErrors.length > 0;
+    }
+
     protected BenchmarkResult(Parcel in) {
         mTotalTimeSec = in.readFloat();
         mSumOfMSEs = in.readFloat();
