@@ -30,9 +30,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class NNTestBase {
-    protected final boolean USE_NNAPI = true;
     protected static final String TAG = "NN_TESTBASE";
 
     // Used to load the 'native-lib' library on application startup.
@@ -40,9 +40,11 @@ public class NNTestBase {
         System.loadLibrary("nnbenchmark_jni");
     }
 
-    private synchronized native long initModel(String modelFileName,
+    private synchronized native long initModel(
+            String modelFileName,
             boolean useNNApi,
-            boolean enableIntermediateTensorsDump);
+            boolean enableIntermediateTensorsDump,
+            String nnApiDeviceName);
 
     private synchronized native void destroyModel(long modelHandle);
 
@@ -63,7 +65,7 @@ public class NNTestBase {
             List<InferenceInOutSequence> inOutList,
             List<InferenceResult> resultList,
             int inferencesSeqMaxCount,
-            float maxTimeout,
+            float timeoutSec,
             int flags);
 
     private synchronized native void dumpAllLayers(
@@ -82,15 +84,15 @@ public class NNTestBase {
     private EvaluatorConfig mEvaluatorConfig;
     private EvaluatorInterface mEvaluator;
     private boolean mHasGoldenOutputs;
-    private boolean mUseNNApi;
-    private boolean mEnableIntermediateTensorsDump;
+    private boolean mUseNNApi = false;
+    private boolean mEnableIntermediateTensorsDump = false;
     private int mMinSdkVersion;
+    private Optional<String> mNNApiDeviceName = Optional.empty();
 
     public NNTestBase(String modelName, String modelFile, int[] inputShape,
             InferenceInOutSequence.FromAssets[] inputOutputAssets,
             InferenceInOutSequence.FromDataset[] inputOutputDatasets,
-            EvaluatorConfig evaluator, boolean useNNApi, boolean enableIntermediateTensorsDump,
-            int minSdkVersion) {
+            EvaluatorConfig evaluator, int minSdkVersion) {
         if (inputOutputAssets == null && inputOutputDatasets == null) {
             throw new IllegalArgumentException(
                     "Neither inputOutputAssets or inputOutputDatasets given - no inputs");
@@ -106,26 +108,50 @@ public class NNTestBase {
         mInputOutputAssets = inputOutputAssets;
         mInputOutputDatasets = inputOutputDatasets;
         mModelHandle = 0;
-        mUseNNApi = useNNApi;
-        mEnableIntermediateTensorsDump = enableIntermediateTensorsDump;
         mEvaluatorConfig = evaluator;
         mMinSdkVersion = minSdkVersion;
     }
 
-    public final void setupModel(Activity ipact) {
+    public void useNNApi() {
+        useNNApi(true);
+    }
+
+    public void useNNApi(boolean value) {
+        mUseNNApi = value;
+    }
+
+    public void enableIntermediateTensorsDump() {
+        enableIntermediateTensorsDump(true);
+    }
+
+    public void enableIntermediateTensorsDump(boolean value) {
+        mEnableIntermediateTensorsDump = value;
+    }
+
+    public void setNNApiDeviceName(String value) {
+        if (!mUseNNApi) {
+            Log.e(TAG, "Setting device name has no effect when not using NNAPI");
+        }
+        mNNApiDeviceName = Optional.ofNullable(value);
+    }
+
+    public final boolean setupModel(Activity ipact) {
         mActivity = ipact;
         String modelFileName = copyAssetToFile();
         if (modelFileName != null) {
-            mModelHandle = initModel(modelFileName, mUseNNApi, mEnableIntermediateTensorsDump);
-            if (mModelHandle != 0) {
-                resizeInputTensors(mModelHandle, mInputShape);
-            } else {
+            mModelHandle = initModel(
+                    modelFileName, mUseNNApi, mEnableIntermediateTensorsDump,
+                    mNNApiDeviceName.orElse(null));
+            if (mModelHandle == 0) {
                 Log.e(TAG, "Failed to init the model");
+                return false;
             }
+            resizeInputTensors(mModelHandle, mInputShape);
         }
         if (mEvaluatorConfig != null) {
             mEvaluator = mEvaluatorConfig.createEvaluator(mActivity.getAssets());
         }
+        return true;
     }
 
     public String getTestInfo() {
@@ -248,18 +274,16 @@ public class NNTestBase {
             float timeoutSec,
             int flags)
             throws IOException, BenchmarkException {
-        if (mModelHandle != 0) {
-            List<InferenceResult> resultList = new ArrayList<>();
-
-            if (runBenchmark(mModelHandle, inOutList, resultList, inferencesSeqMaxCount,
-                    timeoutSec, flags)) {
-                return new Pair<List<InferenceInOutSequence>, List<InferenceResult>>(
-                        inOutList, resultList);
-            } else {
-                throw new BenchmarkException("Failed to run benchmark");
-            }
+        if (mModelHandle == 0) {
+            throw new IllegalStateException("mModelHandle is null");
         }
-        throw new IllegalStateException("mModelHandle is null");
+        List<InferenceResult> resultList = new ArrayList<>();
+        if (!runBenchmark(mModelHandle, inOutList, resultList, inferencesSeqMaxCount,
+                    timeoutSec, flags)) {
+            throw new BenchmarkException("Failed to run benchmark");
+        }
+        return new Pair<List<InferenceInOutSequence>, List<InferenceResult>>(
+                inOutList, resultList);
     }
 
     public void destroy() {
