@@ -20,6 +20,7 @@ import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.text.TextUtils;
+import android.util.Pair;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -181,8 +182,20 @@ public class BenchmarkResult implements Parcelable {
                 }
             };
 
+    public float getError() {
+        return mSumOfMSEs;
+    }
+
     public float getMeanTimeSec() {
         return mTotalTimeSec / mIterations;
+    }
+
+    public List<Pair<String, Float>> getEvaluatorResults() {
+        List<Pair<String, Float>> results = new ArrayList<>();
+        for (int i = 0; i < mEvaluatorKeys.length; ++i) {
+            results.add(new Pair<>(mEvaluatorKeys[i], mEvaluatorResults[i]));
+        }
+        return results;
     }
 
     @Override
@@ -252,6 +265,7 @@ public class BenchmarkResult implements Parcelable {
         return results;
     }
 
+    @SuppressWarnings("AndroidJdkLibsChecker")
     public String toCsvLine() {
         if (!TextUtils.isEmpty(mBenchmarkError)) {
             return "";
@@ -259,6 +273,7 @@ public class BenchmarkResult implements Parcelable {
 
         StringBuilder sb = new StringBuilder();
         sb.append(String.join(",",
+            mTestInfo,
             mBackendType,
             String.valueOf(mIterations),
             String.valueOf(mTotalTimeSec),

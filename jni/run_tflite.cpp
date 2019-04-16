@@ -62,15 +62,31 @@ static TraceFunc kTraceFunc{setupTraceFunc()};
 
 }  // namespace
 
-BenchmarkModel::BenchmarkModel(const char* modelfile, bool use_nnapi,
-                               bool enable_intermediate_tensors_dump) {
+BenchmarkModel* BenchmarkModel::create(const char* modelfile, bool use_nnapi,
+                                       bool enable_intermediate_tensors_dump,
+                                       const char* nnapi_device_name) {
+    BenchmarkModel* model = new BenchmarkModel();
+    if (!model->init(modelfile, use_nnapi, enable_intermediate_tensors_dump,
+                     nnapi_device_name)) {
+      delete model;
+      return nullptr;
+    }
+    return model;
+}
+
+bool BenchmarkModel::init(const char* modelfile, bool use_nnapi,
+                          bool enable_intermediate_tensors_dump,
+                          const char* nnapi_device_name) {
+  __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "BenchmarkModel %s",
+                      modelfile);
+
   // Memory map the model. NOTE this needs lifetime greater than or equal
   // to interpreter context.
   mTfliteModel = tflite::FlatBufferModel::BuildFromFile(modelfile);
   if (!mTfliteModel) {
     __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Failed to load model %s",
                         modelfile);
-    return;
+    return false;
   }
 
   tflite::ops::builtin::BuiltinOpResolver resolver;
@@ -78,7 +94,7 @@ BenchmarkModel::BenchmarkModel(const char* modelfile, bool use_nnapi,
   if (!mTfliteInterpreter) {
     __android_log_print(ANDROID_LOG_ERROR, LOG_TAG,
                         "Failed to create TFlite interpreter");
-    return;
+    return false;
   }
 
   if (enable_intermediate_tensors_dump) {
@@ -98,15 +114,21 @@ BenchmarkModel::BenchmarkModel(const char* modelfile, bool use_nnapi,
   mTfliteInterpreter->SetAllowFp16PrecisionForFp32(true);
 
   if (use_nnapi) {
-    if (mTfliteInterpreter->ModifyGraphWithDelegate(tflite::NnApiDelegate()) !=
-        kTfLiteOk) {
+    if (nnapi_device_name != nullptr) {
+      __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Running NNAPI on device %s",
+                          nnapi_device_name);
+    }
+    if (mTfliteInterpreter->ModifyGraphWithDelegate(
+            tflite::NnApiDelegate(nnapi_device_name)) != kTfLiteOk) {
       __android_log_print(ANDROID_LOG_ERROR, LOG_TAG,
                           "Failed to initialize NNAPI Delegate");
-      return;
+      return false;
     }
   }
+  return true;
 }
 
+BenchmarkModel::BenchmarkModel() {}
 BenchmarkModel::~BenchmarkModel() {}
 
 bool BenchmarkModel::setInput(const uint8_t* dataPtr, size_t length) {

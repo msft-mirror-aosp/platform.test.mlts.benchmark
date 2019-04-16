@@ -67,9 +67,16 @@ public class TestModels {
             mMinSdkVersion = minSdkVersion;
         }
 
-        public NNTestBase createNNTestBase(boolean useNNApi, boolean enableIntermediateTensorsDump) {
+        public NNTestBase createNNTestBase() {
             return new NNTestBase(mModelName, mModelFile, mInputShape, mInOutAssets, mInOutDatasets,
-                    mEvaluator, useNNApi, enableIntermediateTensorsDump, mMinSdkVersion);
+                mEvaluator, mMinSdkVersion);
+        }
+
+        public NNTestBase createNNTestBase(boolean useNNApi, boolean enableIntermediateTensorsDump) {
+            NNTestBase test = createNNTestBase();
+            test.useNNApi(useNNApi);
+            test.enableIntermediateTensorsDump(enableIntermediateTensorsDump);
+            return test;
         }
 
         public String toString() {

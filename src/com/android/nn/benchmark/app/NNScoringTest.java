@@ -67,49 +67,29 @@ public class NNScoringTest extends BenchmarkTestBase {
         super.prepareTest();
     }
 
-    private static String select_dataset(String modelName, boolean internal) {
-        return internal ? modelName : modelName + "_aosp";
-    }
-
     private static final String[] MODEL_NAMES = new String[]{
             "tts_float",
             "asr_float",
+            "mobilenet_v1_1.0_224_quant_topk_aosp",
+            "mobilenet_v1_1.0_224_topk_aosp",
+            "mobilenet_v1_0.75_192_quant_topk_aosp",
+            "mobilenet_v1_0.75_192_topk_aosp",
+            "mobilenet_v1_0.5_160_quant_topk_aosp",
+            "mobilenet_v1_0.5_160_topk_aosp",
+            "mobilenet_v1_0.25_128_quant_topk_aosp",
+            "mobilenet_v1_0.25_128_topk_aosp",
+            "mobilenet_v2_0.35_128_topk_aosp",
+            "mobilenet_v2_0.5_160_topk_aosp",
+            "mobilenet_v2_0.75_192_topk_aosp",
+            "mobilenet_v2_1.0_224_topk_aosp",
+            "mobilenet_v2_1.0_224_quant_topk_aosp",
     };
-
-    private static final String[] MODEL_NAMES_WITH_DUAL_DATASET = new String[]{
-            "mobilenet_v1_1.0_224_quant_topk",
-            "mobilenet_v1_1.0_224_topk",
-            "mobilenet_v1_0.75_192_quant_topk",
-            "mobilenet_v1_0.75_192_topk",
-            "mobilenet_v1_0.5_160_quant_topk",
-            "mobilenet_v1_0.5_160_topk",
-            "mobilenet_v1_0.25_128_quant_topk",
-            "mobilenet_v1_0.25_128_topk",
-            "mobilenet_v2_0.35_128_topk",
-            "mobilenet_v2_0.5_160_topk",
-            "mobilenet_v2_0.75_192_topk",
-            "mobilenet_v2_1.0_224_topk",
-            "mobilenet_v2_1.0_224_quant_topk",
-    };
-
 
     @Parameters(name = "{0}")
     public static List<TestModels.TestModelEntry> modelsList() {
         List<TestModels.TestModelEntry> models = new ArrayList<>();
         for (String modelName : MODEL_NAMES) {
             models.add(TestModels.getModelByName(modelName));
-        }
-
-        // Try to get model with internal dataset
-        boolean internal = true;
-        try {
-            TestModels.getModelByName(MODEL_NAMES_WITH_DUAL_DATASET[0]);
-        } catch (IllegalArgumentException e) {
-            // Use aosp dataset
-            internal = false;
-        }
-        for (String modelName : MODEL_NAMES_WITH_DUAL_DATASET) {
-            models.add(TestModels.getModelByName(select_dataset(modelName, internal)));
         }
         return Collections.unmodifiableList(models);
     }
