@@ -68,6 +68,7 @@ else
     adb disable-verity
     adb reboot
     sleep 5
+    adb wait-for-usb-device root
     adb wait-for-usb-device remount
     sleep 5
   fi
