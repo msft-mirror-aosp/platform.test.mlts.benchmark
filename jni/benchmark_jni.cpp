@@ -36,10 +36,15 @@ Java_com_android_nn_benchmark_core_NNTestBase_initModel(
         jobject /* this */,
         jstring _modelFileName,
         jboolean _useNnApi,
-        jboolean _enableIntermediateTensorsDump) {
+        jboolean _enableIntermediateTensorsDump,
+        jstring _nnApiDeviceName) {
     const char *modelFileName = env->GetStringUTFChars(_modelFileName, NULL);
-    void* handle = new BenchmarkModel(modelFileName, _useNnApi, _enableIntermediateTensorsDump);
+    const char *nnApiDeviceName = env->GetStringUTFChars(_nnApiDeviceName, NULL);
+    void *handle =
+        BenchmarkModel::create(modelFileName, _useNnApi,
+                               _enableIntermediateTensorsDump, nnApiDeviceName);
     env->ReleaseStringUTFChars(_modelFileName, modelFileName);
+    env->ReleaseStringUTFChars(_nnApiDeviceName, nnApiDeviceName);
 
     return (jlong)(uintptr_t)handle;
 }

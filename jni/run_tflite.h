@@ -63,9 +63,11 @@ const int FLAG_IGNORE_GOLDEN_OUTPUT = 1 << 1;
 
 class BenchmarkModel {
  public:
-  BenchmarkModel(const char* modelfile, bool use_nnapi,
-                 bool enable_intermediate_tensors_dump);
   ~BenchmarkModel();
+
+  static BenchmarkModel* create(const char* modelfile, bool use_nnapi,
+                                bool enable_intermediate_tensors_dump,
+                                const char* nnapi_device_name = nullptr);
 
   bool resizeInputTensors(std::vector<int> shape);
   bool setInput(const uint8_t* dataPtr, size_t length);
@@ -81,6 +83,11 @@ class BenchmarkModel {
                      const std::vector<InferenceInOutSequence>& inOutData);
 
  private:
+  BenchmarkModel();
+  bool init(const char* modelfile, bool use_nnapi,
+            bool enable_intermediate_tensors_dump,
+            const char* nnapi_device_name);
+
   void getOutputError(const uint8_t* dataPtr, size_t length,
                       InferenceResult* result, int output_index);
   void saveInferenceOutput(InferenceResult* result, int output_index);

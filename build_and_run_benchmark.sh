@@ -23,9 +23,9 @@ echo Creating logs in $LOGDIR
 
 # Build and install benchmark app
 make NeuralNetworksApiBenchmark
-if ! adb install -r $OUT/data/app/NeuralNetworksApiBenchmark/NeuralNetworksApiBenchmark.apk; then
+if ! adb install -r $OUT/testcases/NeuralNetworksApiBenchmark/arm64/NeuralNetworksApiBenchmark.apk; then
   adb uninstall com.android.nn.benchmark.app
-  adb install -r $OUT/data/app/NeuralNetworksApiBenchmark/NeuralNetworksApiBenchmark.apk
+  adb install -r $OUT/testcases/NeuralNetworksApiBenchmark/arm64/NeuralNetworksApiBenchmark.apk
 fi
 
 
@@ -68,6 +68,7 @@ else
     adb disable-verity
     adb reboot
     sleep 5
+    adb wait-for-usb-device root
     adb wait-for-usb-device remount
     sleep 5
   fi
