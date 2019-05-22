@@ -121,7 +121,7 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
             try {
                 mResult = mActivity.mProcessor.getInstrumentationResult(
                     mTestModel, mWarmupTimeSeconds, mRunTimeSeconds);
-            } catch (BenchmarkException | IOException e) {
+            } catch (IOException e) {
                 mException = e;
                 e.printStackTrace();
             }

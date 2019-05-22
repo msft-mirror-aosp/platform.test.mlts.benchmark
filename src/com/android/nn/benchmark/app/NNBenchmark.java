@@ -85,7 +85,7 @@ public class NNBenchmark extends Activity {
         // Method to retrieve benchmark results for instrumentation tests.
         BenchmarkResult getInstrumentationResult(
                 TestModels.TestModelEntry t, float warmupTimeSeconds, float runTimeSeconds)
-                throws BenchmarkException, IOException {
+                throws IOException {
             mTest = changeTest(t);
             return getBenchmark(warmupTimeSeconds, runTimeSeconds);
         }
@@ -93,29 +93,33 @@ public class NNBenchmark extends Activity {
         // Run one loop of kernels for at least the specified minimum time.
         // The function returns the average time in ms for the test run
         private BenchmarkResult runBenchmarkLoop(float minTime, boolean completeInputSet)
-                throws BenchmarkException, IOException {
-            // Run the kernel
-            Pair<List<InferenceInOutSequence>, List<InferenceResult>> results;
-            if (minTime > 0.f) {
-                if (completeInputSet) {
-                    results = mTest.runBenchmarkCompleteInputSet(1, minTime);
+                throws IOException {
+            try {
+                // Run the kernel
+                Pair<List<InferenceInOutSequence>, List<InferenceResult>> results;
+                if (minTime > 0.f) {
+                    if (completeInputSet) {
+                        results = mTest.runBenchmarkCompleteInputSet(1, minTime);
+                    } else {
+                        results = mTest.runBenchmark(minTime);
+                    }
                 } else {
-                    results = mTest.runBenchmark(minTime);
+                    results = mTest.runInferenceOnce();
                 }
-            } else {
-                results = mTest.runInferenceOnce();
+                return BenchmarkResult.fromInferenceResults(
+                        mTest.getTestInfo(),
+                        mUseNNApi ? BenchmarkResult.BACKEND_TFLITE_NNAPI
+                                : BenchmarkResult.BACKEND_TFLITE_CPU,
+                        results.first, results.second, mTest.getEvaluator());
+            } catch (BenchmarkException e) {
+                return new BenchmarkResult(e.getMessage());
             }
-            return BenchmarkResult.fromInferenceResults(
-                    mTest.getTestInfo(),
-                    mUseNNApi ? BenchmarkResult.BACKEND_TFLITE_NNAPI
-                            : BenchmarkResult.BACKEND_TFLITE_CPU,
-                    results.first, results.second, mTest.getEvaluator());
         }
 
 
         // Get a benchmark result for a specific test
         private BenchmarkResult getBenchmark(float warmupTimeSeconds, float runTimeSeconds)
-            throws BenchmarkException, IOException {
+            throws IOException {
             try {
                 mTest.checkSdkVersion();
             } catch (UnsupportedSdkException e) {
@@ -202,12 +206,7 @@ public class NNBenchmark extends Activity {
                             warmupTime = 2.f;
                             runTime = 10.f;
                         }
-                        try {
-                            mTestResults[ct] = getBenchmark(warmupTime, runTime);
-                        } catch (BenchmarkException e) {
-                            // Displays the error to the user.
-                            mTestResults[ct] = new BenchmarkResult(e.getMessage());
-                        }
+                        mTestResults[ct] = getBenchmark(warmupTime, runTime);
                     }
                     onBenchmarkFinish(mRun);
                 } catch (IOException e) {

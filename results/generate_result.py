@@ -203,7 +203,7 @@ def generate_accuracy_headers(result):
     return ACCURACY_HEADERS_MELCEPLOGF0_TEMPLATE
   elif is_phone_error_rate_evaluator(result.evaluator_keys):
     return ACCURACY_HEADERS_PHONE_ERROR_RATE_TEMPLATE
-  elif result.evaluator_keys:
+  else:
     return ACCURACY_HEADERS_BASIC_TEMPLATE
   raise ScoreException('Unknown accuracy headers for: ' + str(result))
 
@@ -281,7 +281,7 @@ def generate_accuracy_values(baseline, result):
           max_phone_error_rate=v[0],
           max_single_error=v[1],
       )
-  elif result.evaluator_keys:
+  else:
     return ACCURACY_VALUES_BASIC_TEMPLATE.format(
         max_single_error=result.max_single_error,
     )

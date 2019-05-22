@@ -285,8 +285,9 @@ public class BenchmarkResult implements Parcelable {
             String.valueOf(mTimeFreqSec.length),
             String.valueOf(mValidationErrors.length)));
 
-        sb.append(',');
-        sb.append(String.join(",", Arrays.asList(mEvaluatorKeys)));
+        for (int i = 0; i < mEvaluatorKeys.length; ++i) {
+            sb.append(',').append(mEvaluatorKeys[i]);
+        }
 
         for (int i = 0; i < mEvaluatorKeys.length; ++i) {
             sb.append(',').append(mEvaluatorResults[i]);
