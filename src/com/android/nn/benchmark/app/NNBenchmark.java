@@ -186,8 +186,20 @@ public class NNBenchmark extends Activity {
                             mTest.destroy();
                         }
 
+                        TestModels.TestModelEntry testModel =
+                            TestModels.modelsList().get(mTestList[ct]);
+                        int testNumber = ct + 1;
+                        runOnUiThread(() -> {
+                            mTextView.setText(
+                                String.format(
+                                    "Running test %d of %d: %s",
+                                    testNumber,
+                                    mTestList.length,
+                                    testModel.toString()));
+                        });
+
                         // Select the next test
-                        mTest = changeTest(mTestList[ct]);
+                        mTest = changeTest(testModel);
 
                         // If the user selected the "long pause" option, wait
                         if (mTogglePause) {
@@ -246,17 +258,13 @@ public class NNBenchmark extends Activity {
         return tb;
     }
 
-    NNTestBase changeTest(int id) {
-        return changeTest(TestModels.modelsList().get(id));
-    }
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        TextView textView = new TextView(this);
-        textView.setTextSize(20);
-        textView.setText("NN BenchMark Running.");
-        setContentView(textView);
+        mTextView = new TextView(this);
+        mTextView.setTextSize(20);
+        mTextView.setText("Running NN benchmark...");
+        setContentView(mTextView);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 

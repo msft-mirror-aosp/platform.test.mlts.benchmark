@@ -18,6 +18,7 @@
     <!-- General -->
     <skip />
     <!--slider label -->
+    <string name="run_dogfood">Dogfood</string>
     <string name="benchmark">Benchmark</string>
 
     <string name="results">Results: not run</string>

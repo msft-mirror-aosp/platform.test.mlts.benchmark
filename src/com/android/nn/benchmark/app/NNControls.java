@@ -34,6 +34,7 @@ import com.android.nn.benchmark.core.TestModels;
 import com.android.nn.benchmark.util.TestExternalStorageActivity;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class NNControls extends Activity {
     private static final String TAG = NNControls.class.getSimpleName();
@@ -51,6 +52,24 @@ public class NNControls extends Activity {
 
     private float mResults[];
     private String mInfo[];
+
+    private static final String[] DOGFOOD_MODEL_NAMES = new String[]{
+            "tts_float",
+            "asr_float",
+            "mobilenet_v1_1.0_224_quant_topk_aosp",
+            "mobilenet_v1_1.0_224_topk_aosp",
+            "mobilenet_v1_0.75_192_quant_topk_aosp",
+            "mobilenet_v1_0.75_192_topk_aosp",
+            "mobilenet_v1_0.5_160_quant_topk_aosp",
+            "mobilenet_v1_0.5_160_topk_aosp",
+            "mobilenet_v1_0.25_128_quant_topk_aosp",
+            "mobilenet_v1_0.25_128_topk_aosp",
+            "mobilenet_v2_0.35_128_topk_aosp",
+            "mobilenet_v2_0.5_160_topk_aosp",
+            "mobilenet_v2_0.75_192_topk_aosp",
+            "mobilenet_v2_1.0_224_topk_aosp",
+            "mobilenet_v2_1.0_224_quant_topk_aosp",
+    };
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -189,5 +208,22 @@ public class NNControls extends Activity {
     public void btnSettings(View v) {
         NNSettings newFragment = new NNSettings(mSettings);
         newFragment.show(getFragmentManager(), "settings");
+    }
+
+    public void btnRunDogfood(View v) {
+        // Update settings for dogfood.
+        mSettings[SETTING_LONG_RUN] = true;
+        mSettings[SETTING_PAUSE] = false;
+        mSettings[SETTING_DISABLE_NNAPI] = false;
+
+        // Select dogfood models.
+        for (int i = 0; i < mTestList.size(); i++) {
+            String modelName = mTestList.get(i);
+            boolean isDogfoodModel = Arrays.asList(DOGFOOD_MODEL_NAMES).contains(modelName);
+            mTestListView.setItemChecked(i, isDogfoodModel);
+        }
+
+        // Run benchmark.
+        btnRun(v);
     }
 }
