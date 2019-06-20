@@ -218,7 +218,7 @@ public class NNControls extends Activity {
 
         // Select dogfood models.
         for (int i = 0; i < mTestList.size(); i++) {
-            String modelName = mTestList.get(i);
+            String modelName = TestModels.modelsList().get(i).toString();
             boolean isDogfoodModel = Arrays.asList(DOGFOOD_MODEL_NAMES).contains(modelName);
             mTestListView.setItemChecked(i, isDogfoodModel);
         }
