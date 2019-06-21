@@ -61,7 +61,8 @@ public class NNScoringTest extends BenchmarkTestBase {
         super.prepareTest();
     }
 
-    private static final String[] MODEL_NAMES = new String[]{
+    // Shared with NNStressTest.
+    static final String[] MODEL_NAMES = new String[]{
             "tts_float",
             "asr_float",
             "mobilenet_v1_1.0_224_quant_topk_aosp",
