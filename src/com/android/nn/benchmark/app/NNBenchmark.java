@@ -123,7 +123,9 @@ public class NNBenchmark extends Activity {
             try {
                 mTest.checkSdkVersion();
             } catch (UnsupportedSdkException e) {
-                return new BenchmarkResult(e.getMessage());
+                BenchmarkResult r = new BenchmarkResult(e.getMessage());
+                Log.v(TAG, "Test: " + r.toString());
+                return r;
             }
 
             mDoingBenchmark = true;

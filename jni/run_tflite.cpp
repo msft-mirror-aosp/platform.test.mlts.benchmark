@@ -236,7 +236,9 @@ bool BenchmarkModel::benchmark(
     int seqInferencesMaxCount, float timeout, int flags,
     std::vector<InferenceResult>* results) {
   if (inOutData.empty()) {
-    FATAL("Input/output vector is empty");
+    __android_log_print(ANDROID_LOG_WARN, LOG_TAG,
+                        "Input/output vector is empty");
+    return true;
   }
 
   float inferenceTotal = 0.0;

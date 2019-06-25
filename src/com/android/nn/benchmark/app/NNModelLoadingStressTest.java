@@ -17,29 +17,34 @@
 package com.android.nn.benchmark.app;
 
 import android.test.suitebuilder.annotation.LargeTest;
+import android.util.Log;
+import com.android.nn.benchmark.core.InferenceInOutSequence;
 import com.android.nn.benchmark.core.TestModels;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.rules.Stopwatch;
 import org.junit.runners.Parameterized.Parameters;
 
 /**
- * Tests that ensure stability of NNAPI by putting it under heavy load.
+ * Tests that ensure stability of NNAPI by loading models for a prolonged
+ * period of time.
  */
-@RunWith(Parameterized.class)
-public class NNStressTest extends BenchmarkTestBase {
-    private static final String TAG = NNStressTest.class.getSimpleName();
+public class NNModelLoadingStressTest extends BenchmarkTestBase {
+    private static final String TAG = NNModelLoadingStressTest.class.getSimpleName();
 
     private static final String[] MODEL_NAMES = NNScoringTest.MODEL_NAMES;
+    private static final float WARMUP_SECONDS = 0; // No warmup.
+    private static final float INFERENCE_SECONDS = 0; // No inference.
+    private static final float RUNTIME_SECONDS = 30 * 60;
 
-    private static final float STRESS_TEST_WARMUP_SECONDS = 0; // No warmup.
-    private static final float STRESS_TEST_RUNTIME_SECONDS = 60 * 60; // 1 hour.
+    @Rule public Stopwatch stopwatch = new Stopwatch() {};
 
-    public NNStressTest(TestModels.TestModelEntry model) {
+    public NNModelLoadingStressTest(TestModels.TestModelEntry model) {
         super(model);
     }
 
@@ -53,8 +58,8 @@ public class NNStressTest extends BenchmarkTestBase {
                     model.mModelName,
                     model.mBaselineSec,
                     model.mInputShape,
-                    model.mInOutAssets,
-                    model.mInOutDatasets,
+                    new InferenceInOutSequence.FromAssets[0], // No inputs for inference.
+                    null,
                     model.mTestName,
                     model.mModelFile,
                     null, // Disable evaluation.
@@ -66,10 +71,12 @@ public class NNStressTest extends BenchmarkTestBase {
     @Test
     @LargeTest
     public void stressTestNNAPI() throws IOException {
+        Log.i(TAG, mModel.getTestName());
         setUseNNApi(true);
-        setCompleteInputSet(false);
-        TestAction ta = new TestAction(mModel, STRESS_TEST_WARMUP_SECONDS,
-            STRESS_TEST_RUNTIME_SECONDS);
-        runTest(ta, mModel.getTestName());
+        setCompleteInputSet(true);
+        TestAction ta = new TestAction(mModel, WARMUP_SECONDS, INFERENCE_SECONDS);
+        while (stopwatch.runtime(TimeUnit.SECONDS) < RUNTIME_SECONDS) {
+            runTest(ta, mModel.getTestName());
+        }
     }
 }

@@ -4,18 +4,21 @@
 #
 # Output is logged to a temporary folder and summarized in txt and JSON formats.
 
-case "$1" in
-  ""|scoring)
-    MODE=scoring
+MODE="${1:=scoring}"
+
+case "$MODE" in
+  scoring)
     CLASS=com.android.nn.benchmark.app.NNScoringTest
     ;;
-  stress)
-    MODE=stress
-    CLASS=com.android.nn.benchmark.app.NNStressTest
+  inference-stress)
+    CLASS=com.android.nn.benchmark.app.NNInferenceStressTest
+    ;;
+  model-loading-stress)
+    CLASS=com.android.nn.benchmark.app.NNModelLoadingStressTest
     ;;
   *)
     echo "Unknown execution mode: $1"
-    echo "Known modes: scoring (default), stress"
+    echo "Known modes: scoring (default), inference-stress, model-loading-stress"
     exit 1
     ;;
 esac
