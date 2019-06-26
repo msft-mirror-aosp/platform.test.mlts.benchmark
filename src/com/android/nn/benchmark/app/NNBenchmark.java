@@ -86,7 +86,7 @@ public class NNBenchmark extends Activity {
         BenchmarkResult getInstrumentationResult(
                 TestModels.TestModelEntry t, float warmupTimeSeconds, float runTimeSeconds)
                 throws IOException {
-            mTest = changeTest(t);
+            mTest = changeTest(mTest, t);
             return getBenchmark(warmupTimeSeconds, runTimeSeconds);
         }
 
@@ -181,13 +181,6 @@ public class NNBenchmark extends Activity {
                         } catch (InterruptedException e) {
                         }
 
-                        // If we just ran a test, we destroy it here to relieve some memory
-                        // pressure
-
-                        if (mTest != null) {
-                            mTest.destroy();
-                        }
-
                         TestModels.TestModelEntry testModel =
                             TestModels.modelsList().get(mTestList[ct]);
                         int testNumber = ct + 1;
@@ -201,7 +194,7 @@ public class NNBenchmark extends Activity {
                         });
 
                         // Select the next test
-                        mTest = changeTest(testModel);
+                        mTest = changeTest(mTest, testModel);
 
                         // If the user selected the "long pause" option, wait
                         if (mTogglePause) {
@@ -253,7 +246,11 @@ public class NNBenchmark extends Activity {
     private boolean mDoingBenchmark;
     public Processor mProcessor;
 
-    NNTestBase changeTest(TestModels.TestModelEntry t) {
+    NNTestBase changeTest(NNTestBase oldTestBase, TestModels.TestModelEntry t) {
+        if (oldTestBase != null) {
+            // Make sure we don't leak memory.
+            oldTestBase.destroy();
+        }
         NNTestBase tb = t.createNNTestBase(mUseNNApi,
                 false /* enableIntermediateTensorsDump */);
         tb.setupModel(this);

@@ -32,11 +32,6 @@ fi
 set -e
 cd $ANDROID_BUILD_TOP
 
-LOGDIR=$(mktemp -d)/mlts-logs
-
-mkdir -p $LOGDIR
-echo Creating logs in $LOGDIR
-
 # Build and install benchmark app
 make NeuralNetworksApiBenchmark
 if ! adb install -r $OUT/testcases/NeuralNetworksApiBenchmark/arm64/NeuralNetworksApiBenchmark.apk; then
@@ -102,22 +97,32 @@ fi
 adb shell setprop debug.nn.cpuonly 0
 adb shell setprop debug.nn.vlog 0
 
-HOST_CSV=$LOGDIR/benchmark.csv
-RESULT_HTML=$LOGDIR/result.html
-DEVICE_CSV=/sdcard/mlts_benchmark.csv
-
 # Menukey - make sure screen is on
 adb shell "input keyevent 82"
 # Show homescreen
 adb shell wm dismiss-keyguard
-# Remove old benchmark csv data
-adb shell rm -f ${DEVICE_CSV}
+
+if [[ "$MODE" == "scoring" ]]; then
+  LOGDIR=$(mktemp -d)/mlts-logs
+  HOST_CSV=$LOGDIR/benchmark.csv
+  RESULT_HTML=$LOGDIR/result.html
+  DEVICE_CSV=/sdcard/mlts_benchmark.csv
+
+  mkdir -p $LOGDIR
+  echo Creating logs in $LOGDIR
+
+  # Remove old benchmark csv data
+  adb shell rm -f ${DEVICE_CSV}
+fi
 
 # Set the shell pid as a top-app and run tests
 time adb shell "echo $$ > /dev/stune/top-app/tasks; am instrument ${AM_INSTRUMENT_FLAGS} -w -e class $CLASS com.android.nn.benchmark.app/androidx.test.runner.AndroidJUnitRunner"
-adb pull $DEVICE_CSV $HOST_CSV
-echo Benchmark data saved in $HOST_CSV
 
-$ANDROID_BUILD_TOP/test/mlts/benchmark/results/generate_result.py $HOST_CSV $RESULT_HTML
-echo Results stored  in $RESULT_HTML
-xdg-open $RESULT_HTML
+if [[ "$MODE" == "scoring" ]]; then
+  adb pull $DEVICE_CSV $HOST_CSV
+  echo Benchmark data saved in $HOST_CSV
+
+  $ANDROID_BUILD_TOP/test/mlts/benchmark/results/generate_result.py $HOST_CSV $RESULT_HTML
+  echo Results stored  in $RESULT_HTML
+  xdg-open $RESULT_HTML
+fi
