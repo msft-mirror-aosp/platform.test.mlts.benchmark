@@ -71,11 +71,12 @@ public class NNModelLoadingStressTest extends BenchmarkTestBase {
     @Test
     @LargeTest
     public void stressTestNNAPI() throws IOException {
-        Log.i(TAG, mModel.getTestName());
+        waitUntilCharged();
         setUseNNApi(true);
         setCompleteInputSet(true);
+        float endTime = stopwatch.runtime(TimeUnit.SECONDS) + RUNTIME_SECONDS;
         TestAction ta = new TestAction(mModel, WARMUP_SECONDS, INFERENCE_SECONDS);
-        while (stopwatch.runtime(TimeUnit.SECONDS) < RUNTIME_SECONDS) {
+        while (stopwatch.runtime(TimeUnit.SECONDS) < endTime) {
             runTest(ta, mModel.getTestName());
         }
     }

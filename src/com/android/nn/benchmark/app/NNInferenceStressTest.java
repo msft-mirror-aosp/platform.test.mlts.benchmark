@@ -66,6 +66,7 @@ public class NNInferenceStressTest extends BenchmarkTestBase {
     @Test
     @LargeTest
     public void stressTestNNAPI() throws IOException {
+        waitUntilCharged();
         setUseNNApi(true);
         setCompleteInputSet(false);
         TestAction ta = new TestAction(mModel, WARMUP_SECONDS, RUNTIME_SECONDS);

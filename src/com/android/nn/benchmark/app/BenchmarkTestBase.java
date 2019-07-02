@@ -18,6 +18,11 @@ package com.android.nn.benchmark.app;
 
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.BatteryManager;
 import android.os.Bundle;
 import android.os.Trace;
 import android.test.ActivityInstrumentationTestCase2;
@@ -85,6 +90,39 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
         mActivity = getActivity();
         mActivity.prepareInstrumentationTest();
         setUseNNApi(true);
+    }
+
+    protected void waitUntilCharged() {
+        Log.v(NNBenchmark.TAG, "Waiting for the device to charge");
+
+        Object lock = new Object();
+        BroadcastReceiver receiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+                int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+                int percentage  = level * 100 / scale;
+                Log.v(NNBenchmark.TAG, "Battery level: " + percentage + "%");
+
+                int status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+                if (status == BatteryManager.BATTERY_STATUS_FULL) {
+                    synchronized (lock) {
+                        lock.notify();
+                    }
+                } else if (status != BatteryManager.BATTERY_STATUS_CHARGING) {
+                    Log.e(NNBenchmark.TAG, "Device is not charging");
+                }
+            }
+        };
+
+        mActivity.registerReceiver(receiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        synchronized (lock) {
+            try {
+                lock.wait();
+            } catch (InterruptedException e) {
+            }
+        }
+        mActivity.unregisterReceiver(receiver);
     }
 
     @Override
