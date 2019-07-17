@@ -173,6 +173,7 @@ InferenceInOutSequenceList::InferenceInOutSequenceList(JNIEnv *env,
                     jobject creator = env->GetObjectField(inout, inout_inputCreator);
                     if (creator == nullptr) { return false; }
                     env->CallVoidMethod(creator, createInput_method, byteBuffer);
+                    env->DeleteLocalRef(byteBuffer);
                     if (env->ExceptionCheck()) { return false; }
                     return true;
                 };
