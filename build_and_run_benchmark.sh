@@ -4,7 +4,7 @@
 #
 # Output is logged to a temporary folder and summarized in txt and JSON formats.
 
-MODE="${1:=scoring}"
+MODE="${1:-scoring}"
 
 case "$MODE" in
   scoring)

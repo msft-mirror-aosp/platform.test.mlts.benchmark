@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -35,7 +36,6 @@ import org.junit.runners.Parameterized.Parameters;
 public class NNInferenceStressTest extends BenchmarkTestBase {
     private static final String TAG = NNInferenceStressTest.class.getSimpleName();
 
-    private static final String[] MODEL_NAMES = NNScoringTest.MODEL_NAMES;
     private static final float WARMUP_SECONDS = 0; // No warmup.
     private static final float RUNTIME_SECONDS = 60 * 60; // 1 hour.
 
@@ -45,22 +45,21 @@ public class NNInferenceStressTest extends BenchmarkTestBase {
 
     @Parameters(name = "{0}")
     public static List<TestModels.TestModelEntry> modelsList() {
-        List<TestModels.TestModelEntry> models = new ArrayList<>();
-        for (String modelName : MODEL_NAMES) {
-            TestModels.TestModelEntry model = TestModels.getModelByName(modelName);
-            models.add(
-                new TestModels.TestModelEntry(
-                    model.mModelName,
-                    model.mBaselineSec,
-                    model.mInputShape,
-                    model.mInOutAssets,
-                    model.mInOutDatasets,
-                    model.mTestName,
-                    model.mModelFile,
-                    null, // Disable evaluation.
-                    model.mMinSdkVersion));
-        }
-        return Collections.unmodifiableList(models);
+        return TestModels.modelsList().stream()
+                .map(model ->
+                        new TestModels.TestModelEntry(
+                                model.mModelName,
+                                model.mBaselineSec,
+                                model.mInputShape,
+                                model.mInOutAssets,
+                                model.mInOutDatasets,
+                                model.mTestName,
+                                model.mModelFile,
+                                null, // Disable evaluation.
+                                model.mMinSdkVersion))
+                .collect(Collectors.collectingAndThen(
+                        Collectors.toList(),
+                        Collections::unmodifiableList));
     }
 
     @Test
