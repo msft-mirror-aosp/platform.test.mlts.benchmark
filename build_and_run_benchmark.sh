@@ -33,7 +33,7 @@ set -e
 cd $ANDROID_BUILD_TOP
 
 # Build and install benchmark app
-make NeuralNetworksApiBenchmark
+build/soong/soong_ui.bash --make-mode NeuralNetworksApiBenchmark
 if ! adb install -r $OUT/testcases/NeuralNetworksApiBenchmark/arm64/NeuralNetworksApiBenchmark.apk; then
   adb uninstall com.android.nn.benchmark.app
   adb install -r $OUT/testcases/NeuralNetworksApiBenchmark/arm64/NeuralNetworksApiBenchmark.apk
