@@ -16,7 +16,7 @@
 
 package com.android.nn.benchmark.core;
 
-import android.app.Activity;
+import android.content.Context;
 import android.content.res.AssetManager;
 import android.os.Build;
 import android.util.Log;
@@ -73,7 +73,7 @@ public class NNTestBase {
             String dumpPath,
             List<InferenceInOutSequence> inOutList);
 
-    protected Activity mActivity;
+    protected Context mContext;
     protected TextView mText;
     private String mModelName;
     private String mModelFile;
@@ -135,8 +135,8 @@ public class NNTestBase {
         mNNApiDeviceName = Optional.ofNullable(value);
     }
 
-    public final boolean setupModel(Activity ipact) {
-        mActivity = ipact;
+    public final boolean setupModel(Context ipcxt) {
+        mContext = ipcxt;
         String modelFileName = copyAssetToFile();
         if (modelFileName != null) {
             mModelHandle = initModel(
@@ -149,7 +149,7 @@ public class NNTestBase {
             resizeInputTensors(mModelHandle, mInputShape);
         }
         if (mEvaluatorConfig != null) {
-            mEvaluator = mEvaluatorConfig.createEvaluator(mActivity.getAssets());
+            mEvaluator = mEvaluatorConfig.createEvaluator(mContext.getAssets());
         }
         return true;
     }
@@ -174,13 +174,13 @@ public class NNTestBase {
         List<InferenceInOutSequence> inOutList = new ArrayList<>();
         if (mInputOutputAssets != null) {
             for (InferenceInOutSequence.FromAssets ioAsset : mInputOutputAssets) {
-                inOutList.add(ioAsset.readAssets(mActivity.getAssets()));
+                inOutList.add(ioAsset.readAssets(mContext.getAssets()));
             }
         }
         if (mInputOutputDatasets != null) {
             for (InferenceInOutSequence.FromDataset dataset : mInputOutputDatasets) {
-                inOutList.addAll(dataset.readDataset(mActivity.getAssets(),
-                        mActivity.getCacheDir()));
+                inOutList.addAll(dataset.readDataset(mContext.getAssets(),
+                        mContext.getCacheDir()));
             }
         }
 
@@ -297,11 +297,11 @@ public class NNTestBase {
     private String copyAssetToFile() {
         String outFileName;
         String modelAssetName = mModelFile + ".tflite";
-        AssetManager assetManager = mActivity.getAssets();
+        AssetManager assetManager = mContext.getAssets();
         try {
             InputStream in = assetManager.open(modelAssetName);
 
-            outFileName = mActivity.getCacheDir().getAbsolutePath() + "/" + modelAssetName;
+            outFileName = mContext.getCacheDir().getAbsolutePath() + "/" + modelAssetName;
             File outFile = new File(outFileName);
             OutputStream out = new FileOutputStream(outFile);
 

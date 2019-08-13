@@ -61,33 +61,6 @@ public class NNScoringTest extends BenchmarkTestBase {
         super.prepareTest();
     }
 
-    private static final String[] MODEL_NAMES = new String[]{
-            "tts_float",
-            "asr_float",
-            "mobilenet_v1_1.0_224_quant_topk_aosp",
-            "mobilenet_v1_1.0_224_topk_aosp",
-            "mobilenet_v1_0.75_192_quant_topk_aosp",
-            "mobilenet_v1_0.75_192_topk_aosp",
-            "mobilenet_v1_0.5_160_quant_topk_aosp",
-            "mobilenet_v1_0.5_160_topk_aosp",
-            "mobilenet_v1_0.25_128_quant_topk_aosp",
-            "mobilenet_v1_0.25_128_topk_aosp",
-            "mobilenet_v2_0.35_128_topk_aosp",
-            "mobilenet_v2_0.5_160_topk_aosp",
-            "mobilenet_v2_0.75_192_topk_aosp",
-            "mobilenet_v2_1.0_224_topk_aosp",
-            "mobilenet_v2_1.0_224_quant_topk_aosp",
-    };
-
-    @Parameters(name = "{0}")
-    public static List<TestModels.TestModelEntry> modelsList() {
-        List<TestModels.TestModelEntry> models = new ArrayList<>();
-        for (String modelName : MODEL_NAMES) {
-            models.add(TestModels.getModelByName(modelName));
-        }
-        return Collections.unmodifiableList(models);
-    }
-
     @Test
     @LargeTest
     public void testTFLite() throws IOException {
