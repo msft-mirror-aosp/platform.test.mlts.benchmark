@@ -11,6 +11,7 @@ import pandas as pd
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import json
+import seaborn as sns
 
 from matplotlib.pylab import *
 import matplotlib.animation as animation
@@ -172,7 +173,7 @@ class TensorDict(dict):
     diff = diff.astype(float)
     cpu_tensor = cpu_tensor.astype(float)
     max_cpu_nnapi_tensor = np.maximum(np.abs(cpu_tensor), np.abs(nnapi_tensor))
-    relative_diff = np.divide(diff, max_cpu_nnapi_tensor, out=np.zeros_like(diff),\
+    relative_diff = np.divide(diff, max_cpu_nnapi_tensor, out=np.zeros_like(diff),
                               where=max_cpu_nnapi_tensor>0)
     relative_diff[relative_diff>1] = 1.0
     relative_diff[relative_diff<-1] = -1.0
@@ -219,19 +220,22 @@ class ModelData(object):
     self.stats = self.tensor_dict.gen_tensor_diff_stats(relative_error=True,
                                                         return_df=True)
     self.layers = sorted(self.tensor_dict['cpu'].keys())
+    self.cmap = sns.diverging_palette(220, 20, sep=20, as_cmap=True)
 
   def get_target_model_dir(self, dump_dir, target_model_name):
+    # Get the model directory path
     target_model_dir = dump_dir + target_model_name + "/"
     return target_model_dir
 
-  def updateData(self, i, fig, ax1, ax2, bins=50):
+  def update_hist_data(self, i, fig, ax1, ax2, bins=50):
+    # Use % because there may be multiple testing samples
     operation = self.mmd.output_meta_data[i % len(self.mmd.output_meta_data)]['operator_code']
     layer = self.layers[i]
     subtitle = fig.suptitle('{} | {}\n{}'
                       .format(self.nnapi_model_name, layer, operation),
                       fontsize='x-large')
     for ax in (ax1, ax2):
-        ax.clear()
+      ax.clear()
     ax1.set_title('Relative Error')
     ax2.set_title('Absolute Error')
     ax1.hist(self.tensor_dict.calc_diff(layer, relative_error=True), bins=bins,
@@ -240,28 +244,98 @@ class ModelData(object):
     ax2.hist(self.tensor_dict.calc_diff(layer, relative_error=False), bins=bins,
              range=(-absolute_range, absolute_range), log=True)
 
-  def gen_error_hist_animation(self):
+  def gen_error_hist_animation(self, save_video_path=None, video_fps=10):
     # For fast testing, add [:10] to the end of next line
     layers = self.layers
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12,9))
-    ani = animation.FuncAnimation(fig, self.updateData, len(layers),
+    ani = animation.FuncAnimation(fig, self.update_hist_data, len(layers),
                                   fargs=(fig, ax1, ax2),
                                   interval=200, repeat=False)
     # close before return to avoid dangling plot
+    if save_video_path:
+      Writer = animation.writers['ffmpeg']
+      writer = Writer(fps=video_fps)
+      #Save the movie
+      ani.save(save_video_path, writer=writer, dpi=250)
     plt.close()
     return ani
 
-  def plot_error_heatmap(self, target_layer, length=1):
+  def update_heatmap_data(self, i, fig, axs):
+    # Use % because there may be multiple testing samples
+    operation = self.mmd.output_meta_data[i % len(self.mmd.output_meta_data)]['operator_code']
+    layer = self.layers[i]
+    subtitle = fig.suptitle('{} | {}\n{}\n'
+                      .format(self.nnapi_model_name, layer, operation),
+                      fontsize='x-large')
+    for ax_tuple in axs:
+      for ax in ax_tuple:
+        # Clear all the axs and redraw
+        # It's important to clear the colorbars as well to avoid duplicate colorbars
+        ax.clear()
+    axs[0][0].set_title('Diff')
+    axs[0][1].set_title('CPU Tensor')
+    axs[0][2].set_title('NNAPI Tensor')
+
+    reshaped_diff = self.reshape_to_matrix(self.tensor_dict.calc_diff(layer, relative_error=False))
+    reshaped_cpu = self.reshape_to_matrix(self.tensor_dict['cpu'][layer])
+    reshaped_nnapi = self.reshape_to_matrix(self.tensor_dict['nnapi'][layer])
+    g1 = sns.heatmap(reshaped_diff, cmap=self.cmap, cbar=True, ax=axs[0][0], cbar_ax=axs[1][0],
+                     cbar_kws={"orientation": "horizontal"}, center=0)
+    g2 = sns.heatmap(reshaped_cpu, cmap=self.cmap, cbar=True, ax=axs[0][1], cbar_ax=axs[1][1],
+                     cbar_kws={"orientation": "horizontal"}, center=0)
+    g3 = sns.heatmap(reshaped_nnapi, cmap=self.cmap, cbar=True, ax=axs[0][2], cbar_ax=axs[1][2],
+                     cbar_kws={"orientation": "horizontal"}, center=0)
+
+  def gen_heatmap_animation(self, save_video_path=None, video_fps=10, figsize=(13,6)):
+    # For fast testing, you can add [:10] to the end of next line
+    layers = self.layers
+    fig = plt.figure(constrained_layout=True, figsize=figsize)
+    widths = [1, 1, 1]
+    heights = [7, 1]
+    spec = fig.add_gridspec(ncols=3, nrows=2, width_ratios=widths,
+                              height_ratios=heights)
+    axs = []
+    for row in range(2):
+      axs.append([])
+      for col in range(3):
+          axs[-1].append(fig.add_subplot(spec[row, col]))
+
+    ani = animation.FuncAnimation(fig, self.update_heatmap_data, len(layers),
+                                  fargs=(fig, axs),
+                                  interval=200, repeat=False)
+    # close before return to avoid dangling plot
+    if save_video_path:
+      Writer = animation.writers['ffmpeg']
+      writer = Writer(fps=video_fps)
+      #Save the movie
+      ani.save(save_video_path, writer=writer, dpi=250)
+    plt.close()
+    return ani
+
+  def plot_error_heatmap(self, target_layer, vmin=None, vmax=None):
+    # Plot the diff heatmap for a given layer
     target_diff = self.tensor_dict['cpu'][target_layer] - \
                   self.tensor_dict['nnapi'][target_layer]
-    width = int(len(target_diff)/ length)
-    reshaped_target_diff = target_diff[:length * width].reshape(length, width)
-    fig, ax = subplots(figsize=(18, 5))
+    reshaped_target_diff = self.reshape_to_matrix(target_diff)
+    fig, ax = subplots(figsize=(9, 9))
     plt.title('Heat Map of Error between CPU and NNAPI')
-    plt.imshow(reshaped_target_diff, cmap='hot', interpolation='nearest')
-    plt.colorbar()
+    sns.heatmap(reshaped_target_diff,
+                cmap=self.cmap,
+                mask=np.isnan(reshaped_target_diff),
+                center=0)
     plt.show()
 
+  def reshape_to_matrix(self, array):
+    # Reshape an array to a square matrix padded with np.nan at the end
+    array = array.astype(float)
+    width = math.ceil(len(array)**0.5)
+    height = math.ceil(len(array)/ width)
+    padded = np.pad(array=array,
+                    pad_width=(0, width * height - len(array)),
+                    mode='constant',
+                    constant_values=np.nan)
+    padded = padded.reshape(width, -1)
+    return padded
 
 ################################NumpyEncoder ################################
 
