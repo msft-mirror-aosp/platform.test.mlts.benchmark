@@ -39,12 +39,17 @@ Java_com_android_nn_benchmark_core_NNTestBase_initModel(
         jboolean _enableIntermediateTensorsDump,
         jstring _nnApiDeviceName) {
     const char *modelFileName = env->GetStringUTFChars(_modelFileName, NULL);
-    const char *nnApiDeviceName = env->GetStringUTFChars(_nnApiDeviceName, NULL);
+    const char *nnApiDeviceName =
+        _nnApiDeviceName == NULL
+            ? NULL
+            : env->GetStringUTFChars(_nnApiDeviceName, NULL);
     void *handle =
         BenchmarkModel::create(modelFileName, _useNnApi,
                                _enableIntermediateTensorsDump, nnApiDeviceName);
     env->ReleaseStringUTFChars(_modelFileName, modelFileName);
-    env->ReleaseStringUTFChars(_nnApiDeviceName, nnApiDeviceName);
+    if (_nnApiDeviceName != NULL) {
+        env->ReleaseStringUTFChars(_nnApiDeviceName, nnApiDeviceName);
+    }
 
     return (jlong)(uintptr_t)handle;
 }
@@ -173,6 +178,7 @@ InferenceInOutSequenceList::InferenceInOutSequenceList(JNIEnv *env,
                     jobject creator = env->GetObjectField(inout, inout_inputCreator);
                     if (creator == nullptr) { return false; }
                     env->CallVoidMethod(creator, createInput_method, byteBuffer);
+                    env->DeleteLocalRef(byteBuffer);
                     if (env->ExceptionCheck()) { return false; }
                     return true;
                 };

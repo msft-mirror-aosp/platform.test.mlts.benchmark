@@ -94,6 +94,8 @@ class BenchmarkModel {
 
   std::unique_ptr<tflite::FlatBufferModel> mTfliteModel;
   std::unique_ptr<tflite::Interpreter> mTfliteInterpreter;
+  // Store indices of output tensors, used to dump intermediate tensors
+  std::vector<int> outputs;
 };
 
 #endif  // COM_EXAMPLE_ANDROID_NN_BENCHMARK_RUN_TFLITE_H
