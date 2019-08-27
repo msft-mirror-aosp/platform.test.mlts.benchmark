@@ -69,9 +69,9 @@ public class NNScoringTest extends BenchmarkTestBase {
         }
 
         setUseNNApi(false);
-        setCompleteInputSet(false);
+        setCompleteInputSet(true);
         TestAction ta = new TestAction(mModel, WARMUP_REPEATABLE_SECONDS,
-                RUNTIME_REPEATABLE_SECONDS);
+                COMPLETE_SET_TIMEOUT_SECOND);
         runTest(ta, mModel.getTestName());
 
         try (CSVWriter writer = new CSVWriter(getLocalCSVFile())) {
@@ -87,9 +87,9 @@ public class NNScoringTest extends BenchmarkTestBase {
         }
 
         setUseNNApi(true);
-        setCompleteInputSet(false);
+        setCompleteInputSet(true);
         TestAction ta = new TestAction(mModel, WARMUP_REPEATABLE_SECONDS,
-                RUNTIME_REPEATABLE_SECONDS);
+                COMPLETE_SET_TIMEOUT_SECOND);
         runTest(ta, mModel.getTestName());
 
 
