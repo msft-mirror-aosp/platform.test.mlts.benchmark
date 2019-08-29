@@ -94,6 +94,7 @@ class BenchmarkModel {
 
   std::unique_ptr<tflite::FlatBufferModel> mTfliteModel;
   std::unique_ptr<tflite::Interpreter> mTfliteInterpreter;
+  std::unique_ptr<tflite::StatefulNnApiDelegate> mTfliteNnapiDelegate;
   // Store indices of output tensors, used to dump intermediate tensors
   std::vector<int> outputs;
 };

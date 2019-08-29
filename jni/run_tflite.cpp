@@ -118,8 +118,10 @@ bool BenchmarkModel::init(const char* modelfile, bool use_nnapi,
       __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Running NNAPI on device %s",
                           nnapi_device_name);
     }
-    if (mTfliteInterpreter->ModifyGraphWithDelegate(
-            tflite::NnApiDelegate(nnapi_device_name)) != kTfLiteOk) {
+    tflite::StatefulNnApiDelegate::Options nnapi_options;
+    nnapi_options.accelerator_name = nnapi_device_name;
+    mTfliteNnapiDelegate = std::make_unique<tflite::StatefulNnApiDelegate>(nnapi_options);
+    if (mTfliteInterpreter->ModifyGraphWithDelegate(mTfliteNnapiDelegate.get()) != kTfLiteOk) {
       __android_log_print(ANDROID_LOG_ERROR, LOG_TAG,
                           "Failed to initialize NNAPI Delegate");
       return false;
