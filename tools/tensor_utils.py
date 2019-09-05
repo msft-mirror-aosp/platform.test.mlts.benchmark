@@ -162,7 +162,10 @@ class TensorDict(dict):
 
   def bytes_to_numpy_tensor(self, file_path):
     """Load bytes outputed from DumpIntermediateTensor into numpy tensor."""
-    tensor_type = tf.int8 if 'quant' in file_path else tf.float32
+    if 'quant' in file_path or '8bit' in file_path:
+      tensor_type = tf.int8
+    else:
+      tensor_type = tf.float32
     with open(file_path, mode='rb') as f:
       tensor_bytes = f.read()
       tensor = tf.decode_raw(input_bytes=tensor_bytes, out_type=tensor_type)
