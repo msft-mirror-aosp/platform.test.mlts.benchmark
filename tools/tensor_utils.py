@@ -9,12 +9,17 @@ import numpy as np
 import os
 import pandas as pd
 import tensorflow as tf
-import matplotlib.pyplot as plt
 import json
 import seaborn as sns
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 from matplotlib.pylab import *
-import matplotlib.animation as animation
+from tqdm import tqdm
+# Enable large animation size
+matplotlib.rcParams['animation.embed_limit'] = 2**128
 # Enable tensor.numpy()
 tf.compat.v1.enable_eager_execution()
 
@@ -81,9 +86,9 @@ class ModelMetaDataManager(object):
   def __init__(self, android_build_top, dump_dir, tflite_model_json_dir='/tmp'):
     # key: nnapi model name, value: ModelMetaData
     self.models = dict()
-    self.ANDROID_BUILD_TOP = android_build_top
-    self.TFLITE_MODEL_JSON_DIR = tflite_model_json_dir
-    self.DUMP_DIR = dump_dir
+    self.ANDROID_BUILD_TOP = android_build_top + "/"
+    self.TFLITE_MODEL_JSON_DIR = tflite_model_json_dir + "/"
+    self.DUMP_DIR = dump_dir + "/"
     self.nnapi_to_tflite_name = dict()
     self.tflite_to_nnapi_name = dict()
     self.__load_mobilenet_topk_aosp()
@@ -129,7 +134,7 @@ class ModelMetaDataManager(object):
     """Generate a html file containing the hist and heatmap animation of all models"""
     model_names = self.model_names if model_names is None else model_names
     html_data = ''
-    for model_name in model_names:
+    for model_name in tqdm(model_names):
       print('processing', model_name)
       html_data += '<h3>{}</h3>'.format(model_name)
       model_data = ModelData(nnapi_model_name=model_name, manager=self)
