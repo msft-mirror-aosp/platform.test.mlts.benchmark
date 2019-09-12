@@ -5,6 +5,7 @@ Tools for reading/ parsing intermediate tensors.
 """
 
 import argparse
+import datetime
 import numpy as np
 import os
 import pandas as pd
@@ -15,6 +16,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import multiprocessing
 
 from matplotlib.pylab import *
 from tqdm import tqdm
@@ -135,7 +137,7 @@ class ModelMetaDataManager(object):
     model_names = self.model_names if model_names is None else model_names
     html_data = ''
     for model_name in tqdm(model_names):
-      print('processing', model_name)
+      print(datetime.datetime.now(), 'Processing', model_name)
       html_data += '<h3>{}</h3>'.format(model_name)
       model_data = ModelData(nnapi_model_name=model_name, manager=self)
       ani = model_data.gen_error_hist_animation()
@@ -145,6 +147,47 @@ class ModelMetaDataManager(object):
         html_data += ani.to_jshtml()
     with open(output_file_path, 'w') as f:
       f.write(html_data)
+
+  def generate_hist_animation_html(self, model_name):
+    """Generate a html hist animation for a model, used for multiprocessing"""
+    html_data = '<h3>{}</h3>'.format(model_name)
+    model_data = ModelData(nnapi_model_name=model_name, manager=self)
+    ani = model_data.gen_error_hist_animation()
+    html_data += ani.to_jshtml()
+    print(datetime.datetime.now(), "Done histogram for", model_name)
+    self.return_dict[model_name + "-hist"] = html_data
+
+  def generate_heatmap_animation_html(self, model_name):
+    """Generate a html hist animation for a model, used for multiprocessing"""
+    model_data = ModelData(nnapi_model_name=model_name, manager=self)
+    ani = model_data.gen_heatmap_animation()
+    html_data = ani.to_jshtml()
+    print(datetime.datetime.now(), "Done heatmap for", model_name)
+    self.return_dict[model_name + "-heatmap"] = html_data
+
+  def multiprocessing_generate_animation_html(self, output_file_path,
+                                       model_names=None, heatmap=True):
+    """
+    Generate a html file containing the hist and heatmap animation of all models
+    with multiple process.
+    """
+    model_names = self.model_names if model_names is None else model_names
+    manager = multiprocessing.Manager()
+    self.return_dict = manager.dict()
+    jobs = []
+    for model_name in model_names:
+      for target_func in [self.generate_hist_animation_html, self.generate_heatmap_animation_html]:
+        p = multiprocessing.Process(target=target_func, args=(model_name,))
+        jobs.append(p)
+        p.start()
+    # wait for completion
+    for job in jobs:
+      job.join()
+
+    with open(output_file_path, 'w') as f:
+      for model_name in model_names:
+        f.write(self.return_dict[model_name + "-hist"])
+        f.write(self.return_dict[model_name + "-heatmap"])
 
 
 ############################ TensorDict ############################
@@ -245,7 +288,7 @@ class ModelData(object):
     nnapi_model_name: the name of the model
     manager: ModelMetaDataManager
   """
-  def __init__(self, nnapi_model_name, manager):
+  def __init__(self, nnapi_model_name, manager, seq_limit=10):
     self.nnapi_model_name = nnapi_model_name
     self.manager = manager
     self.model_dir = self.get_target_model_dir(manager.DUMP_DIR,
@@ -256,6 +299,7 @@ class ModelData(object):
                                                         return_df=True)
     self.layers = sorted(self.tensor_dict['cpu'].keys())
     self.cmap = sns.diverging_palette(220, 20, sep=20, as_cmap=True)
+    self.seq_limit = seq_limit
 
   def get_target_model_dir(self, dump_dir, target_model_name):
     # Get the model directory path
@@ -269,6 +313,11 @@ class ModelData(object):
   def __plt_hist(self, layer, bins, ax, range, relative_error):
     ax.hist(self.tensor_dict.calc_diff(layer, relative_error=relative_error), bins=bins,
              range=range, log=True)
+
+  def __get_layer_num(self):
+    if self.seq_limit:
+      return min(len(self.layers), len(self.mmd.output_meta_data) * self.seq_limit)
+    return len(self.layers)
 
   def update_hist_data(self, i, fig, ax1, ax2, bins=50, plot_library='sns'):
     # Use % because there may be multiple testing samples
@@ -291,9 +340,8 @@ class ModelData(object):
               range=(-absolute_range, absolute_range), relative_error=False)
 
   def gen_error_hist_animation(self, save_video_path=None, video_fps=10):
-    layers = self.layers
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12,9))
-    ani = animation.FuncAnimation(fig, self.update_hist_data, len(layers),
+    ani = animation.FuncAnimation(fig, self.update_hist_data, self.__get_layer_num(),
                                   fargs=(fig, ax1, ax2),
                                   interval=200, repeat=False)
     # close before return to avoid dangling plot
@@ -332,7 +380,6 @@ class ModelData(object):
     g3 = self.__sns_heatmap(data=reshaped_nnapi, ax=axs[0][2], cbar_ax=axs[1][2])
 
   def gen_heatmap_animation(self, save_video_path=None, video_fps=10, figsize=(13,6)):
-    layers = self.layers
     fig = plt.figure(constrained_layout=True, figsize=figsize)
     widths = [1, 1, 1]
     heights = [7, 1]
@@ -344,7 +391,7 @@ class ModelData(object):
       for col in range(3):
           axs[-1].append(fig.add_subplot(spec[row, col]))
 
-    ani = animation.FuncAnimation(fig, self.update_heatmap_data, len(layers),
+    ani = animation.FuncAnimation(fig, self.update_heatmap_data, self.__get_layer_num(),
                                   fargs=(fig, axs),
                                   interval=200, repeat=False)
     if save_video_path:
@@ -476,19 +523,25 @@ class NumpyEncoder(json.JSONEncoder):
           return obj.tolist()
       return json.JSONEncoder.default(self, obj)
 
-def main(android_build_top, dump_dir, model_name, output_file_path=None):
-  if output_file_path is None:
-    output_file_path = '/tmp/intermediate.html'
+def main(args):
+  output_file_path = args.output_file_path if args.output_file_path else '/tmp/intermediate.html'
+
   manager = ModelMetaDataManager(
-    android_build_top,
-    dump_dir,
+    args.android_build_top,
+    args.dump_dir,
     tflite_model_json_dir='/tmp')
-  if model_name:
+
+  if args.no_parallel or args.model_name:
+    generation_func = manager.generate_animation_html
+  else:
+    generation_func = manager.multiprocessing_generate_animation_html
+
+  if args.model_name:
     model_data = ModelData(nnapi_model_name=model_name, manager=manager)
     print(model_data.tensor_dict)
-    manager.generate_animation_html(output_file_path=output_file_path, model_names=[model_name])
+    generation_func(output_file_path=output_file_path, model_names=[args.model_name])
   else:
-    manager.generate_animation_html(output_file_path=output_file_path)
+    generation_func(output_file_path=output_file_path)
 
 
 if __name__ == '__main__':
@@ -499,5 +552,6 @@ if __name__ == '__main__':
   parser.add_argument('dump_dir', help='The dump dir pulled from the device.')
   parser.add_argument('--model_name', help='NNAPI model name. Run all models if not specified.')
   parser.add_argument('--output_file_path', help='Animation HTML path.')
+  parser.add_argument('--no_parallel', help='Run on a single process instead of multiple processes.')
   args = parser.parse_args()
-  main(args.android_build_top, args.dump_dir, args.model_name, args.output_file_path)
+  main(args)
