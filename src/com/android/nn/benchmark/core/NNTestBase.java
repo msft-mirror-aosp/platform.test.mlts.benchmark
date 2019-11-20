@@ -40,6 +40,10 @@ public class NNTestBase {
         System.loadLibrary("nnbenchmark_jni");
     }
 
+    // Does the device has any NNAPI accelerator?
+    // We only consider a real device, not 'nnapi-reference'.
+    public static native boolean hasAccelerator();
+
     private synchronized native long initModel(
             String modelFileName,
             boolean useNNApi,
