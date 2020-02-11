@@ -31,7 +31,7 @@ LOCAL_SRC_FILES := $(call all-java-files-under, src) \
     $(call all-java-files-under, ../src/com/android/nn/benchmark/util)
 LOCAL_JNI_SHARED_LIBRARIES := libnnbenchmark_jni
 
-LOCAL_SDK_VERSION := 27
+LOCAL_SDK_VERSION := 28
 LOCAL_ASSET_DIR := $(LOCAL_PATH)/../../models/assets
 
 GOOGLE_TEST_MODELS_DIR := vendor/google/tests/mlts/models/assets
