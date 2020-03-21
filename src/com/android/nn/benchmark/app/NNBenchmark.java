@@ -19,33 +19,38 @@ package com.android.nn.benchmark.app;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.WindowManager;
 import android.widget.TextView;
-
+import com.android.nn.benchmark.core.BenchmarkException;
 import com.android.nn.benchmark.core.BenchmarkResult;
 import com.android.nn.benchmark.core.Processor;
+import com.android.nn.benchmark.core.TestModels.TestModelEntry;
+import java.io.IOException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class NNBenchmark extends Activity implements Processor.Callback {
-    protected static final String TAG = "NN_BENCHMARK";
+    public static final String TAG = "NN_BENCHMARK";
 
     public static final String EXTRA_ENABLE_LONG = "enable long";
     public static final String EXTRA_ENABLE_PAUSE = "enable pause";
     public static final String EXTRA_DISABLE_NNAPI = "disable NNAPI";
-    public static final String EXTRA_DEMO = "demo";
     public static final String EXTRA_TESTS = "tests";
 
     public static final String EXTRA_RESULTS_TESTS = "tests";
     public static final String EXTRA_RESULTS_RESULTS = "results";
 
     private int mTestList[];
-    private BenchmarkResult mTestResults[];
+
+    private Processor mProcessor;
+    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
     private TextView mTextView;
 
     // Initialize the parameters for Instrumentation tests.
     protected void prepareInstrumentationTest() {
         mTestList = new int[1];
-        mTestResults = new BenchmarkResult[1];
         mProcessor = new Processor(this, this, mTestList);
     }
 
@@ -56,9 +61,6 @@ public class NNBenchmark extends Activity implements Processor.Callback {
     public void setCompleteInputSet(boolean completeInputSet) {
         mProcessor.setCompleteInputSet(completeInputSet);
     }
-
-    private boolean mDoingBenchmark;
-    public Processor mProcessor;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,7 +76,8 @@ public class NNBenchmark extends Activity implements Processor.Callback {
     protected void onPause() {
         super.onPause();
         if (mProcessor != null) {
-            mProcessor.exit();
+            mProcessor.exitWithTimeout(30000l);
+            mProcessor = null;
         }
     }
 
@@ -104,17 +107,25 @@ public class NNBenchmark extends Activity implements Processor.Callback {
         super.onResume();
         Intent i = getIntent();
         mTestList = i.getIntArrayExtra(EXTRA_TESTS);
-        mProcessor = new Processor(this, this, mTestList);
-        mProcessor.setToggleLong(i.getBooleanExtra(EXTRA_ENABLE_LONG, false));
-        mProcessor.setTogglePause(i.getBooleanExtra(EXTRA_ENABLE_PAUSE, false));
-        mProcessor.setUseNNApi(!i.getBooleanExtra(EXTRA_DISABLE_NNAPI, false));
-        if (mTestList != null) {
-            mProcessor.start();
+        if (mTestList != null && mTestList.length > 0) {
+            Log.v(TAG, String.format("Starting benchmark with %d test", mTestList.length));
+            mProcessor = new Processor(this, this, mTestList);
+            mProcessor.setToggleLong(i.getBooleanExtra(EXTRA_ENABLE_LONG, false));
+            mProcessor.setTogglePause(i.getBooleanExtra(EXTRA_ENABLE_PAUSE, false));
+            mProcessor.setUseNNApi(!i.getBooleanExtra(EXTRA_DISABLE_NNAPI, false));
+            executorService.submit(mProcessor);
+        } else {
+            Log.v(TAG, "No test to run, doing nothing");
         }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+    }
+
+    public BenchmarkResult runSynchronously(TestModelEntry testModel,
+        float warmupTimeSeconds, float runTimeSeconds) throws IOException, BenchmarkException {
+        return mProcessor.getInstrumentationResult(testModel, warmupTimeSeconds, runTimeSeconds);
     }
 }
