@@ -262,12 +262,13 @@ public class NNTestBase {
         Pair<List<InferenceInOutSequence>, List<InferenceResult>> result =
                 runBenchmark(ios, totalSequenceInferencesCount, timeoutSec,
                         flags);
-        if (result.second.size() != extpectedResults ) {
+        if (result.second.size() != extpectedResults) {
             // We reached a timeout or failed to evaluate whole set for other reason, abort.
-            throw new IllegalStateException(
-                    "Failed to evaluate complete input set, expected: "
-                            + extpectedResults +
-                            ", received: " + result.second.size());
+            final String errorMsg = "Failed to evaluate complete input set, expected: "
+                    + extpectedResults +
+                    ", received: " + result.second.size();
+            Log.w(TAG, errorMsg);
+            throw new IllegalStateException(errorMsg);
         }
         return result;
     }
@@ -283,7 +284,7 @@ public class NNTestBase {
         }
         List<InferenceResult> resultList = new ArrayList<>();
         if (!runBenchmark(mModelHandle, inOutList, resultList, inferencesSeqMaxCount,
-                    timeoutSec, flags)) {
+                timeoutSec, flags)) {
             throw new BenchmarkException("Failed to run benchmark");
         }
         return new Pair<List<InferenceInOutSequence>, List<InferenceResult>>(
@@ -303,21 +304,18 @@ public class NNTestBase {
         String modelAssetName = mModelFile + ".tflite";
         AssetManager assetManager = mContext.getAssets();
         try {
-            InputStream in = assetManager.open(modelAssetName);
-
             outFileName = mContext.getCacheDir().getAbsolutePath() + "/" + modelAssetName;
             File outFile = new File(outFileName);
-            OutputStream out = new FileOutputStream(outFile);
 
-            byte[] buffer = new byte[1024];
-            int read;
-            while ((read = in.read(buffer)) != -1) {
-                out.write(buffer, 0, read);
+            try (InputStream in = assetManager.open(modelAssetName);
+                 FileOutputStream out = new FileOutputStream(outFile)) {
+
+                byte[] byteBuffer = new byte[1024];
+                int readBytes = -1;
+                while ((readBytes = in.read(byteBuffer)) != -1) {
+                    out.write(byteBuffer, 0, readBytes);
+                }
             }
-            out.flush();
-
-            in.close();
-            out.close();
         } catch (IOException e) {
             Log.e(TAG, "Failed to copy asset file: " + modelAssetName, e);
             return null;

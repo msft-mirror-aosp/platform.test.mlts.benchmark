@@ -36,6 +36,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import android.util.Log;
 
 /**
  * Tests that run all models/datasets/backend that are required for scoring the device.
@@ -61,17 +62,15 @@ public class NNScoringTest extends BenchmarkTestBase {
         super.prepareTest();
     }
 
-    @Test
-    @LargeTest
-    public void testTFLite() throws IOException {
+    private void test(boolean useNnapi) throws IOException {
         if (!TestExternalStorageActivity.testWriteExternalStorage(getActivity(), false)) {
             throw new IOException("No permission to store results in external storage");
         }
 
-        setUseNNApi(false);
+        setUseNNApi(useNnapi);
         setCompleteInputSet(true);
         TestAction ta = new TestAction(mModel, WARMUP_REPEATABLE_SECONDS,
-                COMPLETE_SET_TIMEOUT_SECOND);
+            COMPLETE_SET_TIMEOUT_SECOND);
         runTest(ta, mModel.getTestName());
 
         try (CSVWriter writer = new CSVWriter(getLocalCSVFile())) {
@@ -81,21 +80,14 @@ public class NNScoringTest extends BenchmarkTestBase {
 
     @Test
     @LargeTest
+    public void testTFLite() throws IOException {
+        test(false);
+    }
+
+    @Test
+    @LargeTest
     public void testNNAPI() throws IOException {
-        if (!TestExternalStorageActivity.testWriteExternalStorage(getActivity(), false)) {
-            throw new IOException("No permission to store results in external storage");
-        }
-
-        setUseNNApi(true);
-        setCompleteInputSet(true);
-        TestAction ta = new TestAction(mModel, WARMUP_REPEATABLE_SECONDS,
-                COMPLETE_SET_TIMEOUT_SECOND);
-        runTest(ta, mModel.getTestName());
-
-
-        try (CSVWriter writer = new CSVWriter(getLocalCSVFile())) {
-            writer.write(ta.getBenchmark());
-        }
+        test(true);
     }
 
     public static File getLocalCSVFile() {
