@@ -41,10 +41,17 @@ set -e
 cd $ANDROID_BUILD_TOP
 
 # Build and install benchmark app
-build/soong/soong_ui.bash --make-mode NeuralNetworksApiBenchmark
-if ! adb install -r $OUT/testcases/NeuralNetworksApiBenchmark/arm64/NeuralNetworksApiBenchmark.apk; then
+TMPFILE=$(mktemp)
+build/soong/soong_ui.bash --make-mode NeuralNetworksApiBenchmark 2>&1 | tee ${TMPFILE}
+TARGET_ARCH=$(cat ${TMPFILE} | grep TARGET_ARCH= | sed -e 's/TARGET_ARCH=//')
+if [ "${TARGET_ARCH}" = "aarch64" ]; then
+    APK_DIR=arm64
+else
+    APK_DIR=${TARGET_ARCH}
+fi
+if ! adb install -r $OUT/testcases/NeuralNetworksApiBenchmark/${APK_DIR}/NeuralNetworksApiBenchmark.apk; then
   adb uninstall com.android.nn.benchmark.app
-  adb install -r $OUT/testcases/NeuralNetworksApiBenchmark/arm64/NeuralNetworksApiBenchmark.apk
+  adb install -r $OUT/testcases/NeuralNetworksApiBenchmark/${APK_DIR}/NeuralNetworksApiBenchmark.apk
 fi
 
 
