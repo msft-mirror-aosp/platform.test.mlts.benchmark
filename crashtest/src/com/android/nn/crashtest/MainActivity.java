@@ -16,6 +16,7 @@
 
 package com.android.nn.crashtest;
 
+import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -75,7 +76,8 @@ public class MainActivity extends AppCompatActivity {
         modelNames.addAll(TestModels.modelsList().stream().map(
                 TestModels.TestModelEntry::getTestName).collect(
                 Collectors.toList()));
-        final ArrayAdapter<CharSequence> modelsAdapter = new ArrayAdapter(this, android.R.layout.simple_spinner_item,
+        final ArrayAdapter<CharSequence> modelsAdapter = new ArrayAdapter(this,
+                android.R.layout.simple_spinner_item,
                 modelNames);
         modelsAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         final Spinner testModelSpinner = (Spinner) findViewById(R.id.test_model);
@@ -92,8 +94,9 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        final ArrayAdapter<CharSequence> testTypeAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item,
-                new String[] {"Separate process", "In process"});
+        final ArrayAdapter<CharSequence> testTypeAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item,
+                new String[]{"Separate process", "In process"});
         testTypeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         final Spinner testTypeSpinner = (Spinner) findViewById(R.id.test_type);
         testTypeSpinner.setAdapter(testTypeAdapter);
@@ -141,6 +144,7 @@ public class MainActivity extends AppCompatActivity {
         startInferenceTest();
     }
 
+    @SuppressLint("DefaultLocale")
     private void startInferenceTest() {
         CrashTestCoordinator coordinator = new CrashTestCoordinator(this);
 
@@ -167,20 +171,19 @@ public class MainActivity extends AppCompatActivity {
                         testStopped("Test failed with reason " + reason);
                     }
 
-                    @Override
-                    public void testHung() {
-                        testStopped("Test hung");
-                    }
                 };
 
         final int testTimeoutMillis = testDurationSeconds * 1500;
+        final String testName = "in-app-test@" + System.currentTimeMillis();
         coordinator.startTest(RunModelsInParallel.class,
                 RunModelsInParallel.intentInitializer(testList, threadCount,
-                        Duration.ofSeconds(testDurationSeconds)), testCompletionListener,
-                testTimeoutMillis, mUseSeparateProcess.get());
+                        Duration.ofSeconds(testDurationSeconds),
+                        testName), testCompletionListener,
+                mUseSeparateProcess.get(), testName);
 
         mMessage.setText(
-                String.format("Inference test started with %d threads for %d seconds\n", threadCount,
+                String.format("Inference test started with %d threads for %d seconds\n",
+                        threadCount,
                         testDurationSeconds));
     }
 

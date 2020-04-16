@@ -181,20 +181,22 @@ public class Processor implements Runnable {
     public void run() {
         mHasBeenStarted = true;
         Log.d(TAG, "Processor starting");
+        boolean success = true;
         try {
             while (mRun.get()) {
                 try {
                     benchmarkAllModels();
+                    Log.d(TAG, "Processor completed work");
                 } catch (IOException e) {
                     Log.e(TAG, "IOException during benchmark run", e);
+                    success = false;
                     break;
                 } catch (Throwable e) {
                     Log.e(TAG, "Error during execution", e);
                     throw e;
                 }
-
-                mCallback.onBenchmarkFinish(mRun.get());
             }
+            mCallback.onBenchmarkFinish(success);
         } finally {
             mCompleted.countDown();
         }
@@ -268,6 +270,7 @@ public class Processor implements Runnable {
         mRun.set(false);
 
         if (mHasBeenStarted) {
+            Log.d(TAG, String.format("Terminating, timeout is %d ms", timeoutMs));
             try {
                 if (timeoutMs > 0) {
                     boolean hasCompleted = mCompleted.await(timeoutMs, MILLISECONDS);
@@ -282,6 +285,8 @@ public class Processor implements Runnable {
                 Log.w(TAG, "Interrupted while waiting for Processor to complete", e);
             }
         }
+
+        Log.d(TAG, "Done, cleaning up");
 
         if (mTest != null) {
             mTest.destroy();

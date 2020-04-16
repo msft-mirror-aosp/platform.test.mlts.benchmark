@@ -34,13 +34,13 @@ import java.util.concurrent.Executors;
 public class CrashTestService extends Service {
 
     public static final String TAG = "CrashTestService";
-    public static final String FAILURE_DESCRIPTION = "Failure Description";
+    public static final String FAILURE_DESCRIPTION = "failure_description";
+    public static final String TEST_NAME = "test_name";
+    public static final String EXTRA_KEY_CRASH_TEST_CLASS = "crash_test_class_name";
 
-    public static String EXTRA_KEY_CRASH_TEST_CLASS = "crash-test-class-name";
     public static final int SUCCESS = 1;
     public static final int FAILURE = 2;
     public static final int SET_COMM_CHANNEL = 3;
-    public static final int HEARTBEAT = 4;
 
     Messenger lifecycleListener = null;
     final Messenger mMessenger = new Messenger(new Handler(message -> {
@@ -48,9 +48,6 @@ public class CrashTestService extends Service {
             case SET_COMM_CHANNEL:
                 Log.v(TAG, "Setting communication channel to " + message.replyTo);
                 lifecycleListener = message.replyTo;
-                break;
-            case HEARTBEAT:
-                Log.v(TAG, "I'm alive");
                 break;
         }
 
