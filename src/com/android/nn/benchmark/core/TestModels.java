@@ -100,6 +100,10 @@ public class TestModels {
         sTestModelEntryList.add(model);
     }
 
+    public static boolean isListFrozen() {
+        return frozenEntries.get() != null;
+    }
+
     /** Fetch list of test models.
      *
      * If this method was called at least once, then it's impossible to register new models.

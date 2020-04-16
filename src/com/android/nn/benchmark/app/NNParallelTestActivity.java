@@ -16,6 +16,13 @@
 
 package com.android.nn.benchmark.app;
 
+import static com.android.nn.benchmark.app.NNParallelTestActivity.TestResult.CRASH;
+import static com.android.nn.benchmark.app.NNParallelTestActivity.TestResult.FAILURE;
+import static com.android.nn.benchmark.app.NNParallelTestActivity.TestResult.HANG;
+import static com.android.nn.benchmark.app.NNParallelTestActivity.TestResult.SUCCESS;
+
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
@@ -34,20 +41,16 @@ import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static com.android.nn.benchmark.app.NNParallelTestActivity.TestResult.CRASH;
-import static com.android.nn.benchmark.app.NNParallelTestActivity.TestResult.FAILURE;
-import static com.android.nn.benchmark.app.NNParallelTestActivity.TestResult.HANG;
-import static com.android.nn.benchmark.app.NNParallelTestActivity.TestResult.SUCCESS;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-
 
 public class NNParallelTestActivity extends Activity {
-    String TAG = "NN_BENCHMARK";
+    public static final int SHUTDOWN_TIMEOUT = 20000;
+    String TAG = "NNParallelTestActivity";
 
     public static String EXTRA_TEST_DURATION_MILLIS = "duration";
-    public static String EXTRA_THREAD_COUNT = "thread count";
-    public static String EXTRA_TEST_LIST = "test list";
-    public static String EXTRA_RUN_IN_SEPARATE_PROCESS = "run in separate process";
+    public static String EXTRA_THREAD_COUNT = "thread_count";
+    public static String EXTRA_TEST_LIST = "test_list";
+    public static String EXTRA_RUN_IN_SEPARATE_PROCESS = "run_in_separate_process";
+    public static String EXTRA_TEST_NAME = "test_name";
 
 
     public static enum TestResult {
@@ -63,10 +66,13 @@ public class NNParallelTestActivity extends Activity {
     private CrashTestCoordinator coordinator;
     private TextView mTestResultView;
     private Button mStopTestButton;
+    private String mTestName;
+
     private CrashTestCompletionListener testCompletionListener = new CrashTestCompletionListener() {
         private void handleCompletionNotification(TestResult testResult, String reason) {
             Log.d(TAG,
-                    String.format("Received crashed notification: %s and extra msg %s.", testResult,
+                    String.format("Received crash test notification: %s and extra msg %s.",
+                            testResult,
                             reason));
             if (mTestResult.compareAndSet(null, testResult)) {
                 if (reason != null) {
@@ -76,10 +82,11 @@ public class NNParallelTestActivity extends Activity {
                 } else {
                     showMessage(String.format("Test completed with result %s", testResult));
                 }
+                mParallelTestComplete.countDown();
+                showMessage(String.format("mParallelTestComplete count is now %d, test result is %s", mParallelTestComplete.getCount(), mTestResult.get()));
             } else {
                 Log.d(TAG, "Ignored, another completion notification was sent before");
             }
-            mParallelTestComplete.countDown();
         }
 
         @Override
@@ -96,11 +103,6 @@ public class NNParallelTestActivity extends Activity {
         public void testFailed(String reason) {
             handleCompletionNotification(FAILURE, reason);
         }
-
-        @Override
-        public void testHung() {
-            handleCompletionNotification(HANG, null);
-        }
     };
 
     @SuppressLint("SetTextI18n")
@@ -115,10 +117,8 @@ public class NNParallelTestActivity extends Activity {
     }
 
     protected void showMessage(String msg) {
-        Log.i(TAG, "TestActivity: " + msg);
-        runOnUiThread(() -> {
-            mTestResultView.append(msg + "\n");
-        });
+        Log.i(TAG, msg);
+        runOnUiThread(() -> mTestResultView.append(msg + "\n"));
     }
 
 
@@ -139,14 +139,17 @@ public class NNParallelTestActivity extends Activity {
                 1000 * 60 * 10);
         final boolean runInSeparateProcess = intent.getBooleanExtra(EXTRA_RUN_IN_SEPARATE_PROCESS,
                 true);
+        mTestName = intent.getStringExtra(EXTRA_TEST_NAME) != null
+                ? intent.getStringExtra(EXTRA_TEST_NAME) : "no-name";
 
         coordinator = new CrashTestCoordinator(getApplicationContext());
 
         final long testTimeoutMillis = (long) (testDurationMillis * 1.5);
         coordinator.startTest(RunModelsInParallel.class,
                 RunModelsInParallel.intentInitializer(testList, threadCount,
-                        Duration.ofMillis(testDurationMillis)), testCompletionListener,
-                testTimeoutMillis, runInSeparateProcess);
+                        Duration.ofMillis(testDurationMillis),
+                        mTestName), testCompletionListener,
+                runInSeparateProcess, mTestName);
 
         mStopTestButton.setEnabled(true);
     }
@@ -177,17 +180,25 @@ public class NNParallelTestActivity extends Activity {
             final Intent intent = getIntent();
             final long testDurationMillis = intent.getLongExtra(EXTRA_TEST_DURATION_MILLIS,
                     60 * 10);
-            boolean completed = mParallelTestComplete.await(testDurationMillis, MILLISECONDS);
+            // Giving the test a bit of time to wrap up
+            final long testResultTimeout = testDurationMillis + SHUTDOWN_TIMEOUT;
+            boolean completed = mParallelTestComplete.await(testResultTimeout, MILLISECONDS);
             if (!completed) {
-                showMessage("Ending tests since they didn't complete on time");
+                showMessage(String.format(
+                        "Ending test '%s' since test result collection timeout of %d "
+                                + "millis is expired",
+                        mTestName, testResultTimeout));
                 endTests();
             }
         } catch (InterruptedException ignored) {
             Thread.currentThread().interrupt();
         }
 
-        TestResult resultMaybe = mTestResult.get();
-        return resultMaybe != null ? resultMaybe : HANG;
+        // If no result is available, assuming HANG
+        mTestResult.compareAndSet(null, HANG);
+        Log.i(TAG, String.format("Returning result for test '%s': %s", mTestName, mTestResult.get()));
+
+        return mTestResult.get();
     }
 
     public void onStopTestClicked(View view) {
