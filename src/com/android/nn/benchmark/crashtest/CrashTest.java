@@ -25,7 +25,13 @@ import java.util.concurrent.Callable;
 public interface CrashTest extends Callable<Optional<String>> {
     String TAG = "CrashTest";
 
-    void init(Context context, Intent configParams);
+    interface ProgressListener {
+        // Notifies the listener that the crash test progressed for another step providing an
+        // optional description.
+        void testProgress(Optional<String> message);
+    }
+
+    void init(Context context, Intent configParams, Optional<ProgressListener> progressListener);
 
     default Optional<String> success() { return Optional.empty(); }
     default Optional<String> failure(String reason) { return Optional.of(reason); }

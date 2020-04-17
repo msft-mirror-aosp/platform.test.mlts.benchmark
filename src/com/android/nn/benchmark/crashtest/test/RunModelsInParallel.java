@@ -66,19 +66,23 @@ public class RunModelsInParallel implements CrashTest {
     private ExecutorService mExecutorService = null;
     private final Set<Processor> activeTests = new HashSet<>();
     private CountDownLatch mParallelTestComplete = new CountDownLatch(1);
-    private final List<Boolean> testCompletionResults = Collections.synchronizedList(
+    private final List<Boolean> mTestCompletionResults = Collections.synchronizedList(
             new ArrayList<>());
+    private ProgressListener mProgressListener;
 
     @Override
-    public void init(Context context, Intent configParams) {
+    public void init(Context context, Intent configParams,
+            Optional<ProgressListener> progressListener) {
         mTestList = configParams.getIntArrayExtra(MODELS);
         mThreadCount = configParams.getIntExtra(THREADS, 10);
         mTestDurationMillis = configParams.getLongExtra(DURATION, 1000 * 60 * 10);
         mTestName = configParams.getStringExtra(TEST_NAME);
         mContext = context;
-
+        mProgressListener = progressListener.orElseGet(() -> (Optional<String> message) -> {
+            Log.v(CrashTest.TAG, message.orElse("."));
+        });
         mExecutorService = Executors.newFixedThreadPool(mThreadCount);
-        testCompletionResults.clear();
+        mTestCompletionResults.clear();
     }
 
     @Override
@@ -98,10 +102,9 @@ public class RunModelsInParallel implements CrashTest {
             @SuppressLint("DefaultLocale")
             @Override
             public void onBenchmarkFinish(boolean ok) {
-                Log.v(CrashTest.TAG, String
-                        .format("Test '%s': Benchmark #%d completed %s", mTestName, testIndex,
-                                ok ? "successfully" : "with failure"));
-                testCompletionResults.add(ok);
+                notifyProgress("Test '%s': Benchmark #%d completed %s", mTestName, testIndex,
+                        ok ? "successfully" : "with failure");
+                mTestCompletionResults.add(ok);
             }
 
             @Override
@@ -136,6 +139,11 @@ public class RunModelsInParallel implements CrashTest {
         });
     }
 
+    @SuppressLint("DefaultLocale")
+    void notifyProgress(String messageFormat, Object... args) {
+        mProgressListener.testProgress(Optional.of(String.format(messageFormat, args)));
+    }
+
     // This method blocks until the tests complete and returns true if all tests completed
     // successfully
     @SuppressLint("DefaultLocale")
@@ -155,14 +163,14 @@ public class RunModelsInParallel implements CrashTest {
         }
 
         // ignoring last result for each thread since it will likely be a killed test
-        testCompletionResults.remove(testCompletionResults.size() - mThreadCount);
+        mTestCompletionResults.remove(mTestCompletionResults.size() - mThreadCount);
 
-        final long failedTestCount = testCompletionResults.stream().filter(
+        final long failedTestCount = mTestCompletionResults.stream().filter(
                 testResult -> !testResult).count();
         if (failedTestCount > 0) {
             String failureMsg = String.format("Test '%s': %d out of %d test failed", mTestName,
                     failedTestCount,
-                    testCompletionResults.size());
+                    mTestCompletionResults.size());
             Log.w(CrashTest.TAG, failureMsg);
             return failure(failureMsg);
         } else {

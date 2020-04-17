@@ -12,12 +12,14 @@
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:text="Model"
+      android:textStyle="bold"
       />
   <Spinner
       android:id="@+id/test_model"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_below="@id/model_label"
+      android:layout_marginBottom="10dp"
       />
 
   <TextView
@@ -26,12 +28,14 @@
       android:layout_height="wrap_content"
       android:text="Test type"
       android:layout_below="@id/test_model"
+      android:textStyle="bold"
       />
   <Spinner
       android:id="@+id/test_type"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_below="@id/test_type_label"
+      android:layout_marginBottom="10dp"
       />
 
   <TextView
@@ -39,25 +43,29 @@
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
       android:text="Thread count"
+      android:textStyle="bold"
       android:layout_below="@id/test_type"
+      android:layout_marginRight="10dp"
       />
   <NumberPicker
       android:id="@+id/thread_count"
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
       android:layout_below="@id/thread_count_label"
+      android:layout_marginRight="10dp"
       />
 
   <TextView
       android:id="@+id/duration_label"
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
-      android:text="Duration (s)"
+      android:text="Duration (mins)"
+      android:textStyle="bold"
       android:layout_below="@id/test_type"
       android:layout_toRightOf="@id/thread_count_label"
       />
   <NumberPicker
-      android:id="@+id/duration_seconds"
+      android:id="@+id/duration_minutes"
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
       android:layout_below="@id/duration_label"
@@ -71,7 +79,7 @@
       android:layout_marginTop="36dp"
       android:layout_marginLeft="36dp"
       android:onClick="startTestClicked"
-      android:layout_below="@id/duration_seconds"
+      android:layout_below="@id/duration_minutes"
       android:text="Start NN API Stress Test"
       />
 

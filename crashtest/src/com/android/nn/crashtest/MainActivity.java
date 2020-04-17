@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -54,7 +55,7 @@ public class MainActivity extends AppCompatActivity {
     private Button mStartTestButton;
     private TextView mMessage;
     private NumberPicker mThreadCount;
-    private NumberPicker mTestDurationSeconds;
+    private NumberPicker mTestDurationMinutes;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -114,13 +115,13 @@ public class MainActivity extends AppCompatActivity {
 
 
         mThreadCount = (NumberPicker) findViewById(R.id.thread_count);
-        mTestDurationSeconds = (NumberPicker) findViewById(R.id.duration_seconds);
+        mTestDurationMinutes = (NumberPicker) findViewById(R.id.duration_minutes);
 
         mThreadCount.setMinValue(1);
         mThreadCount.setMaxValue(20);
 
-        mTestDurationSeconds.setMinValue(10);
-        mTestDurationSeconds.setMaxValue(600);
+        mTestDurationMinutes.setMinValue(1);
+        mTestDurationMinutes.setMaxValue(60);
     }
 
     void testStopped(String msg) {
@@ -149,7 +150,7 @@ public class MainActivity extends AppCompatActivity {
         CrashTestCoordinator coordinator = new CrashTestCoordinator(this);
 
         int threadCount = mThreadCount.getValue();
-        int testDurationSeconds = mTestDurationSeconds.getValue();
+        int testDurationMinutes = mTestDurationMinutes.getValue();
 
         int[] testList = mSelectedModelIndex.get() < 0 ? IntStream.range(0,
                 TestModels.modelsList().size()).toArray() : new int[]{mSelectedModelIndex.get()};
@@ -171,20 +172,26 @@ public class MainActivity extends AppCompatActivity {
                         testStopped("Test failed with reason " + reason);
                     }
 
+                    @Override
+                    public void testProgressing(Optional<String> description) {
+                        Log.i(TAG, "> " + description.orElse("Test progressing.."));
+                        // Ignoring message to avoid cluttering the test Text Area
+                        runOnUiThread(() -> mMessage.append("."));
+                    }
                 };
 
-        final int testTimeoutMillis = testDurationSeconds * 1500;
+        final int testTimeoutMillis = testDurationMinutes * 1500;
         final String testName = "in-app-test@" + System.currentTimeMillis();
         coordinator.startTest(RunModelsInParallel.class,
                 RunModelsInParallel.intentInitializer(testList, threadCount,
-                        Duration.ofSeconds(testDurationSeconds),
+                        Duration.ofMinutes(testDurationMinutes),
                         testName), testCompletionListener,
                 mUseSeparateProcess.get(), testName);
 
         mMessage.setText(
-                String.format("Inference test started with %d threads for %d seconds\n",
+                String.format("Inference test started with %d threads for %d minutes\n",
                         threadCount,
-                        testDurationSeconds));
+                        testDurationMinutes));
     }
 
 }
