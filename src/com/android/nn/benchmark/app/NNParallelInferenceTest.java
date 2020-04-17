@@ -18,7 +18,9 @@ package com.android.nn.benchmark.app;
 
 import static junit.framework.Assert.assertTrue;
 
+import android.app.Activity;
 import android.content.Intent;
+import android.os.Bundle;
 import android.test.ActivityInstrumentationTestCase2;
 import android.test.UiThreadTest;
 import android.test.suitebuilder.annotation.LargeTest;
@@ -29,11 +31,12 @@ import androidx.test.InstrumentationRegistry;
 import com.android.nn.benchmark.core.TestModels;
 
 import org.junit.After;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
-
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -45,6 +48,8 @@ abstract class NNParallelInferenceTest extends
         ActivityInstrumentationTestCase2<NNParallelTestActivity> {
 
     String TAG = "NNParallelInferenceTest";
+
+    @Rule public TestName mTestName = new TestName();
 
     private final int threadCount;
     private final Duration testDuration;
@@ -95,6 +100,7 @@ abstract class NNParallelInferenceTest extends
         intent.putExtra(NNParallelTestActivity.EXTRA_TEST_DURATION_MILLIS, testDuration.toMillis());
         intent.putExtra(NNParallelTestActivity.EXTRA_RUN_IN_SEPARATE_PROCESS,
                 runTestsInSeparateProcess());
+        intent.putExtra(NNParallelTestActivity.EXTRA_TEST_NAME, mTestName.getMethodName());
         return intent;
     }
 }

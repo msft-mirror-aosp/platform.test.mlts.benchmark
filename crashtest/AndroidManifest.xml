@@ -22,7 +22,7 @@
     <service android:name="com.android.nn.benchmark.crashtest.OutOfProcessCrashTestService"
         android:process=":CrashTest" />
     <service android:name="com.android.nn.benchmark.crashtest.InProcessCrashTestService"
-        android:process="CrashTest" />
+        android:process=".CrashTest" />
   </application>
 
   <uses-sdk android:minSdkVersion="27" />

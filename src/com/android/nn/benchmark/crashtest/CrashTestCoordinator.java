@@ -28,7 +28,6 @@ import android.os.RemoteException;
 import android.util.Log;
 
 import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -40,6 +39,7 @@ public class CrashTestCoordinator {
     private static final Timer mTestTimeoutTimer = new Timer("TestTimeoutTimer");
     private boolean mServiceBound;
     private final AtomicBoolean mAlreadyNotified = new AtomicBoolean(false);
+    private String mTestName;
 
     public interface CrashTestIntentInitializer {
         void addIntentParams(Intent intent);
@@ -51,8 +51,6 @@ public class CrashTestCoordinator {
         void testSucceeded();
 
         void testFailed(String cause);
-
-        void testHung();
     }
 
     public CrashTestCoordinator(Context context) {
@@ -61,44 +59,40 @@ public class CrashTestCoordinator {
 
     class KeepAliveServiceConnection implements ServiceConnection {
         private final CrashTestCompletionListener mTestCompletionListener;
-        private final TimerTask mTestHungNotifier;
         private Messenger mMessenger = null;
+        private IBinder mService = null;
 
         KeepAliveServiceConnection(
-                CrashTestCompletionListener testCompletionListener,
-                TimerTask testHungNotifier) {
+                CrashTestCompletionListener testCompletionListener) {
             mTestCompletionListener = testCompletionListener;
-            mTestHungNotifier = testHungNotifier;
         }
 
         public boolean isServiceAlive() {
-            if (mMessenger != null) {
-                try {
-                    mMessenger.send(Message.obtain(null, CrashTestService.HEARTBEAT));
-                    return true;
-                } catch (RemoteException notAlive) {
-                    return false;
-                }
+            if (mService == null) {
+                Log.w(TAG, "Keep alive service connection is not bound.");
+                return false;
             }
-            return false;
+            return mService.isBinderAlive();
         }
 
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             Log.i(TAG, String.format("Service '%s' connected with binder %s", name, service));
 
+            mService = service;
             mMessenger = new Messenger(service);
 
             try {
+                service.linkToDeath(mTestCompletionListener::testCrashed, 0);
+
                 Message msg = Message.obtain(null, CrashTestService.SET_COMM_CHANNEL);
                 msg.replyTo = new Messenger(new Handler(message -> {
                     switch (message.what) {
                         case CrashTestService.SUCCESS:
                             if (!mAlreadyNotified.getAndSet(true)) {
-                                Log.i(TAG, "Test succeeded");
+                                Log.i(TAG, String.format("Test '%s' succeeded", mTestName));
                                 mTestCompletionListener.testSucceeded();
                             }
-                            mTestHungNotifier.cancel();
                             unbindService();
                             break;
 
@@ -106,10 +100,11 @@ public class CrashTestCoordinator {
                             if (!mAlreadyNotified.getAndSet(true)) {
                                 String reason = msg.getData().getString(
                                         CrashTestService.FAILURE_DESCRIPTION);
-                                Log.i(TAG, "Test failed with reason: " + reason);
+                                Log.i(TAG,
+                                        String.format("Test '%s' failed with reason: %s", mTestName,
+                                                reason));
                                 mTestCompletionListener.testFailed(reason);
                             }
-                            mTestHungNotifier.cancel();
                             unbindService();
                             break;
                     }
@@ -119,7 +114,6 @@ public class CrashTestCoordinator {
             } catch (RemoteException serviceShutDown) {
                 Log.w(TAG, "Unable to talk to service, it might have been shut down",
                         serviceShutDown);
-                mTestHungNotifier.cancel();
                 if (!mAlreadyNotified.getAndSet(true)) {
                     mTestCompletionListener.testCrashed();
                 }
@@ -128,16 +122,7 @@ public class CrashTestCoordinator {
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
-            Log.i(TAG, "Service disconnected");
-            try {
-                tryUnbindService();
-            } catch (IllegalArgumentException serviceUnreachable) {
-                Log.w(CrashTest.TAG, "Test crashed!!!", serviceUnreachable);
-            }
-            if (!mAlreadyNotified.getAndSet(true)) {
-                mTestCompletionListener.testCrashed();
-            }
-            mTestHungNotifier.cancel();
+            Log.d(TAG, "Service disconnected");
         }
     }
 
@@ -149,8 +134,8 @@ public class CrashTestCoordinator {
      */
     public void startTest(Class<? extends CrashTest> crashTestClass,
             CrashTestIntentInitializer intentParamsProvider,
-            CrashTestCompletionListener testCompletionListener, long testTimeoutMillis,
-            boolean separateProcess) {
+            CrashTestCompletionListener testCompletionListener,
+            boolean separateProcess, String testName) {
 
         final Intent crashTestServiceIntent = new Intent(mContext,
                 separateProcess ? OutOfProcessCrashTestService.class
@@ -159,18 +144,7 @@ public class CrashTestCoordinator {
                 crashTestClass.getName());
         intentParamsProvider.addIntentParams(crashTestServiceIntent);
 
-        final TimerTask testHungNotifier = new TimerTask() {
-            @Override
-            public void run() {
-                Log.i(TAG, "Test is hung");
-                if (!mAlreadyNotified.getAndSet(true)) {
-                    testCompletionListener.testHung();
-                }
-            }
-        };
-
-        serviceConnection.set(new KeepAliveServiceConnection(
-                testCompletionListener, testHungNotifier));
+        serviceConnection.set(new KeepAliveServiceConnection(testCompletionListener));
 
         mServiceBound = mContext.bindService(crashTestServiceIntent, serviceConnection.get(),
                 Context.BIND_AUTO_CREATE);
@@ -181,55 +155,24 @@ public class CrashTestCoordinator {
         if (!mServiceBound) {
             throw new IllegalStateException("Unsable to start service");
         }
-        if (testTimeoutMillis > 0l) {
-            Log.i(TAG, "Starting timeout timer");
-            mTestTimeoutTimer.schedule(testHungNotifier, testTimeoutMillis + 200);
-            mTestTimeoutTimer.schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    Log.i(TAG, "Timeout task running");
-                    KeepAliveServiceConnection sc = serviceConnection.get();
-                    if (sc != null && sc.isServiceAlive()) {
-                        Log.i(TAG, "Unbinding service");
-                        try {
-                            tryUnbindService();
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error trying to unbind service", e);
-                            if (!mAlreadyNotified.getAndSet(true)) {
-                                testCompletionListener.testCrashed();
-                            }
-                            testHungNotifier.cancel();
-                        }
-                    } else {
-                        if (!mAlreadyNotified.getAndSet(true)) {
-                            testCompletionListener.testHung();
-                        }
-                        testHungNotifier.cancel();
-                    }
-                }
-            }, testTimeoutMillis);
-        }
+
+        mTestName = testName;
     }
 
     public void shutdown() {
         unbindService();
     }
 
-    // Could generate an IllegalArgumentException if the service is unreachable.
-    private void tryUnbindService() {
-        KeepAliveServiceConnection sc = serviceConnection.get();
-        if (sc != null) {
-            if (mServiceBound) {
-                mServiceBound = false;
-                mContext.unbindService(sc);
-            }
-            serviceConnection.compareAndSet(sc, null);
-        }
-    }
-
     private void unbindService() {
         try {
-            tryUnbindService();
+            KeepAliveServiceConnection sc = serviceConnection.get();
+            if (sc != null && sc.isServiceAlive()) {
+                if (mServiceBound) {
+                    mServiceBound = false;
+                    mContext.unbindService(sc);
+                }
+                serviceConnection.compareAndSet(sc, null);
+            }
         } catch (Exception e) {
             Log.e(TAG, "Error trying to unbind service", e);
         }

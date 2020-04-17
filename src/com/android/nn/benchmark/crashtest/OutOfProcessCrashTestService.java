@@ -27,7 +27,7 @@ public class OutOfProcessCrashTestService extends CrashTestService {
     @Override
     public void onCreate() {
         super.onCreate();
-        if (!TestModels.isListFrozen()) {
+        if (TestModels.isListFrozen()) {
             Log.i(CrashTestService.TAG,
                     "Model list is frozen. Probably re-instantiating service in an already "
                             + "initialized JVM.");
