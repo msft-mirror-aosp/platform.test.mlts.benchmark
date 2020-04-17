@@ -28,12 +28,13 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
 import com.android.nn.benchmark.core.BenchmarkResult;
-import com.android.nn.benchmark.core.NNTestBase;
 import com.android.nn.benchmark.core.Processor;
 import com.android.nn.benchmark.core.TestModels;
 
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /** Regularly runs a random selection of the NN API benchmark models */
 public class BenchmarkJobService extends JobService implements Processor.Callback {
@@ -52,6 +53,7 @@ public class BenchmarkJobService extends JobService implements Processor.Callbac
 
     private static int DOGFOOD_MODELS_PER_RUN = 20;
     private BenchmarkResult mTestResults[];
+    private final ExecutorService processorRunner = Executors.newSingleThreadExecutor();
 
 
     @Override
@@ -74,11 +76,10 @@ public class BenchmarkJobService extends JobService implements Processor.Callbac
     }
 
     public void doBenchmark() {
-
         mProcessor = new Processor(this, this, randomModelList());
         mProcessor.setUseNNApi(true);
         mProcessor.setToggleLong(true);
-        mProcessor.start();
+        processorRunner.submit(mProcessor);
     }
 
     public void onBenchmarkFinish(boolean ok) {

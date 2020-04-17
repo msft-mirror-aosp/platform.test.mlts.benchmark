@@ -3,6 +3,8 @@
 # Build benchmark app and run it, mimicking a user-initiated run
 #
 # Output is logged to a temporary folder and summarized in txt and JSON formats.
+# parallel-inference-stress tests produce no output except for the success or failure notification,
+# which is not logged.
 
 MODE="${1:-scoring}"
 
@@ -15,6 +17,12 @@ case "$MODE" in
     ;;
   model-loading-stress)
     CLASS=com.android.nn.benchmark.app.NNModelLoadingStressTest
+    ;;
+  parallel-inference-stress)
+    CLASS=com.android.nn.benchmark.app.NNParallelCrashResistantInferenceTest
+    ;;
+  parallel-inference-stress-in-process)
+    CLASS=com.android.nn.benchmark.app.NNParallelInProcessInferenceTest
     ;;
   *)
     echo "Unknown execution mode: $1"
@@ -38,7 +46,7 @@ mkdir -p $LOGDIR
 echo Creating logs in $LOGDIR
 
 # Build and install benchmark app
-make NeuralNetworksApiBenchmark
+build/soong/soong_ui.bash --make-mode NeuralNetworksApiBenchmark
 if ! adb install -r $OUT/testcases/NeuralNetworksApiBenchmark/arm64/NeuralNetworksApiBenchmark.apk; then
   adb uninstall com.android.nn.benchmark.app
   adb install -r $OUT/testcases/NeuralNetworksApiBenchmark/arm64/NeuralNetworksApiBenchmark.apk
@@ -100,7 +108,7 @@ else
 fi
 
 adb shell setprop debug.nn.cpuonly 0
-adb shell setprop debug.nn.vlog 0
+adb shell setprop debug.nn.vlog "''"
 
 HOST_CSV=$LOGDIR/benchmark.csv
 RESULT_HTML=$LOGDIR/result.html

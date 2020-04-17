@@ -31,6 +31,17 @@ environment variable if more than one device is connected.
 * At the end of a benchmark run, its results will be
 presented as html page, passed to xdg-open.
 
-Changelog:
-v0.1, 2018-10-15. Initial release with MobileNet(u8/f32)/TTS/ASR models.
+# Crash test
 
+The MLTS suite contains a series of tests to validate the behaviour of the drivers under stress or
+in corner case conditions.
+
+To run the tests use the specific targets available in the build_and_run_benchmark.sh script.
+Currently available ones are:
+
+- parallel-inference-stress: to test the behaviour of drivers with different amount of inference
+executed in parallel. Tests are running in a separate process so crashes can be detected and
+notified as test failures
+
+- parallel-inference-stress-in-process: same as parallel-inference-stress but the tests are running
+in the same process of the test so in case of crash the testing app will crash too

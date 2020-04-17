@@ -68,6 +68,8 @@ BenchmarkModel* BenchmarkModel::create(const char* modelfile, bool use_nnapi,
     BenchmarkModel* model = new BenchmarkModel();
     if (!model->init(modelfile, use_nnapi, enable_intermediate_tensors_dump,
                      nnapi_device_name)) {
+     __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Failed to init model %s",
+                             modelfile);
       delete model;
       return nullptr;
     }
@@ -123,9 +125,12 @@ bool BenchmarkModel::init(const char* modelfile, bool use_nnapi,
     mTfliteNnapiDelegate = std::make_unique<tflite::StatefulNnApiDelegate>(nnapi_options);
     if (mTfliteInterpreter->ModifyGraphWithDelegate(mTfliteNnapiDelegate.get()) != kTfLiteOk) {
       __android_log_print(ANDROID_LOG_ERROR, LOG_TAG,
-                          "Failed to initialize NNAPI Delegate");
+                          "Failed to initialize NNAPI Delegate for model %s, nnapi_errno is %d",
+                          modelfile, mTfliteNnapiDelegate->GetNnApiErrno());
       return false;
     }
+    __android_log_print(ANDROID_LOG_INFO, LOG_TAG,
+                              "NNAPI Delegate initialized for model %s", modelfile);
   }
   return true;
 }
