@@ -38,6 +38,7 @@ import com.android.nn.benchmark.crashtest.CrashTestCoordinator.CrashTestCompleti
 import com.android.nn.benchmark.crashtest.test.RunModelsInParallel;
 
 import java.time.Duration;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -102,6 +103,13 @@ public class NNParallelTestActivity extends Activity {
         @Override
         public void testFailed(String reason) {
             handleCompletionNotification(FAILURE, reason);
+        }
+
+        @Override
+        public void testProgressing(Optional<String> description) {
+            runOnUiThread(() -> {
+                mTestResultView.append(".");
+            });
         }
     };
 

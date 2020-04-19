@@ -47,7 +47,8 @@ public class CrashingCrashTest implements CrashTest {
     boolean segv = false;
 
     @Override
-    public void init(Context context, Intent configParams) {
+    public void init(Context context, Intent configParams,
+            Optional<ProgressListener> progressListener) {
         sleepTime = configParams.getLongExtra(SLEEP_TIME, 100);
         segv = configParams.getBooleanExtra(SEGV, false);
     }

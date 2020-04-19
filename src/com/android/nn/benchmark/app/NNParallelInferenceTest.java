@@ -16,8 +16,6 @@
 
 package com.android.nn.benchmark.app;
 
-import static junit.framework.Assert.assertTrue;
-
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
@@ -34,20 +32,16 @@ import org.junit.After;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.stream.IntStream;
 
 abstract class NNParallelInferenceTest extends
         ActivityInstrumentationTestCase2<NNParallelTestActivity> {
 
-    String TAG = "NNParallelInferenceTest";
+    static final String TAG = "NNParallelInferenceTest";
 
     @Rule public TestName mTestName = new TestName();
 
@@ -68,8 +62,18 @@ abstract class NNParallelInferenceTest extends
     public void shouldNotFailWithParallelThreads() {
         injectInstrumentation(InstrumentationRegistry.getInstrumentation());
         setActivityIntent(runAllModelsOnNThreadsFor(threadCount, testDuration));
+
+        Bundle testData = new Bundle();
+        testData.putString("Test name", mTestName.getMethodName());
+        testData.putString("Test status", "Started");
+        getInstrumentation().sendStatus(Activity.RESULT_FIRST_USER, testData);
+
+        NNParallelTestActivity.TestResult testResult  = getActivity().testResult();
         assertEquals("Test didn't complete successfully", NNParallelTestActivity.TestResult.SUCCESS,
-                getActivity().testResult());
+                testResult);
+
+        testData.putString("Test status", "Completed");
+        getInstrumentation().sendStatus(Activity.RESULT_OK, testData);
     }
 
     @After

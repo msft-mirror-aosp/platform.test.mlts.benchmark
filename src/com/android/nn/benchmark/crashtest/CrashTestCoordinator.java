@@ -27,6 +27,7 @@ import android.os.Messenger;
 import android.os.RemoteException;
 import android.util.Log;
 
+import java.util.Optional;
 import java.util.Timer;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -51,6 +52,8 @@ public class CrashTestCoordinator {
         void testSucceeded();
 
         void testFailed(String cause);
+
+        void testProgressing(Optional<String> description);
     }
 
     public CrashTestCoordinator(Context context) {
@@ -99,13 +102,20 @@ public class CrashTestCoordinator {
                         case CrashTestService.FAILURE:
                             if (!mAlreadyNotified.getAndSet(true)) {
                                 String reason = msg.getData().getString(
-                                        CrashTestService.FAILURE_DESCRIPTION);
+                                        CrashTestService.DESCRIPTION);
                                 Log.i(TAG,
                                         String.format("Test '%s' failed with reason: %s", mTestName,
                                                 reason));
                                 mTestCompletionListener.testFailed(reason);
                             }
                             unbindService();
+                            break;
+
+                        case CrashTestService.PROGRESS:
+                            String description = msg.getData().getString(
+                                    CrashTestService.DESCRIPTION);
+                            Log.d(TAG, "Test progress message: " + description);
+                            mTestCompletionListener.testProgressing(Optional.ofNullable(description));
                             break;
                     }
                     return true;

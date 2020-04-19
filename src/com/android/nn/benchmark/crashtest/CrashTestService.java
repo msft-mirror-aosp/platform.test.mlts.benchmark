@@ -34,13 +34,14 @@ import java.util.concurrent.Executors;
 public class CrashTestService extends Service {
 
     public static final String TAG = "CrashTestService";
-    public static final String FAILURE_DESCRIPTION = "failure_description";
+    public static final String DESCRIPTION = "failure_description";
     public static final String TEST_NAME = "test_name";
     public static final String EXTRA_KEY_CRASH_TEST_CLASS = "crash_test_class_name";
 
     public static final int SUCCESS = 1;
     public static final int FAILURE = 2;
-    public static final int SET_COMM_CHANNEL = 3;
+    public static final int PROGRESS = 3;
+    public static final int SET_COMM_CHANNEL = 4;
 
     Messenger lifecycleListener = null;
     final Messenger mMessenger = new Messenger(new Handler(message -> {
@@ -66,7 +67,7 @@ public class CrashTestService extends Service {
             final Message message = Message.obtain(null, messageType);
             if (messageBody != null) {
                 Bundle data = new Bundle();
-                data.putString(FAILURE_DESCRIPTION, messageBody);
+                data.putString(DESCRIPTION, messageBody);
                 message.setData(data);
             }
             lifecycleListener.send(message);
@@ -85,13 +86,16 @@ public class CrashTestService extends Service {
             Log.i(TAG, "Instantiating test class name '" + testClassName + "'");
             final CrashTest crashTest = (CrashTest) Class.forName(
                     testClassName).newInstance();
-            crashTest.init(getApplicationContext(), intent);
+            crashTest.init(getApplicationContext(), intent,
+                    Optional.of(messageMaybe -> notify(PROGRESS, messageMaybe.orElse(null))));
 
             Log.i(TAG, "Starting test");
 
             executor.submit(() -> {
                 try {
                     final Optional<String> testResult = crashTest.call();
+                    Log.d(TAG, String.format("Test '%s' completed with result: %s", testClassName,
+                            testResult.orElse("success")));
                     notify(testResult.isPresent() ? FAILURE : SUCCESS, testResult.orElse(null));
                 } catch (Exception e) {
                     Log.e(TAG, "Exception in crash test", e);
