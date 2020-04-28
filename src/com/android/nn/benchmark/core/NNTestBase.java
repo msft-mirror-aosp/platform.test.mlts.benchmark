@@ -16,7 +16,7 @@
 
 package com.android.nn.benchmark.core;
 
-import android.content.Context;
+import android.app.Activity;
 import android.content.res.AssetManager;
 import android.os.Build;
 import android.util.Log;
@@ -39,10 +39,6 @@ public class NNTestBase {
     static {
         System.loadLibrary("nnbenchmark_jni");
     }
-
-    // Does the device has any NNAPI accelerator?
-    // We only consider a real device, not 'nnapi-reference'.
-    public static native boolean hasAccelerator();
 
     private synchronized native long initModel(
             String modelFileName,
@@ -77,7 +73,7 @@ public class NNTestBase {
             String dumpPath,
             List<InferenceInOutSequence> inOutList);
 
-    protected Context mContext;
+    protected Activity mActivity;
     protected TextView mText;
     private String mModelName;
     private String mModelFile;
@@ -139,8 +135,8 @@ public class NNTestBase {
         mNNApiDeviceName = Optional.ofNullable(value);
     }
 
-    public final boolean setupModel(Context ipcxt) {
-        mContext = ipcxt;
+    public final boolean setupModel(Activity ipact) {
+        mActivity = ipact;
         String modelFileName = copyAssetToFile();
         if (modelFileName != null) {
             mModelHandle = initModel(
@@ -153,7 +149,7 @@ public class NNTestBase {
             resizeInputTensors(mModelHandle, mInputShape);
         }
         if (mEvaluatorConfig != null) {
-            mEvaluator = mEvaluatorConfig.createEvaluator(mContext.getAssets());
+            mEvaluator = mEvaluatorConfig.createEvaluator(mActivity.getAssets());
         }
         return true;
     }
@@ -178,13 +174,13 @@ public class NNTestBase {
         List<InferenceInOutSequence> inOutList = new ArrayList<>();
         if (mInputOutputAssets != null) {
             for (InferenceInOutSequence.FromAssets ioAsset : mInputOutputAssets) {
-                inOutList.add(ioAsset.readAssets(mContext.getAssets()));
+                inOutList.add(ioAsset.readAssets(mActivity.getAssets()));
             }
         }
         if (mInputOutputDatasets != null) {
             for (InferenceInOutSequence.FromDataset dataset : mInputOutputDatasets) {
-                inOutList.addAll(dataset.readDataset(mContext.getAssets(),
-                        mContext.getCacheDir()));
+                inOutList.addAll(dataset.readDataset(mActivity.getAssets(),
+                        mActivity.getCacheDir()));
             }
         }
 
@@ -301,11 +297,11 @@ public class NNTestBase {
     private String copyAssetToFile() {
         String outFileName;
         String modelAssetName = mModelFile + ".tflite";
-        AssetManager assetManager = mContext.getAssets();
+        AssetManager assetManager = mActivity.getAssets();
         try {
             InputStream in = assetManager.open(modelAssetName);
 
-            outFileName = mContext.getCacheDir().getAbsolutePath() + "/" + modelAssetName;
+            outFileName = mActivity.getCacheDir().getAbsolutePath() + "/" + modelAssetName;
             File outFile = new File(outFileName);
             OutputStream out = new FileOutputStream(outFile);
 

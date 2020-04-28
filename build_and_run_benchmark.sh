@@ -3,25 +3,9 @@
 # Build benchmark app and run it, mimicking a user-initiated run
 #
 # Output is logged to a temporary folder and summarized in txt and JSON formats.
-
-MODE="${1:-scoring}"
-
-case "$MODE" in
-  scoring)
-    CLASS=com.android.nn.benchmark.app.NNScoringTest
-    ;;
-  inference-stress)
-    CLASS=com.android.nn.benchmark.app.NNInferenceStressTest
-    ;;
-  model-loading-stress)
-    CLASS=com.android.nn.benchmark.app.NNModelLoadingStressTest
-    ;;
-  *)
-    echo "Unknown execution mode: $1"
-    echo "Known modes: scoring (default), inference-stress, model-loading-stress"
-    exit 1
-    ;;
-esac
+#
+# Parameters
+# - number of runs
 
 if [[ -z "$ANDROID_BUILD_TOP" ]]; then
   echo ANDROID_BUILD_TOP not set, bailing out
@@ -84,7 +68,6 @@ else
     adb disable-verity
     adb reboot
     sleep 5
-    adb wait-for-usb-device root
     adb wait-for-usb-device remount
     sleep 5
   fi
@@ -112,9 +95,8 @@ adb shell "input keyevent 82"
 adb shell wm dismiss-keyguard
 # Remove old benchmark csv data
 adb shell rm -f ${DEVICE_CSV}
-
 # Set the shell pid as a top-app and run tests
-time adb shell "echo $$ > /dev/stune/top-app/tasks; am instrument ${AM_INSTRUMENT_FLAGS} -w -e class $CLASS com.android.nn.benchmark.app/androidx.test.runner.AndroidJUnitRunner"
+adb shell "echo $$ > /dev/stune/top-app/tasks; am instrument ${AM_INSTRUMENT_FLAGS} -w -e size large -e class com.android.nn.benchmark.app.NNScoringTest com.android.nn.benchmark.app/androidx.test.runner.AndroidJUnitRunner"
 adb pull $DEVICE_CSV $HOST_CSV
 echo Benchmark data saved in $HOST_CSV
 

@@ -21,7 +21,6 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.text.method.ScrollingMovementMethod;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -36,7 +35,6 @@ import com.android.nn.benchmark.util.TestExternalStorageActivity;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Random;
 
 public class NNControls extends Activity {
     private static final String TAG = NNControls.class.getSimpleName();
@@ -55,7 +53,23 @@ public class NNControls extends Activity {
     private float mResults[];
     private String mInfo[];
 
-    private static int DOGFOOD_MODELS_PER_RUN = 20;
+    private static final String[] DOGFOOD_MODEL_NAMES = new String[]{
+            "tts_float",
+            "asr_float",
+            "mobilenet_v1_1.0_224_quant_topk_aosp",
+            "mobilenet_v1_1.0_224_topk_aosp",
+            "mobilenet_v1_0.75_192_quant_topk_aosp",
+            "mobilenet_v1_0.75_192_topk_aosp",
+            "mobilenet_v1_0.5_160_quant_topk_aosp",
+            "mobilenet_v1_0.5_160_topk_aosp",
+            "mobilenet_v1_0.25_128_quant_topk_aosp",
+            "mobilenet_v1_0.25_128_topk_aosp",
+            "mobilenet_v2_0.35_128_topk_aosp",
+            "mobilenet_v2_0.5_160_topk_aosp",
+            "mobilenet_v2_0.75_192_topk_aosp",
+            "mobilenet_v2_1.0_224_topk_aosp",
+            "mobilenet_v2_1.0_224_quant_topk_aosp",
+    };
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -203,20 +217,10 @@ public class NNControls extends Activity {
         mSettings[SETTING_DISABLE_NNAPI] = false;
 
         // Select dogfood models.
-        long seed = System.currentTimeMillis();
-        Log.v(NNBenchmark.TAG, "Dogfood run seed " + seed);
-        Random random = new Random(seed);
-        int numModelsToSelect = Math.min(DOGFOOD_MODELS_PER_RUN, mTestList.size());
         for (int i = 0; i < mTestList.size(); i++) {
-          mTestListView.setItemChecked(i, false);
-        }
-        while (numModelsToSelect > 0) {
-            int i = random.nextInt(mTestList.size());
-            if (mTestListView.isItemChecked(i)) {
-                continue;
-            }
-            mTestListView.setItemChecked(i, true);
-            numModelsToSelect--;
+            String modelName = mTestList.get(i);
+            boolean isDogfoodModel = Arrays.asList(DOGFOOD_MODEL_NAMES).contains(modelName);
+            mTestListView.setItemChecked(i, isDogfoodModel);
         }
 
         // Run benchmark.

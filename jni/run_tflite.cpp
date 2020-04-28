@@ -100,7 +100,7 @@ bool BenchmarkModel::init(const char* modelfile, bool use_nnapi,
   if (enable_intermediate_tensors_dump) {
     // Make output of every op a model output. This way we will be able to
     // fetch each intermediate tensor when running with delegates.
-    outputs.clear();
+    std::vector<int> outputs;
     for (size_t node = 0; node < mTfliteInterpreter->nodes_size(); ++node) {
       auto node_outputs =
           mTfliteInterpreter->node_and_registration(node)->first.outputs;
@@ -118,10 +118,8 @@ bool BenchmarkModel::init(const char* modelfile, bool use_nnapi,
       __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Running NNAPI on device %s",
                           nnapi_device_name);
     }
-    tflite::StatefulNnApiDelegate::Options nnapi_options;
-    nnapi_options.accelerator_name = nnapi_device_name;
-    mTfliteNnapiDelegate = std::make_unique<tflite::StatefulNnApiDelegate>(nnapi_options);
-    if (mTfliteInterpreter->ModifyGraphWithDelegate(mTfliteNnapiDelegate.get()) != kTfLiteOk) {
+    if (mTfliteInterpreter->ModifyGraphWithDelegate(
+            tflite::NnApiDelegate(nnapi_device_name)) != kTfLiteOk) {
       __android_log_print(ANDROID_LOG_ERROR, LOG_TAG,
                           "Failed to initialize NNAPI Delegate");
       return false;
@@ -238,9 +236,7 @@ bool BenchmarkModel::benchmark(
     int seqInferencesMaxCount, float timeout, int flags,
     std::vector<InferenceResult>* results) {
   if (inOutData.empty()) {
-    __android_log_print(ANDROID_LOG_WARN, LOG_TAG,
-                        "Input/output vector is empty");
-    return true;
+    FATAL("Input/output vector is empty");
   }
 
   float inferenceTotal = 0.0;
@@ -339,18 +335,15 @@ bool BenchmarkModel::dumpAllLayers(
         return false;
       }
 
-      // The order of the tensor is not sorted by the tensor index
-      for (int tensor_order = 0; tensor_order < outputs.size(); ++tensor_order) {
-        int tensor_index = outputs[tensor_order];
-        auto* output_tensor = mTfliteInterpreter->tensor(tensor_index);
+      for (int tensor = 0; tensor < mTfliteInterpreter->tensors_size();
+           ++tensor) {
+        auto* output_tensor = mTfliteInterpreter->tensor(tensor);
         if (output_tensor->data.raw == nullptr) {
-          __android_log_print(ANDROID_LOG_ERROR, LOG_TAG,
-                      "output_tensor->data.raw == nullptr at index %d ", tensor_index);
           continue;
         }
         char fullpath[1024];
-        snprintf(fullpath, 1024, "%s/dump_%.3d_seq_%.3d_order_%.3d_tensor_%.3d", path,
-                 seqInferenceIndex, i, tensor_order, tensor_index);
+        snprintf(fullpath, 1024, "%s/dump_%.3d_seq_%.3d_tensor_%.3d", path,
+                 seqInferenceIndex, i, tensor);
         FILE* f = fopen(fullpath, "wb");
         fwrite(output_tensor->data.raw, output_tensor->bytes, 1, f);
         fclose(f);
