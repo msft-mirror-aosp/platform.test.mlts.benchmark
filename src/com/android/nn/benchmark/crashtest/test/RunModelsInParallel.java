@@ -65,7 +65,7 @@ public class RunModelsInParallel implements CrashTest {
 
     private ExecutorService mExecutorService = null;
     private final Set<Processor> activeTests = new HashSet<>();
-    private CountDownLatch mParallelTestComplete = new CountDownLatch(1);
+    private CountDownLatch mParallelTestComplete;
     private final List<Boolean> mTestCompletionResults = Collections.synchronizedList(
             new ArrayList<>());
     private ProgressListener mProgressListener;
@@ -87,6 +87,7 @@ public class RunModelsInParallel implements CrashTest {
 
     @Override
     public Optional<String> call() {
+        mParallelTestComplete = new CountDownLatch(mThreadCount);
         for (int i = 0; i < mThreadCount; i++) {
             Processor testProcessor = createSubTestRunner(mTestList, i);
 
@@ -105,6 +106,7 @@ public class RunModelsInParallel implements CrashTest {
                 notifyProgress("Test '%s': Benchmark #%d completed %s", mTestName, testIndex,
                         ok ? "successfully" : "with failure");
                 mTestCompletionResults.add(ok);
+                mParallelTestComplete.countDown();
             }
 
             @Override

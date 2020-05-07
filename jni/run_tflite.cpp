@@ -16,13 +16,15 @@
 
 #include "run_tflite.h"
 
-#include "tensorflow/lite/delegates/nnapi/nnapi_delegate.h"
-#include "tensorflow/lite/kernels/register.h"
-
 #include <android/log.h>
 #include <dlfcn.h>
 #include <sys/time.h>
+
 #include <cstdio>
+
+#include "tensorflow/lite/delegates/nnapi/nnapi_delegate.h"
+#include "tensorflow/lite/kernels/register.h"
+#include "tensorflow/lite/nnapi/NeuralNetworksTypes.h"
 
 #define LOG_TAG "NN_BENCHMARK"
 
@@ -123,7 +125,8 @@ bool BenchmarkModel::init(const char* modelfile, bool use_nnapi,
     tflite::StatefulNnApiDelegate::Options nnapi_options;
     nnapi_options.accelerator_name = nnapi_device_name;
     mTfliteNnapiDelegate = std::make_unique<tflite::StatefulNnApiDelegate>(nnapi_options);
-    if (mTfliteInterpreter->ModifyGraphWithDelegate(mTfliteNnapiDelegate.get()) != kTfLiteOk) {
+    if (mTfliteInterpreter->ModifyGraphWithDelegate(
+            mTfliteNnapiDelegate.get()) != kTfLiteOk) {
       __android_log_print(ANDROID_LOG_ERROR, LOG_TAG,
                           "Failed to initialize NNAPI Delegate for model %s, nnapi_errno is %d",
                           modelfile, mTfliteNnapiDelegate->GetNnApiErrno());
@@ -220,9 +223,11 @@ bool BenchmarkModel::resizeInputTensors(std::vector<int> shape) {
 
 bool BenchmarkModel::runInference() {
   auto status = mTfliteInterpreter->Invoke();
-  if (status != kTfLiteOk) {
-    __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Failed to invoke: %d!",
-                        (int)status);
+  auto nnapi_errno = mTfliteNnapiDelegate->GetNnApiErrno();
+  if (status != kTfLiteOk || nnapi_errno != ANEURALNETWORKS_NO_ERROR) {
+    __android_log_print(ANDROID_LOG_ERROR, LOG_TAG,
+                        "Failed to invoke, tflite status: %d, nnapi errno: %d!",
+                        (int)status, nnapi_errno);
     return false;
   }
   return true;

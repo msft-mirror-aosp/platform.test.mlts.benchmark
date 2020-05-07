@@ -187,8 +187,8 @@ public class Processor implements Runnable {
                 try {
                     benchmarkAllModels();
                     Log.d(TAG, "Processor completed work");
-                } catch (IOException e) {
-                    Log.e(TAG, "IOException during benchmark run", e);
+                } catch (IOException | BenchmarkException e) {
+                    Log.e(TAG, "Exception during benchmark run", e);
                     success = false;
                     break;
                 } catch (Throwable e) {
@@ -202,7 +202,7 @@ public class Processor implements Runnable {
         }
     }
 
-    private void benchmarkAllModels() throws IOException {
+    private void benchmarkAllModels() throws IOException, BenchmarkException {
         Log.i(TAG, String.format("Iterating through %d models", mTestList.length));
         // Loop over the tests we want to benchmark
         for (int ct = 0; ct < mTestList.length; ct++) {
@@ -233,8 +233,9 @@ public class Processor implements Runnable {
             try {
                 mTest = changeTest(mTest, testModel);
             } catch (BenchmarkException e) {
-                Log.w(TAG, String.format("Cannot initialise test %d: '%s', skipping", ct,
+                Log.e(TAG, String.format("Cannot initialise test %d: '%s'.", ct,
                         testModel.mTestName), e);
+                throw e;
             }
 
             // If the user selected the "long pause" option, wait

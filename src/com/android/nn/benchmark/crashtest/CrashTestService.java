@@ -34,7 +34,7 @@ import java.util.concurrent.Executors;
 public class CrashTestService extends Service {
 
     public static final String TAG = "CrashTestService";
-    public static final String DESCRIPTION = "failure_description";
+    public static final String DESCRIPTION = "description";
     public static final String TEST_NAME = "test_name";
     public static final String EXTRA_KEY_CRASH_TEST_CLASS = "crash_test_class_name";
 

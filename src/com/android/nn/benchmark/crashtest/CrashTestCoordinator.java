@@ -88,9 +88,9 @@ public class CrashTestCoordinator {
             try {
                 service.linkToDeath(mTestCompletionListener::testCrashed, 0);
 
-                Message msg = Message.obtain(null, CrashTestService.SET_COMM_CHANNEL);
-                msg.replyTo = new Messenger(new Handler(message -> {
-                    switch (message.what) {
+                final Message setCommChannelMsg = Message.obtain(null, CrashTestService.SET_COMM_CHANNEL);
+                setCommChannelMsg.replyTo = new Messenger(new Handler(msgFromTest -> {
+                    switch (msgFromTest.what) {
                         case CrashTestService.SUCCESS:
                             if (!mAlreadyNotified.getAndSet(true)) {
                                 Log.i(TAG, String.format("Test '%s' succeeded", mTestName));
@@ -101,7 +101,7 @@ public class CrashTestCoordinator {
 
                         case CrashTestService.FAILURE:
                             if (!mAlreadyNotified.getAndSet(true)) {
-                                String reason = msg.getData().getString(
+                                String reason = msgFromTest.getData().getString(
                                         CrashTestService.DESCRIPTION);
                                 Log.i(TAG,
                                         String.format("Test '%s' failed with reason: %s", mTestName,
@@ -112,7 +112,7 @@ public class CrashTestCoordinator {
                             break;
 
                         case CrashTestService.PROGRESS:
-                            String description = msg.getData().getString(
+                            String description = msgFromTest.getData().getString(
                                     CrashTestService.DESCRIPTION);
                             Log.d(TAG, "Test progress message: " + description);
                             mTestCompletionListener.testProgressing(Optional.ofNullable(description));
@@ -120,7 +120,7 @@ public class CrashTestCoordinator {
                     }
                     return true;
                 }));
-                mMessenger.send(msg);
+                mMessenger.send(setCommChannelMsg);
             } catch (RemoteException serviceShutDown) {
                 Log.w(TAG, "Unable to talk to service, it might have been shut down",
                         serviceShutDown);
