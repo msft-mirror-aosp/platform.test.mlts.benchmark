@@ -48,11 +48,13 @@ public class NNParallelTestActivity extends Activity {
     public static final int SHUTDOWN_TIMEOUT = 20000;
     String TAG = "NNParallelTestActivity";
 
-    public static String EXTRA_TEST_DURATION_MILLIS = "duration";
-    public static String EXTRA_THREAD_COUNT = "thread_count";
-    public static String EXTRA_TEST_LIST = "test_list";
-    public static String EXTRA_RUN_IN_SEPARATE_PROCESS = "run_in_separate_process";
-    public static String EXTRA_TEST_NAME = "test_name";
+    public static final String EXTRA_TEST_DURATION_MILLIS = "duration";
+    public static final String EXTRA_THREAD_COUNT = "thread_count";
+    public static final String EXTRA_TEST_LIST = "test_list";
+    public static final String EXTRA_RUN_IN_SEPARATE_PROCESS = "run_in_separate_process";
+    public static final String EXTRA_TEST_NAME = "test_name";
+    public static final String EXTRA_ACCELERATOR_NAME = "accelerator_name";
+    public static final String EXTRA_IGNORE_UNSUPPORTED_MODELS = "ignore_unsupported_models";
 
 
     public static enum TestResult {
@@ -157,11 +159,14 @@ public class NNParallelTestActivity extends Activity {
 
         coordinator = new CrashTestCoordinator(getApplicationContext());
 
+        String acceleratorName = intent.getStringExtra(EXTRA_ACCELERATOR_NAME);
+        boolean ignoreUnsupportedModels = intent.getBooleanExtra(EXTRA_IGNORE_UNSUPPORTED_MODELS, false);
+
         final long testTimeoutMillis = (long) (testDurationMillis * 1.5);
         coordinator.startTest(RunModelsInParallel.class,
                 RunModelsInParallel.intentInitializer(testList, threadCount,
                         Duration.ofMillis(testDurationMillis),
-                        mTestName), testCompletionListener,
+                        mTestName, acceleratorName, ignoreUnsupportedModels), testCompletionListener,
                 runInSeparateProcess, mTestName);
 
         mStopTestButton.setEnabled(true);

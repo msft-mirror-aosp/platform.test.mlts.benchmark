@@ -46,14 +46,19 @@ public class RunModelsInParallel implements CrashTest {
     private static final String DURATION = "duration";
     private static final String THREADS = "thread_counts";
     private static final String TEST_NAME = "test_name";
+    private static final String ACCELERATOR_NAME = "accelerator_name";
+    private static final String IGNORE_UNSUPPORTED_MODELS = "ignore_unsupported_models";
 
     static public CrashTestIntentInitializer intentInitializer(int[] models, int threadCount,
-            Duration duration, String testName) {
+            Duration duration, String testName, String acceleratorName,
+            boolean ignoreUnsupportedModels) {
         return intent -> {
             intent.putExtra(MODELS, models);
             intent.putExtra(DURATION, duration.toMillis());
             intent.putExtra(THREADS, threadCount);
             intent.putExtra(TEST_NAME, testName);
+            intent.putExtra(ACCELERATOR_NAME, acceleratorName);
+            intent.putExtra(IGNORE_UNSUPPORTED_MODELS, ignoreUnsupportedModels);
         };
     }
 
@@ -61,6 +66,8 @@ public class RunModelsInParallel implements CrashTest {
     private int mThreadCount = 0;
     private int[] mTestList = new int[0];
     private String mTestName;
+    private String mAcceleratorName;
+    private boolean mIgnoreUnsupportedModels;
     private Context mContext;
 
     private ExecutorService mExecutorService = null;
@@ -77,6 +84,9 @@ public class RunModelsInParallel implements CrashTest {
         mThreadCount = configParams.getIntExtra(THREADS, 10);
         mTestDurationMillis = configParams.getLongExtra(DURATION, 1000 * 60 * 10);
         mTestName = configParams.getStringExtra(TEST_NAME);
+        mAcceleratorName = configParams.getStringExtra(ACCELERATOR_NAME);
+        mIgnoreUnsupportedModels = mAcceleratorName != null && configParams.getBooleanExtra(
+                IGNORE_UNSUPPORTED_MODELS, false);
         mContext = context;
         mProgressListener = progressListener.orElseGet(() -> (Optional<String> message) -> {
             Log.v(CrashTest.TAG, message.orElse("."));
@@ -119,6 +129,8 @@ public class RunModelsInParallel implements CrashTest {
         }, testList);
         result.setUseNNApi(true);
         result.setCompleteInputSet(false);
+        result.setNnApiAcceleratorName(mAcceleratorName);
+        result.setIgnoreUnsupportedModels(mIgnoreUnsupportedModels);
         return result;
     }
 
@@ -134,7 +146,7 @@ public class RunModelsInParallel implements CrashTest {
             try {
                 terminationCommand.get();
             } catch (ExecutionException e) {
-                Log.w(TAG,  "Failure while waiting for completion of tests", e);
+                Log.w(TAG, "Failure while waiting for completion of tests", e);
             } catch (InterruptedException e) {
                 Thread.interrupted();
             }

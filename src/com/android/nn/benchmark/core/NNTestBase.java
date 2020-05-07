@@ -29,9 +29,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 public class NNTestBase {
     protected static final String TAG = "NN_TESTBASE";
@@ -44,6 +46,24 @@ public class NNTestBase {
     // Does the device has any NNAPI accelerator?
     // We only consider a real device, not 'nnapi-reference'.
     public static native boolean hasAccelerator();
+
+    /**
+     * Fills resultList with the name of the available NNAPI accelerators
+     * @return False if any error occurred, true otherwise
+     */
+    private static native boolean getAcceleratorNames(List<String> resultList);
+
+    public static List<String> availableAcceleratorNames() {
+        List<String> availableAccelerators = new ArrayList<>();
+        if (NNTestBase.getAcceleratorNames(availableAccelerators)) {
+            return availableAccelerators.stream().filter(
+                    acceleratorName -> !acceleratorName.equalsIgnoreCase(
+                            "nnapi-reference")).collect(Collectors.toList());
+        } else {
+            Log.e(TAG, "Unable to retrieve accelerator names!!");
+            return Collections.EMPTY_LIST;
+        }
+    }
 
     private synchronized native long initModel(
             String modelFileName,

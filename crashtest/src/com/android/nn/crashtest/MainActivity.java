@@ -185,7 +185,7 @@ public class MainActivity extends AppCompatActivity {
         coordinator.startTest(RunModelsInParallel.class,
                 RunModelsInParallel.intentInitializer(testList, threadCount,
                         Duration.ofMinutes(testDurationMinutes),
-                        testName), testCompletionListener,
+                        testName, null, false), testCompletionListener,
                 mUseSeparateProcess.get(), testName);
 
         mMessage.setText(

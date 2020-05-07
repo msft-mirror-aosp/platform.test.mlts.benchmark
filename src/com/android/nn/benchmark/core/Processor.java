@@ -56,6 +56,8 @@ public class Processor implements Runnable {
     private boolean mCompleteInputSet;
     private boolean mToggleLong;
     private boolean mTogglePause;
+    private String mAcceleratorName;
+    private boolean mIgnoreUnsupportedModels;
 
     public Processor(Context context, Processor.Callback callback, int[] testList) {
         mContext = context;
@@ -64,6 +66,8 @@ public class Processor implements Runnable {
         if (mTestList != null) {
             mTestResults = new BenchmarkResult[mTestList.length];
         }
+        mAcceleratorName = null;
+        mIgnoreUnsupportedModels = false;
     }
 
     public void setUseNNApi(boolean useNNApi) {
@@ -82,6 +86,14 @@ public class Processor implements Runnable {
         mTogglePause = togglePause;
     }
 
+    public void setNnApiAcceleratorName(String acceleratorName) {
+        mAcceleratorName = acceleratorName;
+    }
+
+    public void setIgnoreUnsupportedModels(boolean value) {
+        mIgnoreUnsupportedModels = value;
+    }
+
     // Method to retrieve benchmark results for instrumentation tests.
     public BenchmarkResult getInstrumentationResult(
             TestModels.TestModelEntry t, float warmupTimeSeconds, float runTimeSeconds)
@@ -93,15 +105,30 @@ public class Processor implements Runnable {
         return result;
     }
 
+    public static boolean isTestModelSupportedByAccelerator(Context context,
+            TestModels.TestModelEntry testModelEntry, String acceleratorName) {
+        NNTestBase tb = testModelEntry.createNNTestBase(true,
+                false /* enableIntermediateTensorsDump */);
+        tb.setNNApiDeviceName(acceleratorName);
+        try {
+            return tb.setupModel(context);
+        } finally {
+            tb.destroy();
+        }
+    }
+
     private NNTestBase changeTest(NNTestBase oldTestBase, TestModels.TestModelEntry t)
-            throws BenchmarkException {
+            throws UnsupportedModelException {
         if (oldTestBase != null) {
             // Make sure we don't leak memory.
             oldTestBase.destroy();
         }
         NNTestBase tb = t.createNNTestBase(mUseNNApi, false /* enableIntermediateTensorsDump */);
+        if (mUseNNApi) {
+            tb.setNNApiDeviceName(mAcceleratorName);
+        }
         if (!tb.setupModel(mContext)) {
-            throw new BenchmarkException("Cannot initialise model");
+            throw new UnsupportedModelException("Cannot initialise model");
         }
         return tb;
     }
@@ -232,10 +259,16 @@ public class Processor implements Runnable {
             // Select the next test
             try {
                 mTest = changeTest(mTest, testModel);
-            } catch (BenchmarkException e) {
-                Log.e(TAG, String.format("Cannot initialise test %d: '%s'.", ct,
-                        testModel.mTestName), e);
-                throw e;
+            } catch (UnsupportedModelException e) {
+                if (mIgnoreUnsupportedModels) {
+                    Log.d(TAG, String.format(
+                            "Cannot initialise test %d: '%s' on accelerator %s, skipping", ct,
+                            testModel.mTestName, mAcceleratorName));
+                } else {
+                    Log.e(TAG, String.format("Cannot initialise test %d: '%s'  on accelerator %s.", ct,
+                            testModel.mTestName, mAcceleratorName), e);
+                    throw e;
+                }
             }
 
             // If the user selected the "long pause" option, wait

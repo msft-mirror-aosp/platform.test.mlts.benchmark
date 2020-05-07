@@ -28,13 +28,17 @@ import android.util.Log;
 import androidx.test.InstrumentationRegistry;
 
 import com.android.nn.benchmark.core.BenchmarkException;
+import com.android.nn.benchmark.core.NNTestBase;
 import com.android.nn.benchmark.core.Processor;
 import com.android.nn.benchmark.core.TestModels;
 
-import org.junit.Test;
-import org.junit.rules.TestName;
 import org.junit.Before;
 import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TestName;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -47,6 +51,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.IntStream;
 
+@RunWith(Parameterized.class)
 public class NNClientEarlyTerminationTest extends
         ActivityInstrumentationTestCase2<NNParallelTestActivity> {
 
@@ -56,18 +61,45 @@ public class NNClientEarlyTerminationTest extends
 
     private final ExecutorService mDriverLivenessValidationExecutor =
             Executors.newSingleThreadExecutor();
+    private final String mAcceleratorName;
 
-    @Rule public TestName mTestName = new TestName();
+    @Rule
+    public TestName mTestName = new TestName();
 
-    public NNClientEarlyTerminationTest() {
+    public NNClientEarlyTerminationTest(String acceleratorName) {
         super(NNParallelTestActivity.class);
+        mAcceleratorName = acceleratorName;
+    }
+
+    @Parameters(name = "Accelerator({0})")
+    public static Iterable<String> targetAccelerators() {
+        return NNTestBase.availableAcceleratorNames();
+    }
+
+    private static Optional<TestModels.TestModelEntry> findTestModelRunningOnAccelerator(
+            Context context, String acceleratorName) {
+        return TestModels.modelsList().stream()
+                .map(model -> new TestModels.TestModelEntry(
+                        model.mModelName,
+                        model.mBaselineSec,
+                        model.mInputShape,
+                        model.mInOutAssets,
+                        model.mInOutDatasets,
+                        model.mTestName,
+                        model.mModelFile,
+                        null, // Disable evaluation.
+                        model.mMinSdkVersion)
+                ).filter(
+                        model -> Processor.isTestModelSupportedByAccelerator(
+                                context,
+                                model, acceleratorName)).findAny();
     }
 
     @Before
     @Override
     public void setUp() {
         injectInstrumentation(InstrumentationRegistry.getInstrumentation());
-        final Intent runSomeInferencesInASeparateProcess = runAllModelsOnNThreadsFor(
+        final Intent runSomeInferencesInASeparateProcess = runSupportedModelsOnNThreadsFor(
                 NNAPI_CLIENTS_COUNT,
                 MAX_SEPARATE_PROCESS_EXECUTION_TIME);
         setActivityIntent(runSomeInferencesInASeparateProcess);
@@ -84,7 +116,13 @@ public class NNClientEarlyTerminationTest extends
             throws ExecutionException, InterruptedException, RemoteException {
         final NNParallelTestActivity activity = getActivity();
 
-        final DriverLivenessChecker driverLivenessChecker = new DriverLivenessChecker(activity);
+        Optional<TestModels.TestModelEntry> modelForLivenessTest =
+                findTestModelRunningOnAccelerator(activity, mAcceleratorName);
+        assertTrue("No model available to be run on accelerator " + mAcceleratorName,
+                modelForLivenessTest.isPresent());
+
+        final DriverLivenessChecker driverLivenessChecker = new DriverLivenessChecker(activity,
+                mAcceleratorName, modelForLivenessTest.get());
         Future<Boolean> driverDidNotCrash = mDriverLivenessValidationExecutor.submit(
                 driverLivenessChecker);
 
@@ -111,7 +149,7 @@ public class NNClientEarlyTerminationTest extends
                 driverDidNotCrash.get());
     }
 
-    private Intent runAllModelsOnNThreadsFor(int threadCount, Duration testDuration) {
+    private Intent runSupportedModelsOnNThreadsFor(int threadCount, Duration testDuration) {
         Intent intent = new Intent();
         intent.putExtra(
                 NNParallelTestActivity.EXTRA_TEST_LIST, IntStream.range(0,
@@ -120,14 +158,18 @@ public class NNClientEarlyTerminationTest extends
         intent.putExtra(NNParallelTestActivity.EXTRA_TEST_DURATION_MILLIS, testDuration.toMillis());
         intent.putExtra(NNParallelTestActivity.EXTRA_RUN_IN_SEPARATE_PROCESS, true);
         intent.putExtra(NNParallelTestActivity.EXTRA_TEST_NAME, mTestName.getMethodName());
+        intent.putExtra(NNParallelTestActivity.EXTRA_ACCELERATOR_NAME, mAcceleratorName);
+        intent.putExtra(NNParallelTestActivity.EXTRA_IGNORE_UNSUPPORTED_MODELS, true);
         return intent;
     }
 
     static class DriverLivenessChecker implements Callable<Boolean> {
         final Processor mProcessor;
         private final AtomicBoolean mRun = new AtomicBoolean(true);
+        private final TestModels.TestModelEntry mTestModelEntry;
 
-        public DriverLivenessChecker(Context context) {
+        public DriverLivenessChecker(Context context, String acceleratorName,
+                TestModels.TestModelEntry testModelEntry) {
             mProcessor = new Processor(context,
                     new Processor.Callback() {
                         @SuppressLint("DefaultLocale")
@@ -141,6 +183,8 @@ public class NNClientEarlyTerminationTest extends
                     }, new int[0]);
             mProcessor.setUseNNApi(true);
             mProcessor.setCompleteInputSet(false);
+            mProcessor.setNnApiAcceleratorName(acceleratorName);
+            mTestModelEntry = testModelEntry;
         }
 
         public void stop() {
@@ -149,30 +193,11 @@ public class NNClientEarlyTerminationTest extends
 
         @Override
         public Boolean call() throws Exception {
-            final Optional<TestModels.TestModelEntry> testModelMaybe =
-                    TestModels.modelsList().stream()
-                            .map(model ->
-                                    new TestModels.TestModelEntry(
-                                            model.mModelName,
-                                            model.mBaselineSec,
-                                            model.mInputShape,
-                                            model.mInOutAssets,
-                                            model.mInOutDatasets,
-                                            model.mTestName,
-                                            model.mModelFile,
-                                            null, // Disable evaluation.
-                                            model.mMinSdkVersion)).findFirst();
-            if (!testModelMaybe.isPresent()) {
-                Log.w(TAG, "No test model available to check NNAPI driver");
-                return false;
-            }
-
-            final TestModels.TestModelEntry testModelEntry = testModelMaybe.get();
             while (mRun.get()) {
                 try {
-                    mProcessor.getInstrumentationResult(testModelEntry, 0, 3);
+                    mProcessor.getInstrumentationResult(mTestModelEntry, 0, 3);
                 } catch (IOException | BenchmarkException e) {
-                    Log.e(TAG, String.format("Error running model %s", testModelEntry.mModelName));
+                    Log.e(TAG, String.format("Error running model %s", mTestModelEntry.mModelName));
                 }
             }
 
