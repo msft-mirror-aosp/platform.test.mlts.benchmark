@@ -281,7 +281,7 @@ public class NNTestBase {
             int flags)
             throws IOException, BenchmarkException {
         if (mModelHandle == 0) {
-            throw new BenchmarkException("Unsupported model");
+            throw new UnsupportedModelException("Unsupported model");
         }
         List<InferenceResult> resultList = new ArrayList<>();
         if (!runBenchmark(mModelHandle, inOutList, resultList, inferencesSeqMaxCount,

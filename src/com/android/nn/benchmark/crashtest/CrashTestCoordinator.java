@@ -38,7 +38,7 @@ public class CrashTestCoordinator {
 
     private final Context mContext;
     private static final Timer mTestTimeoutTimer = new Timer("TestTimeoutTimer");
-    private boolean mServiceBound;
+    private AtomicBoolean mServiceBound = new AtomicBoolean(false);
     private final AtomicBoolean mAlreadyNotified = new AtomicBoolean(false);
     private String mTestName;
 
@@ -78,6 +78,16 @@ public class CrashTestCoordinator {
             return mService.isBinderAlive();
         }
 
+        public void killServiceProcess() throws RemoteException {
+            mMessenger.send(Message.obtain(null, CrashTestService.KILL_PROCESS));
+        }
+
+        protected void onServiceCrashed() {
+            Log.w(TAG, "Test service crashed, unbinding and notifying listener");
+            unbindService();
+            mTestCompletionListener.testCrashed();
+        }
+
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             Log.i(TAG, String.format("Service '%s' connected with binder %s", name, service));
@@ -86,9 +96,10 @@ public class CrashTestCoordinator {
             mMessenger = new Messenger(service);
 
             try {
-                service.linkToDeath(mTestCompletionListener::testCrashed, 0);
+                service.linkToDeath(this::onServiceCrashed, 0);
 
-                final Message setCommChannelMsg = Message.obtain(null, CrashTestService.SET_COMM_CHANNEL);
+                final Message setCommChannelMsg = Message.obtain(null,
+                        CrashTestService.SET_COMM_CHANNEL);
                 setCommChannelMsg.replyTo = new Messenger(new Handler(msgFromTest -> {
                     switch (msgFromTest.what) {
                         case CrashTestService.SUCCESS:
@@ -115,7 +126,8 @@ public class CrashTestCoordinator {
                             String description = msgFromTest.getData().getString(
                                     CrashTestService.DESCRIPTION);
                             Log.d(TAG, "Test progress message: " + description);
-                            mTestCompletionListener.testProgressing(Optional.ofNullable(description));
+                            mTestCompletionListener.testProgressing(
+                                    Optional.ofNullable(description));
                             break;
                     }
                     return true;
@@ -133,10 +145,11 @@ public class CrashTestCoordinator {
         @Override
         public void onServiceDisconnected(ComponentName name) {
             Log.d(TAG, "Service disconnected");
+            unbindService();
         }
     }
 
-    private final AtomicReference<KeepAliveServiceConnection> serviceConnection =
+    private final AtomicReference<KeepAliveServiceConnection> mServiceConnection =
             new AtomicReference<>(null);
 
     /**
@@ -154,15 +167,15 @@ public class CrashTestCoordinator {
                 crashTestClass.getName());
         intentParamsProvider.addIntentParams(crashTestServiceIntent);
 
-        serviceConnection.set(new KeepAliveServiceConnection(testCompletionListener));
+        mServiceConnection.set(new KeepAliveServiceConnection(testCompletionListener));
 
-        mServiceBound = mContext.bindService(crashTestServiceIntent, serviceConnection.get(),
-                Context.BIND_AUTO_CREATE);
+        mServiceBound.set(mContext.bindService(crashTestServiceIntent, mServiceConnection.get(),
+                Context.BIND_AUTO_CREATE));
         Log.i(TAG, String.format("Crash test service started %s? %b",
                 separateProcess ? " in a separate process"
-                        : "in a local process", mServiceBound));
+                        : "in a local process", mServiceBound.get()));
 
-        if (!mServiceBound) {
+        if (!mServiceBound.get()) {
             throw new IllegalStateException("Unsable to start service");
         }
 
@@ -173,18 +186,30 @@ public class CrashTestCoordinator {
         unbindService();
     }
 
+    public void killCrashTestService() throws RemoteException, IllegalArgumentException {
+        if (!mServiceBound.get()) {
+            throw new IllegalArgumentException("No service bound!");
+        }
+        mServiceConnection.get().killServiceProcess();
+    }
+
     private void unbindService() {
         try {
-            KeepAliveServiceConnection sc = serviceConnection.get();
-            if (sc != null && sc.isServiceAlive()) {
-                if (mServiceBound) {
-                    mServiceBound = false;
+            KeepAliveServiceConnection sc = mServiceConnection.get();
+            if (sc != null) {
+                if (mServiceBound.get()) {
+                    Log.i(TAG, "Unbinding service");
+                    mServiceBound.set(false);
                     mContext.unbindService(sc);
+                } else {
+                    Log.w(TAG, "Service was not bound!!");
                 }
-                serviceConnection.compareAndSet(sc, null);
+                mServiceConnection.compareAndSet(sc, null);
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error trying to unbind service", e);
+            Log.w(TAG,
+                    "Error trying to unbind service, this might be expected if the service crashed.",
+                    e);
         }
     }
 }

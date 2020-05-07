@@ -27,6 +27,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.RemoteException;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -134,6 +135,8 @@ public class NNParallelTestActivity extends Activity {
     protected void onResume() {
         super.onResume();
 
+        Log.i(TAG, "ON RESUME");
+
         if (mParallelTestComplete.getCount() == 0) {
             // test was completed before resuming
             return;
@@ -142,6 +145,8 @@ public class NNParallelTestActivity extends Activity {
         final Intent intent = getIntent();
 
         final int[] testList = intent.getIntArrayExtra(EXTRA_TEST_LIST);
+
+        Log.i(TAG, "Test list is " + testList);
         final int threadCount = intent.getIntExtra(EXTRA_THREAD_COUNT, 10);
         final long testDurationMillis = intent.getLongExtra(EXTRA_TEST_DURATION_MILLIS,
                 1000 * 60 * 10);
@@ -212,5 +217,25 @@ public class NNParallelTestActivity extends Activity {
     public void onStopTestClicked(View view) {
         showMessage("Stopping tests");
         endTests();
+    }
+
+    /**
+     * Kills the process running the tests.
+     *
+     * @throws IllegalStateException if the method is called for an in-process test.
+     * @throws RemoteException if the test service is not reachable
+     */
+    public void killTestProcess() throws RemoteException {
+        final Intent intent = getIntent();
+
+        final boolean runInSeparateProcess = intent.getBooleanExtra(EXTRA_RUN_IN_SEPARATE_PROCESS,
+                true);
+
+        if(!runInSeparateProcess) {
+            throw new IllegalStateException("Cannot kill the test process in an in-process test!");
+        }
+
+        Log.i(TAG, "Shutting down coordinator to kill test process");
+        coordinator.killCrashTestService();
     }
 }

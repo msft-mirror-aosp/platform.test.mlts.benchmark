@@ -164,6 +164,12 @@ public class RunModelsInParallel implements CrashTest {
             Thread.currentThread().interrupt();
         }
 
+        if (mTestCompletionResults.size() <= mThreadCount) {
+            //Couldn't complete any subtest, considering it a success anyway since we had
+            // no failures
+            return success();
+        }
+
         // ignoring last result for each thread since it will likely be a killed test
         mTestCompletionResults.remove(mTestCompletionResults.size() - mThreadCount);
 
