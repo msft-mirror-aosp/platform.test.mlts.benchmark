@@ -27,6 +27,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.RemoteException;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -47,11 +48,13 @@ public class NNParallelTestActivity extends Activity {
     public static final int SHUTDOWN_TIMEOUT = 20000;
     String TAG = "NNParallelTestActivity";
 
-    public static String EXTRA_TEST_DURATION_MILLIS = "duration";
-    public static String EXTRA_THREAD_COUNT = "thread_count";
-    public static String EXTRA_TEST_LIST = "test_list";
-    public static String EXTRA_RUN_IN_SEPARATE_PROCESS = "run_in_separate_process";
-    public static String EXTRA_TEST_NAME = "test_name";
+    public static final String EXTRA_TEST_DURATION_MILLIS = "duration";
+    public static final String EXTRA_THREAD_COUNT = "thread_count";
+    public static final String EXTRA_TEST_LIST = "test_list";
+    public static final String EXTRA_RUN_IN_SEPARATE_PROCESS = "run_in_separate_process";
+    public static final String EXTRA_TEST_NAME = "test_name";
+    public static final String EXTRA_ACCELERATOR_NAME = "accelerator_name";
+    public static final String EXTRA_IGNORE_UNSUPPORTED_MODELS = "ignore_unsupported_models";
 
 
     public static enum TestResult {
@@ -134,6 +137,8 @@ public class NNParallelTestActivity extends Activity {
     protected void onResume() {
         super.onResume();
 
+        Log.i(TAG, "ON RESUME");
+
         if (mParallelTestComplete.getCount() == 0) {
             // test was completed before resuming
             return;
@@ -142,6 +147,8 @@ public class NNParallelTestActivity extends Activity {
         final Intent intent = getIntent();
 
         final int[] testList = intent.getIntArrayExtra(EXTRA_TEST_LIST);
+
+        Log.i(TAG, "Test list is " + testList);
         final int threadCount = intent.getIntExtra(EXTRA_THREAD_COUNT, 10);
         final long testDurationMillis = intent.getLongExtra(EXTRA_TEST_DURATION_MILLIS,
                 1000 * 60 * 10);
@@ -152,11 +159,14 @@ public class NNParallelTestActivity extends Activity {
 
         coordinator = new CrashTestCoordinator(getApplicationContext());
 
+        String acceleratorName = intent.getStringExtra(EXTRA_ACCELERATOR_NAME);
+        boolean ignoreUnsupportedModels = intent.getBooleanExtra(EXTRA_IGNORE_UNSUPPORTED_MODELS, false);
+
         final long testTimeoutMillis = (long) (testDurationMillis * 1.5);
         coordinator.startTest(RunModelsInParallel.class,
                 RunModelsInParallel.intentInitializer(testList, threadCount,
                         Duration.ofMillis(testDurationMillis),
-                        mTestName), testCompletionListener,
+                        mTestName, acceleratorName, ignoreUnsupportedModels), testCompletionListener,
                 runInSeparateProcess, mTestName);
 
         mStopTestButton.setEnabled(true);
@@ -212,5 +222,25 @@ public class NNParallelTestActivity extends Activity {
     public void onStopTestClicked(View view) {
         showMessage("Stopping tests");
         endTests();
+    }
+
+    /**
+     * Kills the process running the tests.
+     *
+     * @throws IllegalStateException if the method is called for an in-process test.
+     * @throws RemoteException if the test service is not reachable
+     */
+    public void killTestProcess() throws RemoteException {
+        final Intent intent = getIntent();
+
+        final boolean runInSeparateProcess = intent.getBooleanExtra(EXTRA_RUN_IN_SEPARATE_PROCESS,
+                true);
+
+        if(!runInSeparateProcess) {
+            throw new IllegalStateException("Cannot kill the test process in an in-process test!");
+        }
+
+        Log.i(TAG, "Shutting down coordinator to kill test process");
+        coordinator.killCrashTestService();
     }
 }

@@ -34,14 +34,14 @@ import java.util.concurrent.Executors;
 public class CrashTestService extends Service {
 
     public static final String TAG = "CrashTestService";
-    public static final String DESCRIPTION = "failure_description";
-    public static final String TEST_NAME = "test_name";
+    public static final String DESCRIPTION = "description";
     public static final String EXTRA_KEY_CRASH_TEST_CLASS = "crash_test_class_name";
 
     public static final int SUCCESS = 1;
     public static final int FAILURE = 2;
     public static final int PROGRESS = 3;
     public static final int SET_COMM_CHANNEL = 4;
+    public static final int KILL_PROCESS = 5;
 
     Messenger lifecycleListener = null;
     final Messenger mMessenger = new Messenger(new Handler(message -> {
@@ -50,6 +50,10 @@ public class CrashTestService extends Service {
                 Log.v(TAG, "Setting communication channel to " + message.replyTo);
                 lifecycleListener = message.replyTo;
                 break;
+
+            case KILL_PROCESS:
+                Log.w(TAG, "Shutting down service!");
+                System.exit(-1);
         }
 
         return true;
@@ -62,6 +66,7 @@ public class CrashTestService extends Service {
 
         if (lifecycleListener == null) {
             Log.e(TAG, "No listener configured, skipping message " + messageType);
+            return;
         }
         try {
             final Message message = Message.obtain(null, messageType);

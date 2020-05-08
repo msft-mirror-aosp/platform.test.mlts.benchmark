@@ -29,6 +29,7 @@ import androidx.test.InstrumentationRegistry;
 import com.android.nn.benchmark.core.TestModels;
 
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
@@ -56,13 +57,17 @@ abstract class NNParallelInferenceTest extends
         this.testDuration = testDuration;
     }
 
+    @Before
+    @Override
+    public void setUp() {
+        injectInstrumentation(InstrumentationRegistry.getInstrumentation());
+        setActivityIntent(runAllModelsOnNThreadsFor(threadCount, testDuration));
+    }
+
     @Test
     @LargeTest
     @UiThreadTest
     public void shouldNotFailWithParallelThreads() {
-        injectInstrumentation(InstrumentationRegistry.getInstrumentation());
-        setActivityIntent(runAllModelsOnNThreadsFor(threadCount, testDuration));
-
         Bundle testData = new Bundle();
         testData.putString("Test name", mTestName.getMethodName());
         testData.putString("Test status", "Started");

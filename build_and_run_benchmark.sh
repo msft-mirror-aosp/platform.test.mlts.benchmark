@@ -24,6 +24,9 @@ case "$MODE" in
   parallel-inference-stress-in-process)
     CLASS=com.android.nn.benchmark.app.NNParallelInProcessInferenceTest
     ;;
+  client-early-termination-stress)
+    CLASS=com.android.nn.benchmark.app.NNClientEarlyTerminationTest
+    ;;
   *)
     echo "Unknown execution mode: $1"
     echo "Known modes: scoring (default), inference-stress, model-loading-stress"
