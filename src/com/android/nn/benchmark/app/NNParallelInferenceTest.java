@@ -26,6 +26,7 @@ import android.util.Log;
 
 import androidx.test.InstrumentationRegistry;
 
+import com.android.nn.benchmark.core.NNTestBase;
 import com.android.nn.benchmark.core.TestModels;
 
 import org.junit.After;
@@ -37,6 +38,8 @@ import org.junit.runners.Parameterized.Parameters;
 
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 abstract class NNParallelInferenceTest extends
@@ -44,24 +47,29 @@ abstract class NNParallelInferenceTest extends
 
     static final String TAG = "NNParallelInferenceTest";
 
-    @Rule public TestName mTestName = new TestName();
+    @Rule
+    public TestName mTestName = new TestName();
 
-    private final int threadCount;
-    private final Duration testDuration;
+    private final int mThreadCount;
+    private final Duration mTestDuration;
+    private final String mAcceleratorName;
 
     protected abstract boolean runTestsInSeparateProcess();
 
-    protected NNParallelInferenceTest(int threadCount, Duration testDuration) {
+    protected NNParallelInferenceTest(int threadCount, Duration testDuration,
+            String acceleratorName) {
         super(NNParallelTestActivity.class);
-        this.threadCount = threadCount;
-        this.testDuration = testDuration;
+        mThreadCount = threadCount;
+        mTestDuration = testDuration;
+        mAcceleratorName = acceleratorName;
     }
 
     @Before
     @Override
     public void setUp() {
         injectInstrumentation(InstrumentationRegistry.getInstrumentation());
-        setActivityIntent(runAllModelsOnNThreadsFor(threadCount, testDuration));
+        setActivityIntent(runAllModelsOnNThreadsForOnAccelerator(mThreadCount, mTestDuration,
+                mAcceleratorName));
     }
 
     @Test
@@ -73,7 +81,7 @@ abstract class NNParallelInferenceTest extends
         testData.putString("Test status", "Started");
         getInstrumentation().sendStatus(Activity.RESULT_FIRST_USER, testData);
 
-        NNParallelTestActivity.TestResult testResult  = getActivity().testResult();
+        NNParallelTestActivity.TestResult testResult = getActivity().testResult();
         assertEquals("Test didn't complete successfully", NNParallelTestActivity.TestResult.SUCCESS,
                 testResult);
 
@@ -88,18 +96,30 @@ abstract class NNParallelInferenceTest extends
         super.tearDown();
     }
 
-    @Parameters(name = "{0} threads for {1}")
+    @Parameters(name = "{0} threads for {1} on accelerator {2}")
     public static Iterable<Object[]> threadCountValues() {
         final Object[] lowParallelWorkloadShortTest = new Object[]{2, Duration.ofMinutes(10)};
         final Object[] midParallelWorkloadShortTest = new Object[]{4, Duration.ofMinutes(10)};
         final Object[] highParallelWorkloadLongTest = new Object[]{8, Duration.ofMinutes(30)};
 
-        return Arrays.asList(lowParallelWorkloadShortTest,
+        List<Object[]> threadsAndDuration = Arrays.asList(lowParallelWorkloadShortTest,
                 midParallelWorkloadShortTest,
                 highParallelWorkloadLongTest);
+
+        List<String> accelerators = NNTestBase.availableAcceleratorNames();
+        accelerators.add(null); // running tests with no target accelerator too
+
+        return threadsAndDuration.stream().flatMap(
+                currThreadAndDuration -> accelerators.stream().map(accelerator -> {
+                    Object[] result = Arrays.copyOf(currThreadAndDuration,
+                            currThreadAndDuration.length + 1);
+                    result[currThreadAndDuration.length] = accelerator;
+                    return result;
+                })).collect(Collectors.toList());
     }
 
-    private Intent runAllModelsOnNThreadsFor(int threadCount, Duration testDuration) {
+    private Intent runAllModelsOnNThreadsForOnAccelerator(int threadCount, Duration testDuration,
+            String acceleratorName) {
         Intent intent = new Intent();
 
         int modelsCount = TestModels.modelsList().size();
@@ -110,6 +130,10 @@ abstract class NNParallelInferenceTest extends
         intent.putExtra(NNParallelTestActivity.EXTRA_RUN_IN_SEPARATE_PROCESS,
                 runTestsInSeparateProcess());
         intent.putExtra(NNParallelTestActivity.EXTRA_TEST_NAME, mTestName.getMethodName());
+        if (acceleratorName != null) {
+            intent.putExtra(NNParallelTestActivity.EXTRA_ACCELERATOR_NAME, acceleratorName);
+            intent.putExtra(NNParallelTestActivity.EXTRA_IGNORE_UNSUPPORTED_MODELS, true);
+        }
         return intent;
     }
 }

@@ -6,6 +6,20 @@
     android:layout_height="match_parent"
     tools:context=".stresstest.MainActivity">
 
+  <TextView
+      android:id="@+id/accelerator_label"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="Accelerator"
+      android:textStyle="bold"
+      />
+  <Spinner
+      android:id="@+id/accelerator_name"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_below="@id/accelerator_label"
+      android:layout_marginBottom="10dp"
+      />
 
   <TextView
       android:id="@+id/model_label"
@@ -13,6 +27,7 @@
       android:layout_height="wrap_content"
       android:text="Model"
       android:textStyle="bold"
+      android:layout_below="@id/accelerator_name"
       />
   <Spinner
       android:id="@+id/test_model"
