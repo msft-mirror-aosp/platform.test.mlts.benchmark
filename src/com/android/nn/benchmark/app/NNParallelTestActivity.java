@@ -55,7 +55,7 @@ public class NNParallelTestActivity extends Activity {
     public static final String EXTRA_TEST_NAME = "test_name";
     public static final String EXTRA_ACCELERATOR_NAME = "accelerator_name";
     public static final String EXTRA_IGNORE_UNSUPPORTED_MODELS = "ignore_unsupported_models";
-
+    public static final String EXTRA_RUN_MODEL_COMPILATION_ONLY = "run_model_compilation_only";
 
     public static enum TestResult {
         SUCCESS,
@@ -162,11 +162,14 @@ public class NNParallelTestActivity extends Activity {
         boolean ignoreUnsupportedModels = intent.getBooleanExtra(EXTRA_IGNORE_UNSUPPORTED_MODELS,
                 false);
 
-        final long testTimeoutMillis = (long) (testDurationMillis * 1.5);
+        final boolean runModelCompilationOnly = intent.getBooleanExtra(
+                EXTRA_RUN_MODEL_COMPILATION_ONLY, false);
+
         mCoordinator.startTest(RunModelsInParallel.class,
                 RunModelsInParallel.intentInitializer(testList, threadCount,
                         Duration.ofMillis(testDurationMillis),
-                        mTestName, acceleratorName, ignoreUnsupportedModels),
+                        mTestName, acceleratorName, ignoreUnsupportedModels,
+                        runModelCompilationOnly),
                 testCompletionListener,
                 runInSeparateProcess, mTestName);
 

@@ -24,12 +24,14 @@ import android.util.Log;
 import android.util.Pair;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Processor is a helper thread for running the work without blocking the UI thread. */
 public class Processor implements Runnable {
+
 
     public interface Callback {
         void onBenchmarkFinish(boolean ok);
@@ -57,6 +59,7 @@ public class Processor implements Runnable {
     private boolean mTogglePause;
     private String mAcceleratorName;
     private boolean mIgnoreUnsupportedModels;
+    private boolean mRunModelCompilationOnly;
 
     public Processor(Context context, Processor.Callback callback, int[] testList) {
         mContext = context;
@@ -67,6 +70,7 @@ public class Processor implements Runnable {
         }
         mAcceleratorName = null;
         mIgnoreUnsupportedModels = false;
+        mRunModelCompilationOnly = false;
     }
 
     public void setUseNNApi(boolean useNNApi) {
@@ -91,6 +95,10 @@ public class Processor implements Runnable {
 
     public void setIgnoreUnsupportedModels(boolean value) {
         mIgnoreUnsupportedModels = value;
+    }
+
+    public void setRunModelCompilationOnly(boolean value) {
+        mRunModelCompilationOnly = value;
     }
 
     // Method to retrieve benchmark results for instrumentation tests.
@@ -277,14 +285,22 @@ public class Processor implements Runnable {
                 }
             }
 
-            // Run the test
-            float warmupTime = 0.3f;
-            float runTime = 1.f;
-            if (mToggleLong) {
-                warmupTime = 2.f;
-                runTime = 10.f;
+            if (mRunModelCompilationOnly) {
+                mTestResults[ct] = BenchmarkResult.fromInferenceResults(testModel.mTestName,
+                        mUseNNApi
+                                ? BenchmarkResult.BACKEND_TFLITE_NNAPI
+                                : BenchmarkResult.BACKEND_TFLITE_CPU, Collections.emptyList(),
+                        Collections.emptyList(), null);
+            } else {
+                // Run the test
+                float warmupTime = 0.3f;
+                float runTime = 1.f;
+                if (mToggleLong) {
+                    warmupTime = 2.f;
+                    runTime = 10.f;
+                }
+                mTestResults[ct] = getBenchmark(warmupTime, runTime);
             }
-            mTestResults[ct] = getBenchmark(warmupTime, runTime);
         }
     }
 

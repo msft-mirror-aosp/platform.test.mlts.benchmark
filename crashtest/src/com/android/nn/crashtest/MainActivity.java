@@ -255,7 +255,7 @@ public class MainActivity extends AppCompatActivity {
         coordinator.startTest(RunModelsInParallel.class,
                 RunModelsInParallel.intentInitializer(testList, threadCount,
                         Duration.ofMinutes(testDurationMinutes),
-                        testName, acceleratorName, false),
+                        testName, acceleratorName, false, false),
                 testCompletionListener,
                 mUseSeparateProcess.get(), testName);
 
