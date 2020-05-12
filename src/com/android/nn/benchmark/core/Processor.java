@@ -45,7 +45,6 @@ public class Processor implements Runnable {
     volatile boolean mHasBeenStarted = false;
     // You cannot restart a thread, so the completion flag is final
     private final CountDownLatch mCompleted = new CountDownLatch(1);
-    private boolean mDoingBenchmark;
     private NNTestBase mTest;
     private int mTestList[];
     private BenchmarkResult mTestResults[];
@@ -173,7 +172,7 @@ public class Processor implements Runnable {
             mTest.checkSdkVersion();
         } catch (UnsupportedSdkException e) {
             BenchmarkResult r = new BenchmarkResult(e.getMessage());
-            Log.v(TAG, "Unsupported SDK for test: " + r.toString());
+            Log.w(TAG, "Unsupported SDK for test: " + r.toString());
             return r;
         }
 
@@ -198,8 +197,6 @@ public class Processor implements Runnable {
         } finally {
             Trace.endSection();
         }
-
-        Log.v(TAG, "Completed benchmark loop");
 
         return r;
     }
@@ -230,7 +227,6 @@ public class Processor implements Runnable {
     }
 
     private void benchmarkAllModels() throws IOException, BenchmarkException {
-        Log.i(TAG, String.format("Iterating through %d models", mTestList.length));
         // Loop over the tests we want to benchmark
         for (int ct = 0; ct < mTestList.length; ct++) {
             if (!mRun.get()) {
@@ -250,8 +246,6 @@ public class Processor implements Runnable {
             TestModels.TestModelEntry testModel =
                     TestModels.modelsList().get(mTestList[ct]);
 
-            Log.i(TAG, String.format("%d/%d: '%s'", ct, mTestList.length,
-                    testModel.mTestName));
             int testNumber = ct + 1;
             mCallback.onStatusUpdate(testNumber, mTestList.length,
                     testModel.toString());
@@ -290,8 +284,6 @@ public class Processor implements Runnable {
                 warmupTime = 2.f;
                 runTime = 10.f;
             }
-            Log.i(TAG, "Running test for model " + testModel.mModelName + " file "
-                    + testModel.mModelFile);
             mTestResults[ct] = getBenchmark(warmupTime, runTime);
         }
     }

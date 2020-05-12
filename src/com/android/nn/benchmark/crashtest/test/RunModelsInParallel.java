@@ -120,12 +120,7 @@ public class RunModelsInParallel implements CrashTest {
             }
 
             @Override
-            public void onStatusUpdate(int testNumber, int numTests, String modelName) {
-                Log.v(CrashTest.TAG,
-                        String.format("\"Test '%s': Status update from test #%d, model '%s'",
-                                mTestName, testNumber,
-                                modelName));
-            }
+            public void onStatusUpdate(int testNumber, int numTests, String modelName) {}
         }, testList);
         result.setUseNNApi(true);
         result.setCompleteInputSet(false);

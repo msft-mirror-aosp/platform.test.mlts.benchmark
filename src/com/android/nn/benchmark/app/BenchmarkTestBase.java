@@ -170,8 +170,6 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
             try {
                 mResult = mActivity.runSynchronously(
                         mTestModel, mWarmupTimeSeconds, mRunTimeSeconds);
-                Log.v(NNBenchmark.TAG,
-                        String.format("Benchmark for test '%s' is: %s", mTestModel, mResult));
             } catch (BenchmarkException | IOException e) {
                 mException = e;
                 Log.e(NNBenchmark.TAG,
