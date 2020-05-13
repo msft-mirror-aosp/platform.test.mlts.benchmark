@@ -90,7 +90,7 @@ public class CrashTestCoordinator {
 
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-            Log.i(TAG, String.format("Service '%s' connected with binder %s", name, service));
+            Log.d(TAG, String.format("Service '%s' connected with binder %s", name, service));
 
             mService = service;
             mMessenger = new Messenger(service);
@@ -104,7 +104,7 @@ public class CrashTestCoordinator {
                     switch (msgFromTest.what) {
                         case CrashTestService.SUCCESS:
                             if (!mAlreadyNotified.getAndSet(true)) {
-                                Log.i(TAG, String.format("Test '%s' succeeded", mTestName));
+                                Log.d(TAG, String.format("Test '%s' succeeded", mTestName));
                                 mTestCompletionListener.testSucceeded();
                             }
                             unbindService();
@@ -171,13 +171,18 @@ public class CrashTestCoordinator {
 
         mServiceBound.set(mContext.bindService(crashTestServiceIntent, mServiceConnection.get(),
                 Context.BIND_AUTO_CREATE));
-        Log.i(TAG, String.format("Crash test service started %s? %b",
-                separateProcess ? " in a separate process"
-                        : "in a local process", mServiceBound.get()));
 
         if (!mServiceBound.get()) {
+            Log.e(TAG, String.format("Crash test service failed to start %s for test '%s'.",
+                    separateProcess ? " in a separate process"
+                            : "in a local process", testName));
+
             throw new IllegalStateException("Unsable to start service");
         }
+
+        Log.i(TAG, String.format("Crash test service started %s for test '%s'.",
+                separateProcess ? " in a separate process"
+                        : "in a local process", testName));
 
         mTestName = testName;
     }

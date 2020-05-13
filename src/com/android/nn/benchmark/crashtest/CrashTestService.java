@@ -47,7 +47,6 @@ public class CrashTestService extends Service {
     final Messenger mMessenger = new Messenger(new Handler(message -> {
         switch (message.what) {
             case SET_COMM_CHANNEL:
-                Log.v(TAG, "Setting communication channel to " + message.replyTo);
                 lifecycleListener = message.replyTo;
                 break;
 
@@ -62,8 +61,6 @@ public class CrashTestService extends Service {
     final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     private void notify(int messageType, String messageBody) {
-        Log.i(TAG, "Notifying message type " + messageType);
-
         if (lifecycleListener == null) {
             Log.e(TAG, "No listener configured, skipping message " + messageType);
             return;
@@ -83,12 +80,12 @@ public class CrashTestService extends Service {
 
     @Override
     public IBinder onBind(Intent intent) {
-        Log.i(TAG, "Service is bound");
+        Log.d(TAG, "Service is bound");
 
         try {
             String testClassName = Objects
                     .requireNonNull(intent.getStringExtra(EXTRA_KEY_CRASH_TEST_CLASS));
-            Log.i(TAG, "Instantiating test class name '" + testClassName + "'");
+            Log.v(TAG, "Instantiating test class name '" + testClassName + "'");
             final CrashTest crashTest = (CrashTest) Class.forName(
                     testClassName).newInstance();
             crashTest.init(getApplicationContext(), intent,

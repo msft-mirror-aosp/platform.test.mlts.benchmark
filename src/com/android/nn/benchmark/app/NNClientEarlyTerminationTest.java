@@ -99,7 +99,7 @@ public class NNClientEarlyTerminationTest extends
     @Override
     public void setUp() {
         injectInstrumentation(InstrumentationRegistry.getInstrumentation());
-        final Intent runSomeInferencesInASeparateProcess = runSupportedModelsOnNThreadsFor(
+        final Intent runSomeInferencesInASeparateProcess = compileSupportedModelsOnNThreadsFor(
                 NNAPI_CLIENTS_COUNT,
                 MAX_SEPARATE_PROCESS_EXECUTION_TIME);
         setActivityIntent(runSomeInferencesInASeparateProcess);
@@ -149,7 +149,7 @@ public class NNClientEarlyTerminationTest extends
                 driverDidNotCrash.get());
     }
 
-    private Intent runSupportedModelsOnNThreadsFor(int threadCount, Duration testDuration) {
+    private Intent compileSupportedModelsOnNThreadsFor(int threadCount, Duration testDuration) {
         Intent intent = new Intent();
         intent.putExtra(
                 NNParallelTestActivity.EXTRA_TEST_LIST, IntStream.range(0,
@@ -160,6 +160,7 @@ public class NNClientEarlyTerminationTest extends
         intent.putExtra(NNParallelTestActivity.EXTRA_TEST_NAME, mTestName.getMethodName());
         intent.putExtra(NNParallelTestActivity.EXTRA_ACCELERATOR_NAME, mAcceleratorName);
         intent.putExtra(NNParallelTestActivity.EXTRA_IGNORE_UNSUPPORTED_MODELS, true);
+        intent.putExtra(NNParallelTestActivity.EXTRA_RUN_MODEL_COMPILATION_ONLY, true);
         return intent;
     }
 

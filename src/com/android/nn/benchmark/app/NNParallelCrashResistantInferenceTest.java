@@ -16,15 +16,16 @@
 
 package com.android.nn.benchmark.app;
 
-import java.time.Duration;
-
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import java.time.Duration;
+
 @RunWith(Parameterized.class)
 public class NNParallelCrashResistantInferenceTest extends NNParallelInferenceTest {
-    public NNParallelCrashResistantInferenceTest(int threadCount, Duration testDuration) {
-        super(threadCount, testDuration);
+    public NNParallelCrashResistantInferenceTest(int threadCount, Duration testDuration,
+            String acceleratorName) {
+        super(threadCount, testDuration, acceleratorName);
     }
 
     @Override

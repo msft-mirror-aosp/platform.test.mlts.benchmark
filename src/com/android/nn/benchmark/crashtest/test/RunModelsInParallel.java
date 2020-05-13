@@ -48,10 +48,11 @@ public class RunModelsInParallel implements CrashTest {
     private static final String TEST_NAME = "test_name";
     private static final String ACCELERATOR_NAME = "accelerator_name";
     private static final String IGNORE_UNSUPPORTED_MODELS = "ignore_unsupported_models";
+    private static final String RUN_MODEL_COMPILATION_ONLY = "run_model_compilation_only";
 
     static public CrashTestIntentInitializer intentInitializer(int[] models, int threadCount,
             Duration duration, String testName, String acceleratorName,
-            boolean ignoreUnsupportedModels) {
+            boolean ignoreUnsupportedModels, boolean runModelCompilationOnly) {
         return intent -> {
             intent.putExtra(MODELS, models);
             intent.putExtra(DURATION, duration.toMillis());
@@ -59,6 +60,7 @@ public class RunModelsInParallel implements CrashTest {
             intent.putExtra(TEST_NAME, testName);
             intent.putExtra(ACCELERATOR_NAME, acceleratorName);
             intent.putExtra(IGNORE_UNSUPPORTED_MODELS, ignoreUnsupportedModels);
+            intent.putExtra(RUN_MODEL_COMPILATION_ONLY, runModelCompilationOnly);
         };
     }
 
@@ -69,6 +71,7 @@ public class RunModelsInParallel implements CrashTest {
     private String mAcceleratorName;
     private boolean mIgnoreUnsupportedModels;
     private Context mContext;
+    private boolean mRunModelCompilationOnly;
 
     private ExecutorService mExecutorService = null;
     private final Set<Processor> activeTests = new HashSet<>();
@@ -87,6 +90,7 @@ public class RunModelsInParallel implements CrashTest {
         mAcceleratorName = configParams.getStringExtra(ACCELERATOR_NAME);
         mIgnoreUnsupportedModels = mAcceleratorName != null && configParams.getBooleanExtra(
                 IGNORE_UNSUPPORTED_MODELS, false);
+        mRunModelCompilationOnly = configParams.getBooleanExtra(RUN_MODEL_COMPILATION_ONLY, false);
         mContext = context;
         mProgressListener = progressListener.orElseGet(() -> (Optional<String> message) -> {
             Log.v(CrashTest.TAG, message.orElse("."));
@@ -120,17 +124,13 @@ public class RunModelsInParallel implements CrashTest {
             }
 
             @Override
-            public void onStatusUpdate(int testNumber, int numTests, String modelName) {
-                Log.v(CrashTest.TAG,
-                        String.format("\"Test '%s': Status update from test #%d, model '%s'",
-                                mTestName, testNumber,
-                                modelName));
-            }
+            public void onStatusUpdate(int testNumber, int numTests, String modelName) {}
         }, testList);
         result.setUseNNApi(true);
         result.setCompleteInputSet(false);
         result.setNnApiAcceleratorName(mAcceleratorName);
         result.setIgnoreUnsupportedModels(mIgnoreUnsupportedModels);
+        result.setRunModelCompilationOnly(mRunModelCompilationOnly);
         return result;
     }
 

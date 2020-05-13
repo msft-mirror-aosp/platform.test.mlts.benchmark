@@ -81,9 +81,6 @@ BenchmarkModel* BenchmarkModel::create(const char* modelfile, bool use_nnapi,
 bool BenchmarkModel::init(const char* modelfile, bool use_nnapi,
                           bool enable_intermediate_tensors_dump,
                           const char* nnapi_device_name) {
-  __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "BenchmarkModel %s",
-                      modelfile);
-
   // Memory map the model. NOTE this needs lifetime greater than or equal
   // to interpreter context.
   mTfliteModel = tflite::FlatBufferModel::BuildFromFile(modelfile);
@@ -118,10 +115,6 @@ bool BenchmarkModel::init(const char* modelfile, bool use_nnapi,
   mTfliteInterpreter->SetAllowFp16PrecisionForFp32(true);
 
   if (use_nnapi) {
-    if (nnapi_device_name != nullptr) {
-      __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Running NNAPI on device %s",
-                          nnapi_device_name);
-    }
     tflite::StatefulNnApiDelegate::Options nnapi_options;
     nnapi_options.accelerator_name = nnapi_device_name;
     mTfliteNnapiDelegate = std::make_unique<tflite::StatefulNnApiDelegate>(nnapi_options);
@@ -132,8 +125,6 @@ bool BenchmarkModel::init(const char* modelfile, bool use_nnapi,
                           modelfile, mTfliteNnapiDelegate->GetNnApiErrno());
       return false;
     }
-    __android_log_print(ANDROID_LOG_INFO, LOG_TAG,
-                              "NNAPI Delegate initialized for model %s", modelfile);
   }
   return true;
 }
