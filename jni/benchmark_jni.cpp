@@ -387,3 +387,42 @@ Java_com_android_nn_benchmark_core_NNTestBase_hasAccelerator() {
   // We only consider a real device, not 'nnapi-reference'.
   return device_count > 1;
 }
+
+extern "C"
+JNIEXPORT jboolean
+JNICALL
+Java_com_android_nn_benchmark_core_NNTestBase_getAcceleratorNames(
+    JNIEnv *env,
+    jclass, /* clazz */
+    jobject resultList
+    ) {
+  uint32_t device_count = 0;
+  auto nnapi_result = NnApiImplementation()->ANeuralNetworks_getDeviceCount(&device_count);
+  if (nnapi_result != 0) {
+    return false;
+  }
+
+  jclass list_class = env->FindClass("java/util/List");
+  if (list_class == nullptr) { return false; }
+  jmethodID list_add = env->GetMethodID(list_class, "add", "(Ljava/lang/Object;)Z");
+  if (list_add == nullptr) { return false; }
+
+  for (int i = 0; i < device_count; i++) {
+      ANeuralNetworksDevice* device = nullptr;
+      nnapi_result = NnApiImplementation()->ANeuralNetworks_getDevice(i, &device);
+      if (nnapi_result != 0) {
+          return false;
+       }
+      const char* buffer = nullptr;
+      nnapi_result = NnApiImplementation()->ANeuralNetworksDevice_getName(device, &buffer);
+      if (nnapi_result != 0) {
+        return false;
+      }
+
+      auto device_name = env->NewStringUTF(buffer);
+
+      env->CallBooleanMethod(resultList, list_add, device_name);
+      if (env->ExceptionCheck()) { return false; }
+  }
+  return true;
+}

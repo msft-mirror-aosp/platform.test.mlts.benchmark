@@ -89,7 +89,6 @@ public class DumpIntermediateTensors extends Activity {
                 // Run in CPU and NNAPI mode
                 for (final boolean useNNAPI : new boolean[] {false, true}) {
                     String useNNAPIDir = useNNAPI? NNAPI_DIR: CPU_DIR;
-                    Log.i(TAG, "Running " + modelName + " in " + useNNAPIDir);
                     TestModelEntry modelEntry = TestModels.getModelByName(modelName);
                     NNTestBase testBase = modelEntry.createNNTestBase(
                         useNNAPI, true/*enableIntermediateTensorsDump*/);
