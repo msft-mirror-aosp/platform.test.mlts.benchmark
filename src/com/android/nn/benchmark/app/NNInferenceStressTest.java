@@ -46,17 +46,7 @@ public class NNInferenceStressTest extends BenchmarkTestBase {
     @Parameters(name = "{0}")
     public static List<TestModels.TestModelEntry> modelsList() {
         return TestModels.modelsList().stream()
-                .map(model ->
-                        new TestModels.TestModelEntry(
-                                model.mModelName,
-                                model.mBaselineSec,
-                                model.mInputShape,
-                                model.mInOutAssets,
-                                model.mInOutDatasets,
-                                model.mTestName,
-                                model.mModelFile,
-                                null, // Disable evaluation.
-                                model.mMinSdkVersion))
+                .map(TestModels.TestModelEntry::withDisabledEvaluation)
                 .collect(Collectors.collectingAndThen(
                         Collectors.toList(),
                         Collections::unmodifiableList));

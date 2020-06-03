@@ -81,8 +81,8 @@ abstract class NNParallelInferenceTest extends
         testData.putString("Test status", "Started");
         getInstrumentation().sendStatus(Activity.RESULT_FIRST_USER, testData);
 
-        NNParallelTestActivity.TestResult testResult = getActivity().testResult();
-        assertEquals("Test didn't complete successfully", NNParallelTestActivity.TestResult.SUCCESS,
+        CrashTestStatus.TestResult testResult = getActivity().testResult();
+        assertEquals("Test didn't complete successfully", CrashTestStatus.TestResult.SUCCESS,
                 testResult);
 
         testData.putString("Test status", "Completed");
