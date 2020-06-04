@@ -163,17 +163,7 @@ public class MainActivity extends AppCompatActivity {
         } else {
             result.add("All supported models");
             result.addAll(TestModels.modelsList().stream()
-                    .map(model -> new TestModels.TestModelEntry(
-                            model.mModelName,
-                            model.mBaselineSec,
-                            model.mInputShape,
-                            model.mInOutAssets,
-                            model.mInOutDatasets,
-                            model.mTestName,
-                            model.mModelFile,
-                            null, // Disable evaluation.
-                            model.mMinSdkVersion)
-                    ).filter(
+                    .map(TestModels.TestModelEntry::withDisabledEvaluation).filter(
                             model -> Processor.isTestModelSupportedByAccelerator(
                                     this,
                                     model, acceleratorName)).map(

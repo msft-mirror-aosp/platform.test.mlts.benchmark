@@ -16,8 +16,11 @@
 
 package com.android.nn.benchmark.core;
 
+import android.content.Context;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 /** Information about available benchmarking models */
@@ -86,6 +89,20 @@ public class TestModels {
         public String getTestName() {
             return mTestName;
         }
+
+
+        public TestModelEntry withDisabledEvaluation() {
+            return new TestModelEntry(
+                    mModelName,
+                    mBaselineSec,
+                    mInputShape,
+                    mInOutAssets,
+                    mInOutDatasets,
+                    mTestName,
+                    mModelFile,
+                    null, // Disable evaluation.
+                    mMinSdkVersion);
+        }
     }
 
     static private final List<TestModelEntry> sTestModelEntryList = new ArrayList<>();
@@ -121,5 +138,15 @@ public class TestModels {
             }
         }
         throw new IllegalArgumentException("Unknown TestModelEntry named " + name);
+    }
+
+
+    public static Optional<TestModelEntry> findTestModelRunningOnAccelerator(
+            Context context, String acceleratorName) {
+        return TestModels.modelsList().stream()
+                .filter(
+                        model -> Processor.isTestModelSupportedByAccelerator(
+                                context,
+                                model, acceleratorName)).findAny();
     }
 }
