@@ -146,8 +146,8 @@ public class TestModelsListLoader {
             }
 
             TestModels.registerModel(
-                new TestModels.TestModelEntry(name, (float) baseline, inputSize, inputOutputs,
-                    datasets, testName, modelFile, evaluator, minSdkVersion, dataSize));
+                    new TestModels.TestModelEntry(name, (float) baseline, inputSize,
+                            inputOutputs, datasets, testName, modelFile, evaluator, minSdkVersion));
         }
     }
 

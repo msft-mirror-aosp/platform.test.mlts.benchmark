@@ -54,23 +54,20 @@ public class TestModels {
         /** Min SDK version that the model can run on. */
         public final int mMinSdkVersion;
 
-        /* Number of bytes per input data entry  */
-        public final int mInDataSize;
-
         public TestModelEntry(String modelName, float baselineSec, int[] inputShape,
-            InferenceInOutSequence.FromAssets[] inOutAssets,
-            InferenceInOutSequence.FromDataset[] inOutDatasets, String testName, String modelFile,
-            EvaluatorConfig evaluator, int minSdkVersion, int inDataSize) {
-          mModelName = modelName;
-          mBaselineSec = baselineSec;
-          mInputShape = inputShape;
-          mInOutAssets = inOutAssets;
-          mInOutDatasets = inOutDatasets;
-          mTestName = testName;
-          mModelFile = modelFile;
-          mEvaluator = evaluator;
-          mMinSdkVersion = minSdkVersion;
-          mInDataSize = inDataSize;
+                              InferenceInOutSequence.FromAssets[] inOutAssets,
+                              InferenceInOutSequence.FromDataset[] inOutDatasets,
+                              String testName, String modelFile, EvaluatorConfig evaluator,
+                              int minSdkVersion) {
+            mModelName = modelName;
+            mBaselineSec = baselineSec;
+            mInputShape = inputShape;
+            mInOutAssets = inOutAssets;
+            mInOutDatasets  = inOutDatasets;
+            mTestName = testName;
+            mModelFile = modelFile;
+            mEvaluator = evaluator;
+            mMinSdkVersion = minSdkVersion;
         }
 
         public NNTestBase createNNTestBase() {
@@ -95,10 +92,16 @@ public class TestModels {
 
 
         public TestModelEntry withDisabledEvaluation() {
-          return new TestModelEntry(mModelName, mBaselineSec, mInputShape, mInOutAssets,
-              mInOutDatasets, mTestName, mModelFile,
-              null, // Disable evaluation.
-              mMinSdkVersion, mInDataSize);
+            return new TestModelEntry(
+                    mModelName,
+                    mBaselineSec,
+                    mInputShape,
+                    mInOutAssets,
+                    mInOutDatasets,
+                    mTestName,
+                    mModelFile,
+                    null, // Disable evaluation.
+                    mMinSdkVersion);
         }
     }
 

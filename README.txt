@@ -37,26 +37,11 @@ The MLTS suite contains a series of tests to validate the behaviour of the drive
 in corner case conditions.
 
 To run the tests use the specific targets available in the build_and_run_benchmark.sh script.
-All tests are run targeting in isolation each available accelerator and also without specified
-target accelerator to let NNAPI partition the model and assign the best available one(s).
-Currently available tests are:
+Currently available ones are:
 
-* parallel-inference-stress: to test the behaviour of drivers with different amount of inference
+- parallel-inference-stress: to test the behaviour of drivers with different amount of inference
 executed in parallel. Tests are running in a separate process so crashes can be detected and
-notified as test failures.
+notified as test failures
 
-* parallel-inference-stress-in-process: same as parallel-inference-stress but the tests are running
+- parallel-inference-stress-in-process: same as parallel-inference-stress but the tests are running
 in the same process of the test so in case of crash the testing app will crash too
-
-* client-early-termination-stress: to test the resilience of device drivers to failing clients.
-It spawns a separate process each running a set of parallel threads compiling different models.
-The process is then forcibly terminated. The test validates that the targeted driver is not
-crashing or hanging
-
-* multi-process-inference-stress: this extends the `parallel-inference-stress` running inference
-on a single model in multiple processes and threads with different probabilities in client process
-early termination
-
-* multi-process-model-load-stress: this extends the `parallel-inference-stress` running inference
-on a single model in multiple processes and threads with different probabilities in client process
-early termination

@@ -101,7 +101,6 @@ public class CrashTestService extends Service {
                     notify(testResult.isPresent() ? FAILURE : SUCCESS, testResult.orElse(null));
                 } catch (Exception e) {
                     Log.e(TAG, "Exception in crash test", e);
-                    notify(FAILURE, "Exception in crash test: " + e);
                     stopSelf();
                 }
             });
