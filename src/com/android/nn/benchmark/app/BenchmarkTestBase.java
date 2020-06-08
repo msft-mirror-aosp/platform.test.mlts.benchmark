@@ -94,7 +94,11 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
         setUseNNApi(true);
     }
 
-    protected void waitUntilCharged() {
+    public void waitUntilCharged() {
+        BenchmarkTestBase.waitUntilCharged(mActivity);
+    }
+
+    public static void waitUntilCharged(Context context) {
         Log.v(NNBenchmark.TAG, "Waiting for the device to charge");
 
         final CountDownLatch chargedLatch = new CountDownLatch(1);
@@ -116,14 +120,14 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
             }
         };
 
-        mActivity.registerReceiver(receiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        context.registerReceiver(receiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
         try {
             chargedLatch.await();
         } catch (InterruptedException ignored) {
             Thread.currentThread().interrupt();
         }
 
-        mActivity.unregisterReceiver(receiver);
+        context.unregisterReceiver(receiver);
     }
 
     @Override
