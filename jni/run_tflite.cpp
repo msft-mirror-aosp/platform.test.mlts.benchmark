@@ -118,8 +118,9 @@ bool BenchmarkModel::init(const char* modelfile, bool use_nnapi,
     tflite::StatefulNnApiDelegate::Options nnapi_options;
     nnapi_options.accelerator_name = nnapi_device_name;
     mTfliteNnapiDelegate = std::make_unique<tflite::StatefulNnApiDelegate>(nnapi_options);
-    if (mTfliteInterpreter->ModifyGraphWithDelegate(
-            mTfliteNnapiDelegate.get()) != kTfLiteOk) {
+    int delegationStatus = mTfliteInterpreter->ModifyGraphWithDelegate(mTfliteNnapiDelegate.get());
+    int nnapiErrno = mTfliteNnapiDelegate->GetNnApiErrno();
+    if ( delegationStatus != kTfLiteOk ||  nnapiErrno != ANEURALNETWORKS_NO_ERROR ) {
       __android_log_print(ANDROID_LOG_ERROR, LOG_TAG,
                           "Failed to initialize NNAPI Delegate for model %s, nnapi_errno is %d",
                           modelfile, mTfliteNnapiDelegate->GetNnApiErrno());

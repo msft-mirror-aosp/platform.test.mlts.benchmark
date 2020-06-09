@@ -16,13 +16,13 @@
 
 package com.android.nn.benchmark.core;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.os.Build;
 import android.util.Log;
 import android.util.Pair;
 import android.widget.TextView;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -196,32 +196,41 @@ public class NNTestBase {
 
     private List<InferenceInOutSequence> getInputOutputAssets() throws IOException {
         // TODO: Caching, don't read inputs for every inference
-        List<InferenceInOutSequence> inOutList = new ArrayList<>();
-        if (mInputOutputAssets != null) {
-            for (InferenceInOutSequence.FromAssets ioAsset : mInputOutputAssets) {
-                inOutList.add(ioAsset.readAssets(mContext.getAssets()));
-            }
-        }
-        if (mInputOutputDatasets != null) {
-            for (InferenceInOutSequence.FromDataset dataset : mInputOutputDatasets) {
-                inOutList.addAll(dataset.readDataset(mContext.getAssets(),
-                        mContext.getCacheDir()));
-            }
-        }
+        List<InferenceInOutSequence> inOutList =
+            getInputOutputAssets(mContext, mInputOutputAssets, mInputOutputDatasets);
 
         Boolean lastGolden = null;
         for (InferenceInOutSequence sequence : inOutList) {
             mHasGoldenOutputs = sequence.hasGoldenOutput();
             if (lastGolden == null) {
-                lastGolden = new Boolean(mHasGoldenOutputs);
+              lastGolden = mHasGoldenOutputs;
             } else {
-                if (lastGolden.booleanValue() != mHasGoldenOutputs) {
-                    throw new IllegalArgumentException("Some inputs for " + mModelName +
-                            " have outputs while some don't.");
-                }
+              if (lastGolden != mHasGoldenOutputs) {
+                throw new IllegalArgumentException(
+                    "Some inputs for " + mModelName + " have outputs while some don't.");
+              }
             }
         }
         return inOutList;
+    }
+
+    public static List<InferenceInOutSequence> getInputOutputAssets(Context context,
+        InferenceInOutSequence.FromAssets[] inputOutputAssets,
+        InferenceInOutSequence.FromDataset[] inputOutputDatasets) throws IOException {
+      // TODO: Caching, don't read inputs for every inference
+      List<InferenceInOutSequence> inOutList = new ArrayList<>();
+      if (inputOutputAssets != null) {
+        for (InferenceInOutSequence.FromAssets ioAsset : inputOutputAssets) {
+          inOutList.add(ioAsset.readAssets(context.getAssets()));
+        }
+      }
+      if (inputOutputDatasets != null) {
+        for (InferenceInOutSequence.FromDataset dataset : inputOutputDatasets) {
+          inOutList.addAll(dataset.readDataset(context.getAssets(), context.getCacheDir()));
+        }
+      }
+
+      return inOutList;
     }
 
     public int getDefaultFlags() {
@@ -323,28 +332,41 @@ public class NNTestBase {
 
     // We need to copy it to cache dir, so that TFlite can load it directly.
     private String copyAssetToFile() {
-        String outFileName;
-        String modelAssetName = mModelFile + ".tflite";
-        AssetManager assetManager = mContext.getAssets();
-        try {
-            outFileName = String.format("%s/%s-%d-%d.tflite",
-                    mContext.getCacheDir().getAbsolutePath(), mModelFile,
-                    Thread.currentThread().getId(), mRandom.nextInt(10000));
-            File outFile = new File(outFileName);
+      @SuppressLint("DefaultLocale")
+      String outFileName =
+          String.format("%s/%s-%d-%d.tflite", mContext.getCacheDir().getAbsolutePath(), mModelFile,
+              Thread.currentThread().getId(), mRandom.nextInt(10000));
 
-            try (InputStream in = assetManager.open(modelAssetName);
-                 FileOutputStream out = new FileOutputStream(outFile)) {
+      return copyAssetToFile(mContext, mModelFile + ".tflite", outFileName) ? outFileName : null;
+    }
 
-                byte[] byteBuffer = new byte[1024];
-                int readBytes = -1;
-                while ((readBytes = in.read(byteBuffer)) != -1) {
-                    out.write(byteBuffer, 0, readBytes);
-                }
-            }
-        } catch (IOException e) {
-            Log.e(TAG, "Failed to copy asset file: " + modelAssetName, e);
-            return null;
+    public static boolean copyModelToFile(Context context, String modelFileName, File targetFile)
+        throws IOException {
+      if (!targetFile.exists() && !targetFile.createNewFile()) {
+        Log.w(TAG, String.format("Unable to create file %s", targetFile.getAbsolutePath()));
+        return false;
+      }
+      return NNTestBase.copyAssetToFile(context, modelFileName, targetFile.getAbsolutePath());
+    }
+
+    public static boolean copyAssetToFile(
+        Context context, String modelAssetName, String targetPath) {
+      AssetManager assetManager = context.getAssets();
+      try {
+        File outFile = new File(targetPath);
+
+        try (InputStream in = assetManager.open(modelAssetName);
+             FileOutputStream out = new FileOutputStream(outFile)) {
+          byte[] byteBuffer = new byte[1024];
+          int readBytes = -1;
+          while ((readBytes = in.read(byteBuffer)) != -1) {
+            out.write(byteBuffer, 0, readBytes);
+          }
         }
-        return outFileName;
+      } catch (IOException e) {
+        Log.e(TAG, "Failed to copy asset file: " + modelAssetName, e);
+        return false;
+      }
+      return true;
     }
 }

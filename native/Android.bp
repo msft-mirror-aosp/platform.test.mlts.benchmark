@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2020 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,26 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#include <jni.h>
-#include <string>
-#include <iomanip>
-#include <sstream>
-#include <fcntl.h>
-
-#include <android/log.h>
-
-#define LOG_TAG "CrashTest"
-
-extern "C" JNIEXPORT void JNICALL
-Java_com_android_nn_benchmark_crashtest_test_CrashingCrashTest_nativeSegViolation(
-    JNIEnv* env, jobject /* this */) {
-  __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Causing NATIVE crash");
-
-  char* bad_array = nullptr;
-
-  bad_array[10] = 'x';
-
-  __android_log_print(ANDROID_LOG_FATAL, LOG_TAG,
-                      "Looks like it didn't crash!!!");
+cc_binary {
+    name: "nn_stress_test",
+    sdk_version: "current",
+    srcs: ["multi_process_test.cpp"],
+    header_libs: [
+        "tensorflow_headers",
+        "flatbuffer_headers",
+        "libnnbenchmark_jni_headers",
+    ],
+    shared_libs: [
+        "liblog",
+    ],
+    static_libs: [
+        "libtflite_static",
+        "libnnbenchmark_jni_static",
+    ],
+    stl: "libc++_static",
 }
