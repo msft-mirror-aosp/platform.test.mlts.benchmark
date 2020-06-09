@@ -26,7 +26,6 @@ import android.util.Log;
 
 import androidx.test.InstrumentationRegistry;
 
-import com.android.nn.benchmark.core.NNTestBase;
 import com.android.nn.benchmark.core.TestModels;
 
 import org.junit.After;
@@ -38,8 +37,6 @@ import org.junit.runners.Parameterized.Parameters;
 
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 abstract class NNParallelInferenceTest extends
@@ -68,6 +65,7 @@ abstract class NNParallelInferenceTest extends
     @Override
     public void setUp() {
         injectInstrumentation(InstrumentationRegistry.getInstrumentation());
+        BenchmarkTestBase.waitUntilCharged(getInstrumentation().getTargetContext());
         setActivityIntent(runAllModelsOnNThreadsForOnAccelerator(mThreadCount, mTestDuration,
                 mAcceleratorName));
     }
@@ -98,24 +96,10 @@ abstract class NNParallelInferenceTest extends
 
     @Parameters(name = "{0} threads for {1} on accelerator {2}")
     public static Iterable<Object[]> threadCountValues() {
-        final Object[] lowParallelWorkloadShortTest = new Object[]{2, Duration.ofMinutes(10)};
-        final Object[] midParallelWorkloadShortTest = new Object[]{4, Duration.ofMinutes(10)};
-        final Object[] highParallelWorkloadLongTest = new Object[]{8, Duration.ofMinutes(30)};
-
-        List<Object[]> threadsAndDuration = Arrays.asList(lowParallelWorkloadShortTest,
-                midParallelWorkloadShortTest,
-                highParallelWorkloadLongTest);
-
-        List<String> accelerators = NNTestBase.availableAcceleratorNames();
-        accelerators.add(null); // running tests with no target accelerator too
-
-        return threadsAndDuration.stream().flatMap(
-                currThreadAndDuration -> accelerators.stream().map(accelerator -> {
-                    Object[] result = Arrays.copyOf(currThreadAndDuration,
-                            currThreadAndDuration.length + 1);
-                    result[currThreadAndDuration.length] = accelerator;
-                    return result;
-                })).collect(Collectors.toList());
+      return AcceleratorSpecificTestSupport.perAcceleratorTestConfig(
+          Arrays.asList(
+                  new Object[] {8, Duration.ofMinutes(30)},
+                  new Object[] {12, Duration.ofMinutes(20)}));
     }
 
     private Intent runAllModelsOnNThreadsForOnAccelerator(int threadCount, Duration testDuration,

@@ -46,6 +46,11 @@
                 <action android:name="android.intent.action.MAIN" />
             </intent-filter>
         </activity>
+        <activity android:name=".NNMultiProcessTestActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+            </intent-filter>
+        </activity>
 
         <service android:name="com.android.nn.benchmark.crashtest.OutOfProcessCrashTestService"
             android:process=":CrashTest" />
