@@ -8,8 +8,6 @@
 
 MODE="${1:-scoring}"
 
-INSTALL_NATIVE_TESTS=false
-
 case "$MODE" in
   scoring)
     CLASS=com.android.nn.benchmark.app.NNScoringTest
@@ -29,20 +27,9 @@ case "$MODE" in
   client-early-termination-stress)
     CLASS=com.android.nn.benchmark.app.NNClientEarlyTerminationTest
     ;;
-  multi-process-inference-stress)
-    CLASS=com.android.nn.benchmark.app.NNMultipleProcessInferenceTest
-    INSTALL_NATIVE_TESTS=true
-    ;;
-  multi-process-model-load-stress)
-    CLASS=com.android.nn.benchmark.app.NNMultipleProcessModelLoadTest
-    INSTALL_NATIVE_TESTS=true
-    ;;
   *)
     echo "Unknown execution mode: $1"
-    echo "Known modes: scoring (default), inference-stress, model-loading-stress, " \
-      "parallel-inference-stress, parallel-inference-stress-in-process, " \
-      "client-early-termination-stress, multi-process-inference-stress, " \
-      "multi-process-model-load-stress"
+    echo "Known modes: scoring (default), inference-stress, model-loading-stress"
     exit 1
     ;;
 esac
@@ -70,10 +57,6 @@ if ! adb install -r $OUT/testcases/NeuralNetworksApiBenchmark/${APK_DIR}/NeuralN
   adb install -r $OUT/testcases/NeuralNetworksApiBenchmark/${APK_DIR}/NeuralNetworksApiBenchmark.apk
 fi
 
-if [ "$INSTALL_NATIVE_TESTS" = true ]; then
-  build/soong/soong_ui.bash --make-mode nn_stress_test
-  adb push $OUT/system/bin/nn_stress_test /bin/
-fi
 
 # Should we figure out if we run on release device
 if [ -z "$MLTS_RELEASE_DEVICE" ]; then
