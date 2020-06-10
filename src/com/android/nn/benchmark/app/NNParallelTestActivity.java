@@ -40,7 +40,8 @@ import java.time.Duration;
 
 public class NNParallelTestActivity extends Activity {
     public static final int SHUTDOWN_TIMEOUT = 20000;
-    String TAG = "NNParallelTestActivity";
+
+    private static String TAG = "NNParallelTestActivity";
 
     public static final String EXTRA_TEST_DURATION_MILLIS = "duration";
     public static final String EXTRA_THREAD_COUNT = "thread_count";
@@ -107,11 +108,9 @@ public class NNParallelTestActivity extends Activity {
 
         mCoordinator.startTest(RunModelsInParallel.class,
                 RunModelsInParallel.intentInitializer(testList, threadCount,
-                        Duration.ofMillis(testDurationMillis),
-                        mTestName, acceleratorName, ignoreUnsupportedModels,
-                        runModelCompilationOnly),
-                mTestStatus,
-                runInSeparateProcess, mTestName);
+                        Duration.ofMillis(testDurationMillis), mTestName, acceleratorName,
+                        ignoreUnsupportedModels, runModelCompilationOnly),
+                mTestStatus, runInSeparateProcess, mTestName);
 
         mStopTestButton.setEnabled(true);
     }

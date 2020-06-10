@@ -23,14 +23,11 @@ import android.os.RemoteException;
 import android.test.ActivityInstrumentationTestCase2;
 import android.test.UiThreadTest;
 import android.test.suitebuilder.annotation.LargeTest;
+
 import androidx.test.InstrumentationRegistry;
+
 import com.android.nn.benchmark.core.TestModels;
-import java.time.Duration;
-import java.util.Optional;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -38,66 +35,74 @@ import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import java.time.Duration;
+import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
 @RunWith(Parameterized.class)
 public abstract class NNMultipleProcessTest
-    extends ActivityInstrumentationTestCase2<NNMultiProcessTestActivity>
-    implements AcceleratorSpecificTestSupport {
-  private static final String TAG = "NNMultipleProcessTest";
+        extends ActivityInstrumentationTestCase2<NNMultiProcessTestActivity>
+        implements AcceleratorSpecificTestSupport {
+    private static final String TAG = "NNMultipleProcessTest";
 
-  private final ExecutorService mDriverLivenessValidationExecutor =
-      Executors.newSingleThreadExecutor();
-  protected Optional<TestModels.TestModelEntry> mModelForLivenessTest;
-  protected final String mAcceleratorName;
-  protected final int mProcessCount;
-  protected final int mThreadCount;
-  protected final Duration mDuration;
-  protected final int mFailureRatePercent;
+    private final ExecutorService mDriverLivenessValidationExecutor =
+            Executors.newSingleThreadExecutor();
+    protected Optional<TestModels.TestModelEntry> mModelForLivenessTest;
+    protected final String mAcceleratorName;
+    protected final int mProcessCount;
+    protected final int mThreadCount;
+    protected final Duration mDuration;
+    protected final int mFailureRatePercent;
 
-  @Rule public TestName mTestName = new TestName();
+    @Rule
+    public TestName mTestName = new TestName();
 
-  public NNMultipleProcessTest(int processCount, int threadCount, Duration duration,
-      int failureRatePercent, String acceleratorName) {
-    super(NNMultiProcessTestActivity.class);
-    mProcessCount = processCount;
-    mThreadCount = threadCount;
-    mDuration = duration;
-    mAcceleratorName = acceleratorName;
-    mFailureRatePercent = failureRatePercent;
-  }
+    public NNMultipleProcessTest(int processCount, int threadCount, Duration duration,
+            int failureRatePercent, String acceleratorName) {
+        super(NNMultiProcessTestActivity.class);
+        mProcessCount = processCount;
+        mThreadCount = threadCount;
+        mDuration = duration;
+        mAcceleratorName = acceleratorName;
+        mFailureRatePercent = failureRatePercent;
+    }
 
-  @Before
-  @Override
-  public void setUp() {
-    injectInstrumentation(InstrumentationRegistry.getInstrumentation());
-    BenchmarkTestBase.waitUntilCharged(getInstrumentation().getTargetContext());
-    mModelForLivenessTest = findTestModelRunningOnAccelerator(
-        getInstrumentation().getTargetContext(), mAcceleratorName);
-    setActivityIntent(getRunModelsInMultipleProcessesConfigIntent());
-  }
+    @Before
+    @Override
+    public void setUp() {
+        injectInstrumentation(InstrumentationRegistry.getInstrumentation());
+        BenchmarkTestBase.waitUntilCharged(getInstrumentation().getTargetContext(), 90);
+        mModelForLivenessTest = findTestModelRunningOnAccelerator(
+                getInstrumentation().getTargetContext(), mAcceleratorName);
+        setActivityIntent(getRunModelsInMultipleProcessesConfigIntent());
+    }
 
-  @Test
-  @LargeTest
-  @UiThreadTest
-  public void testDriverDoesNotFailWithParallelWorkload()
-      throws ExecutionException, InterruptedException, RemoteException {
-    final NNMultiProcessTestActivity activity = getActivity();
+    @Test
+    @LargeTest
+    @UiThreadTest
+    public void testDriverDoesNotFailWithParallelWorkload()
+            throws ExecutionException, InterruptedException, RemoteException {
+        final NNMultiProcessTestActivity activity = getActivity();
 
-    assertTrue("No model available to be run on accelerator " + mAcceleratorName,
-        mModelForLivenessTest.isPresent());
+        assertTrue("No model available to be run on accelerator " + mAcceleratorName,
+                mModelForLivenessTest.isPresent());
 
-    final DriverLivenessChecker driverLivenessChecker =
-        new DriverLivenessChecker(activity, mAcceleratorName, mModelForLivenessTest.get());
-    Future<Boolean> driverDidNotCrash =
-        mDriverLivenessValidationExecutor.submit(driverLivenessChecker);
+        final DriverLivenessChecker driverLivenessChecker =
+                new DriverLivenessChecker(activity, mAcceleratorName, mModelForLivenessTest.get());
+        Future<Boolean> driverDidNotCrash =
+                mDriverLivenessValidationExecutor.submit(driverLivenessChecker);
 
-    assertEquals(SUCCESS, activity.testResult());
-    driverLivenessChecker.stop();
-    assertTrue("Driver shouldn't crash if used by multiple threads and processes",
-        driverDidNotCrash.get());
-  }
+        assertEquals(SUCCESS, activity.testResult());
+        driverLivenessChecker.stop();
+        assertTrue("Driver shouldn't crash if used by multiple threads and processes",
+                driverDidNotCrash.get());
+    }
 
-  /**
-   * @return the intent to use to initialise the RunModelsInMultipleProcesses test class
-   */
-  protected abstract Intent getRunModelsInMultipleProcessesConfigIntent();
+    /**
+     * @return the intent to use to initialise the RunModelsInMultipleProcesses test class
+     */
+    protected abstract Intent getRunModelsInMultipleProcessesConfigIntent();
 }

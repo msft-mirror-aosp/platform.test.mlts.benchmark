@@ -16,11 +16,8 @@
 
 package com.android.nn.benchmark.core;
 
-import android.content.Context;
-
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 /** Information about available benchmarking models */
@@ -58,27 +55,29 @@ public class TestModels {
         public final int mInDataSize;
 
         public TestModelEntry(String modelName, float baselineSec, int[] inputShape,
-            InferenceInOutSequence.FromAssets[] inOutAssets,
-            InferenceInOutSequence.FromDataset[] inOutDatasets, String testName, String modelFile,
-            EvaluatorConfig evaluator, int minSdkVersion, int inDataSize) {
-          mModelName = modelName;
-          mBaselineSec = baselineSec;
-          mInputShape = inputShape;
-          mInOutAssets = inOutAssets;
-          mInOutDatasets = inOutDatasets;
-          mTestName = testName;
-          mModelFile = modelFile;
-          mEvaluator = evaluator;
-          mMinSdkVersion = minSdkVersion;
-          mInDataSize = inDataSize;
+                InferenceInOutSequence.FromAssets[] inOutAssets,
+                InferenceInOutSequence.FromDataset[] inOutDatasets, String testName,
+                String modelFile,
+                EvaluatorConfig evaluator, int minSdkVersion, int inDataSize) {
+            mModelName = modelName;
+            mBaselineSec = baselineSec;
+            mInputShape = inputShape;
+            mInOutAssets = inOutAssets;
+            mInOutDatasets = inOutDatasets;
+            mTestName = testName;
+            mModelFile = modelFile;
+            mEvaluator = evaluator;
+            mMinSdkVersion = minSdkVersion;
+            mInDataSize = inDataSize;
         }
 
         public NNTestBase createNNTestBase() {
             return new NNTestBase(mModelName, mModelFile, mInputShape, mInOutAssets, mInOutDatasets,
-                mEvaluator, mMinSdkVersion);
+                    mEvaluator, mMinSdkVersion);
         }
 
-        public NNTestBase createNNTestBase(boolean useNNApi, boolean enableIntermediateTensorsDump) {
+        public NNTestBase createNNTestBase(boolean useNNApi,
+                boolean enableIntermediateTensorsDump) {
             NNTestBase test = createNNTestBase();
             test.useNNApi(useNNApi);
             test.enableIntermediateTensorsDump(enableIntermediateTensorsDump);
@@ -95,15 +94,16 @@ public class TestModels {
 
 
         public TestModelEntry withDisabledEvaluation() {
-          return new TestModelEntry(mModelName, mBaselineSec, mInputShape, mInOutAssets,
-              mInOutDatasets, mTestName, mModelFile,
-              null, // Disable evaluation.
-              mMinSdkVersion, mInDataSize);
+            return new TestModelEntry(mModelName, mBaselineSec, mInputShape, mInOutAssets,
+                    mInOutDatasets, mTestName, mModelFile,
+                    null, // Disable evaluation.
+                    mMinSdkVersion, mInDataSize);
         }
     }
 
     static private final List<TestModelEntry> sTestModelEntryList = new ArrayList<>();
-    static private final AtomicReference<List<TestModelEntry>> frozenEntries = new AtomicReference<>(null);
+    static private final AtomicReference<List<TestModelEntry>> frozenEntries =
+            new AtomicReference<>(null);
 
 
     /** Add new benchmark model. */
@@ -118,7 +118,8 @@ public class TestModels {
         return frozenEntries.get() != null;
     }
 
-    /** Fetch list of test models.
+    /**
+     * Fetch list of test models.
      *
      * If this method was called at least once, then it's impossible to register new models.
      */
@@ -137,13 +138,4 @@ public class TestModels {
         throw new IllegalArgumentException("Unknown TestModelEntry named " + name);
     }
 
-
-    public static Optional<TestModelEntry> findTestModelRunningOnAccelerator(
-            Context context, String acceleratorName) {
-        return TestModels.modelsList().stream()
-                .filter(
-                        model -> Processor.isTestModelSupportedByAccelerator(
-                                context,
-                                model, acceleratorName)).findAny();
-    }
 }

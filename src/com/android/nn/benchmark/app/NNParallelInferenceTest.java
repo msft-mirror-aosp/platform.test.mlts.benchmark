@@ -65,7 +65,7 @@ abstract class NNParallelInferenceTest extends
     @Override
     public void setUp() {
         injectInstrumentation(InstrumentationRegistry.getInstrumentation());
-        BenchmarkTestBase.waitUntilCharged(getInstrumentation().getTargetContext());
+        BenchmarkTestBase.waitUntilCharged(getInstrumentation().getTargetContext(), 90);
         setActivityIntent(runAllModelsOnNThreadsForOnAccelerator(mThreadCount, mTestDuration,
                 mAcceleratorName));
     }
@@ -96,10 +96,10 @@ abstract class NNParallelInferenceTest extends
 
     @Parameters(name = "{0} threads for {1} on accelerator {2}")
     public static Iterable<Object[]> threadCountValues() {
-      return AcceleratorSpecificTestSupport.perAcceleratorTestConfig(
-          Arrays.asList(
-                  new Object[] {8, Duration.ofMinutes(30)},
-                  new Object[] {12, Duration.ofMinutes(20)}));
+        return AcceleratorSpecificTestSupport.perAcceleratorTestConfig(
+                Arrays.asList(
+                        new Object[]{8, Duration.ofMinutes(30)},
+                        new Object[]{12, Duration.ofMinutes(20)}));
     }
 
     private Intent runAllModelsOnNThreadsForOnAccelerator(int threadCount, Duration testDuration,
