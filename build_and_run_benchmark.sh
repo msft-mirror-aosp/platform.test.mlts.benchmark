@@ -8,6 +8,8 @@
 
 MODE="${1:-scoring}"
 
+INSTALL_NATIVE_TESTS=false
+
 case "$MODE" in
   scoring)
     CLASS=com.android.nn.benchmark.app.NNScoringTest
@@ -24,9 +26,23 @@ case "$MODE" in
   parallel-inference-stress-in-process)
     CLASS=com.android.nn.benchmark.app.NNParallelInProcessInferenceTest
     ;;
+  client-early-termination-stress)
+    CLASS=com.android.nn.benchmark.app.NNClientEarlyTerminationTest
+    ;;
+  multi-process-inference-stress)
+    CLASS=com.android.nn.benchmark.app.NNMultipleProcessInferenceTest
+    INSTALL_NATIVE_TESTS=true
+    ;;
+  multi-process-model-load-stress)
+    CLASS=com.android.nn.benchmark.app.NNMultipleProcessModelLoadTest
+    INSTALL_NATIVE_TESTS=true
+    ;;
   *)
     echo "Unknown execution mode: $1"
-    echo "Known modes: scoring (default), inference-stress, model-loading-stress"
+    echo "Known modes: scoring (default), inference-stress, model-loading-stress, " \
+      "parallel-inference-stress, parallel-inference-stress-in-process, " \
+      "client-early-termination-stress, multi-process-inference-stress, " \
+      "multi-process-model-load-stress"
     exit 1
     ;;
 esac
@@ -46,12 +62,23 @@ mkdir -p $LOGDIR
 echo Creating logs in $LOGDIR
 
 # Build and install benchmark app
-build/soong/soong_ui.bash --make-mode NeuralNetworksApiBenchmark
-if ! adb install -r $OUT/testcases/NeuralNetworksApiBenchmark/arm64/NeuralNetworksApiBenchmark.apk; then
+TMPFILE=$(mktemp)
+build/soong/soong_ui.bash --make-mode NeuralNetworksApiBenchmark 2>&1 | tee ${TMPFILE}
+TARGET_ARCH=$(cat ${TMPFILE} | grep TARGET_ARCH= | sed -e 's/TARGET_ARCH=//')
+if [ "${TARGET_ARCH}" = "aarch64" ]; then
+    APK_DIR=arm64
+else
+    APK_DIR=${TARGET_ARCH}
+fi
+if ! adb install -r $OUT/testcases/NeuralNetworksApiBenchmark/${APK_DIR}/NeuralNetworksApiBenchmark.apk; then
   adb uninstall com.android.nn.benchmark.app
-  adb install -r $OUT/testcases/NeuralNetworksApiBenchmark/arm64/NeuralNetworksApiBenchmark.apk
+  adb install -r $OUT/testcases/NeuralNetworksApiBenchmark/${APK_DIR}/NeuralNetworksApiBenchmark.apk
 fi
 
+if [ "$INSTALL_NATIVE_TESTS" = true ]; then
+  build/soong/soong_ui.bash --make-mode nn_stress_test
+  adb push $OUT/system/bin/nn_stress_test /bin/
+fi
 
 # Should we figure out if we run on release device
 if [ -z "$MLTS_RELEASE_DEVICE" ]; then

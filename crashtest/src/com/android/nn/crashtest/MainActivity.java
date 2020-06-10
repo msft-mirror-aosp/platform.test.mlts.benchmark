@@ -29,6 +29,8 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.android.nn.benchmark.core.NNTestBase;
+import com.android.nn.benchmark.core.Processor;
 import com.android.nn.benchmark.core.TestModels;
 import com.android.nn.benchmark.core.TestModelsListLoader;
 import com.android.nn.benchmark.crashtest.CrashTestCoordinator;
@@ -39,22 +41,27 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final String ALL_AVAILABLE_ACCELERATORS = "All available";
     private static final String TAG = "NN_STRESS_TEST";
     private static final int JOB_FREQUENCY_MILLIS = 15 * 60 * 1000; // 15 minutes
     private final AtomicInteger mSelectedModelIndex = new AtomicInteger(-1);
     private final AtomicBoolean mUseSeparateProcess = new AtomicBoolean(true);
+    private final AtomicReference<String> mAcceleratorName = new AtomicReference<>(null);
     AtomicBoolean mTestRunning = new AtomicBoolean(false);
     private Button mStartTestButton;
     private TextView mMessage;
     private NumberPicker mThreadCount;
-    private NumberPicker mTestDurationSeconds;
+    private NumberPicker mTestDurationMinutes;
+    private ArrayAdapter<String> mModelsAdapter;
+    private List<String> mAllTestModels;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,17 +78,19 @@ public class MainActivity extends AppCompatActivity {
             Log.e(TAG, "Could not load models", e);
         }
 
+        mAllTestModels = TestModels.modelsList().stream().map(
+                TestModels.TestModelEntry::getTestName).collect(
+                Collectors.toList());
+
         final List<String> modelNames = new ArrayList<>();
         modelNames.add("All Models");
-        modelNames.addAll(TestModels.modelsList().stream().map(
-                TestModels.TestModelEntry::getTestName).collect(
-                Collectors.toList()));
-        final ArrayAdapter<CharSequence> modelsAdapter = new ArrayAdapter(this,
+        modelNames.addAll(modelsForAccelerator(ALL_AVAILABLE_ACCELERATORS));
+        mModelsAdapter = new ArrayAdapter<String>(this,
                 android.R.layout.simple_spinner_item,
                 modelNames);
-        modelsAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        mModelsAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         final Spinner testModelSpinner = (Spinner) findViewById(R.id.test_model);
-        testModelSpinner.setAdapter(modelsAdapter);
+        testModelSpinner.setAdapter(mModelsAdapter);
         testModelSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -94,7 +103,30 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        final ArrayAdapter<CharSequence> testTypeAdapter = new ArrayAdapter<>(this,
+        final List<String> acceleratorNames = new ArrayList<>();
+        acceleratorNames.add(ALL_AVAILABLE_ACCELERATORS);
+        acceleratorNames.addAll(NNTestBase.availableAcceleratorNames());
+        final ArrayAdapter<String> acceleratorNamesAdapter = new ArrayAdapter<String>(
+                this,
+                android.R.layout.simple_spinner_item, acceleratorNames);
+        final Spinner acceleratorNameSpinner = (Spinner) findViewById(R.id.accelerator_name);
+        acceleratorNameSpinner.setAdapter(acceleratorNamesAdapter);
+        acceleratorNameSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                mAcceleratorName.set(position == 0 ? null : acceleratorNames.get(position));
+                mModelsAdapter.clear();
+                mModelsAdapter.addAll(modelsForAccelerator(mAcceleratorName.get()));
+                mModelsAdapter.notifyDataSetChanged();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                onItemSelected(parent, null, 0, 0);
+            }
+        });
+
+        final ArrayAdapter<String> testTypeAdapter = new ArrayAdapter<String>(this,
                 android.R.layout.simple_spinner_item,
                 new String[]{"Separate process", "In process"});
         testTypeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -114,13 +146,32 @@ public class MainActivity extends AppCompatActivity {
 
 
         mThreadCount = (NumberPicker) findViewById(R.id.thread_count);
-        mTestDurationSeconds = (NumberPicker) findViewById(R.id.duration_seconds);
+        mTestDurationMinutes = (NumberPicker) findViewById(R.id.duration_minutes);
 
         mThreadCount.setMinValue(1);
         mThreadCount.setMaxValue(20);
 
-        mTestDurationSeconds.setMinValue(10);
-        mTestDurationSeconds.setMaxValue(600);
+        mTestDurationMinutes.setMinValue(1);
+        mTestDurationMinutes.setMaxValue(60);
+    }
+
+    private List<String> modelsForAccelerator(String acceleratorName) {
+        List<String> result = new ArrayList<>();
+        if (acceleratorName == null || acceleratorName.equals(ALL_AVAILABLE_ACCELERATORS)) {
+            result.add("All models");
+            result.addAll(mAllTestModels);
+        } else {
+            result.add("All supported models");
+            result.addAll(TestModels.modelsList().stream()
+                    .map(TestModels.TestModelEntry::withDisabledEvaluation).filter(
+                            model -> Processor.isTestModelSupportedByAccelerator(
+                                    this,
+                                    model, acceleratorName)).map(
+                            TestModels.TestModelEntry::getTestName).collect(
+                            Collectors.toList()));
+        }
+
+        return result;
     }
 
     void testStopped(String msg) {
@@ -149,10 +200,19 @@ public class MainActivity extends AppCompatActivity {
         CrashTestCoordinator coordinator = new CrashTestCoordinator(this);
 
         int threadCount = mThreadCount.getValue();
-        int testDurationSeconds = mTestDurationSeconds.getValue();
+        int testDurationMinutes = mTestDurationMinutes.getValue();
 
-        int[] testList = mSelectedModelIndex.get() < 0 ? IntStream.range(0,
-                TestModels.modelsList().size()).toArray() : new int[]{mSelectedModelIndex.get()};
+        int[] testList;
+        if (mSelectedModelIndex.get() < 0) {
+            testList = new int[mModelsAdapter.getCount()];
+            // The first item is the 'all models' or 'all supported models' entry
+            for (int i = 1; i < mModelsAdapter.getCount(); i++) {
+                String modelName = mModelsAdapter.getItem(i);
+                testList[i] = mAllTestModels.indexOf(modelName);
+            }
+        } else {
+            testList = new int[]{mSelectedModelIndex.get()};
+        }
 
         CrashTestCoordinator.CrashTestCompletionListener testCompletionListener =
                 new CrashTestCoordinator.CrashTestCompletionListener() {
@@ -171,20 +231,31 @@ public class MainActivity extends AppCompatActivity {
                         testStopped("Test failed with reason " + reason);
                     }
 
+                    @Override
+                    public void testProgressing(Optional<String> description) {
+                        Log.i(TAG, "> " + description.orElse("Test progressing.."));
+                        // Ignoring message to avoid cluttering the test Text Area
+                        runOnUiThread(() -> mMessage.append("."));
+                    }
                 };
 
-        final int testTimeoutMillis = testDurationSeconds * 1500;
+        final int testTimeoutMillis = testDurationMinutes * 1500;
         final String testName = "in-app-test@" + System.currentTimeMillis();
+        final String acceleratorName = mAcceleratorName.get();
         coordinator.startTest(RunModelsInParallel.class,
                 RunModelsInParallel.intentInitializer(testList, threadCount,
-                        Duration.ofSeconds(testDurationSeconds),
-                        testName), testCompletionListener,
+                        Duration.ofMinutes(testDurationMinutes),
+                        testName, acceleratorName, false, false),
+                testCompletionListener,
                 mUseSeparateProcess.get(), testName);
 
         mMessage.setText(
-                String.format("Inference test started with %d threads for %d seconds\n",
+                String.format(
+                        "Inference test started with %d threads for %d minutes on %s\n",
                         threadCount,
-                        testDurationSeconds));
+                        testDurationMinutes,
+                        acceleratorName != null ? "accelerator " + acceleratorName
+                                : "NNAPI-selected accelerator"));
     }
 
 }

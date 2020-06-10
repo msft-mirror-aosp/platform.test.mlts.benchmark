@@ -38,7 +38,8 @@ public class NoOpCrashTest implements CrashTest {
     private long sleepTime = 0;
 
     @Override
-    public void init(Context context, Intent configParams) {
+    public void init(Context context, Intent configParams,
+            Optional<ProgressListener> progressListener) {
         sleepTime = configParams.getLongExtra(SLEEP_TIME, 100);
     }
 

@@ -14,22 +14,10 @@
  * limitations under the License.
  */
 
-package com.android.nn.benchmark.app;
+package com.android.nn.benchmark.core;
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-
-import java.time.Duration;
-
-@RunWith(Parameterized.class)
-public class NNParallelCrashResistantInferenceTest extends NNParallelInferenceTest {
-    public NNParallelCrashResistantInferenceTest(int threadCount, Duration testDuration,
-            String acceleratorName) {
-        super(threadCount, testDuration, acceleratorName);
-    }
-
-    @Override
-    protected boolean runTestsInSeparateProcess() {
-        return true;
+public class UnsupportedModelException extends BenchmarkException {
+    public UnsupportedModelException(String message) {
+        super(message);
     }
 }

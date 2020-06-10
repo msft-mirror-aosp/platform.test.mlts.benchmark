@@ -16,13 +16,15 @@
 
 #include "run_tflite.h"
 
-#include "tensorflow/lite/delegates/nnapi/nnapi_delegate.h"
-#include "tensorflow/lite/kernels/register.h"
-
 #include <android/log.h>
 #include <dlfcn.h>
 #include <sys/time.h>
+
 #include <cstdio>
+
+#include "tensorflow/lite/delegates/nnapi/nnapi_delegate.h"
+#include "tensorflow/lite/kernels/register.h"
+#include "tensorflow/lite/nnapi/NeuralNetworksTypes.h"
 
 #define LOG_TAG "NN_BENCHMARK"
 
@@ -79,9 +81,6 @@ BenchmarkModel* BenchmarkModel::create(const char* modelfile, bool use_nnapi,
 bool BenchmarkModel::init(const char* modelfile, bool use_nnapi,
                           bool enable_intermediate_tensors_dump,
                           const char* nnapi_device_name) {
-  __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "BenchmarkModel %s",
-                      modelfile);
-
   // Memory map the model. NOTE this needs lifetime greater than or equal
   // to interpreter context.
   mTfliteModel = tflite::FlatBufferModel::BuildFromFile(modelfile);
@@ -116,21 +115,17 @@ bool BenchmarkModel::init(const char* modelfile, bool use_nnapi,
   mTfliteInterpreter->SetAllowFp16PrecisionForFp32(true);
 
   if (use_nnapi) {
-    if (nnapi_device_name != nullptr) {
-      __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Running NNAPI on device %s",
-                          nnapi_device_name);
-    }
     tflite::StatefulNnApiDelegate::Options nnapi_options;
     nnapi_options.accelerator_name = nnapi_device_name;
     mTfliteNnapiDelegate = std::make_unique<tflite::StatefulNnApiDelegate>(nnapi_options);
-    if (mTfliteInterpreter->ModifyGraphWithDelegate(mTfliteNnapiDelegate.get()) != kTfLiteOk) {
+    int delegationStatus = mTfliteInterpreter->ModifyGraphWithDelegate(mTfliteNnapiDelegate.get());
+    int nnapiErrno = mTfliteNnapiDelegate->GetNnApiErrno();
+    if ( delegationStatus != kTfLiteOk ||  nnapiErrno != ANEURALNETWORKS_NO_ERROR ) {
       __android_log_print(ANDROID_LOG_ERROR, LOG_TAG,
                           "Failed to initialize NNAPI Delegate for model %s, nnapi_errno is %d",
                           modelfile, mTfliteNnapiDelegate->GetNnApiErrno());
       return false;
     }
-    __android_log_print(ANDROID_LOG_INFO, LOG_TAG,
-                              "NNAPI Delegate initialized for model %s", modelfile);
   }
   return true;
 }
@@ -220,9 +215,11 @@ bool BenchmarkModel::resizeInputTensors(std::vector<int> shape) {
 
 bool BenchmarkModel::runInference() {
   auto status = mTfliteInterpreter->Invoke();
-  if (status != kTfLiteOk) {
-    __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Failed to invoke: %d!",
-                        (int)status);
+  auto nnapi_errno = mTfliteNnapiDelegate->GetNnApiErrno();
+  if (status != kTfLiteOk || nnapi_errno != ANEURALNETWORKS_NO_ERROR) {
+    __android_log_print(ANDROID_LOG_ERROR, LOG_TAG,
+                        "Failed to invoke, tflite status: %d, nnapi errno: %d!",
+                        (int)status, nnapi_errno);
     return false;
   }
   return true;
