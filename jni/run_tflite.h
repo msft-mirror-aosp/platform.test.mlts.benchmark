@@ -67,8 +67,8 @@ class BenchmarkModel {
 
   static BenchmarkModel* create(const char* modelfile, bool use_nnapi,
                                 bool enable_intermediate_tensors_dump,
-                                int* nnapiErrno,
-                                const char* nnapi_device_name = nullptr);
+                                int* nnapiErrno, const char* nnapi_device_name,
+                                bool mmapModel);
 
   bool resizeInputTensors(std::vector<int> shape);
   bool setInput(const uint8_t* dataPtr, size_t length);
@@ -87,12 +87,16 @@ class BenchmarkModel {
   BenchmarkModel();
   bool init(const char* modelfile, bool use_nnapi,
             bool enable_intermediate_tensors_dump,
-            int* nnapiErrno, const char* nnapi_device_name);
+            int* nnapiErrno, const char* nnapi_device_name,
+            /* flag to choose between memory mapping the model and initializing
+                the model from programs memory*/
+            bool mmapModel);
 
   void getOutputError(const uint8_t* dataPtr, size_t length,
                       InferenceResult* result, int output_index);
   void saveInferenceOutput(InferenceResult* result, int output_index);
 
+  std::string mModelBuffer;
   std::unique_ptr<tflite::FlatBufferModel> mTfliteModel;
   std::unique_ptr<tflite::Interpreter> mTfliteInterpreter;
   std::unique_ptr<tflite::StatefulNnApiDelegate> mTfliteNnapiDelegate;

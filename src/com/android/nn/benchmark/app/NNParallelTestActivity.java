@@ -51,6 +51,7 @@ public class NNParallelTestActivity extends Activity {
     public static final String EXTRA_ACCELERATOR_NAME = "accelerator_name";
     public static final String EXTRA_IGNORE_UNSUPPORTED_MODELS = "ignore_unsupported_models";
     public static final String EXTRA_RUN_MODEL_COMPILATION_ONLY = "run_model_compilation_only";
+    public static final String EXTRA_MEMORY_MAP_MODEL = "memory_map_model";
 
     // Not using AtomicBoolean to have the concept of unset status
     private CrashTestCoordinator mCoordinator;
@@ -102,15 +103,16 @@ public class NNParallelTestActivity extends Activity {
         String acceleratorName = intent.getStringExtra(EXTRA_ACCELERATOR_NAME);
         boolean ignoreUnsupportedModels = intent.getBooleanExtra(EXTRA_IGNORE_UNSUPPORTED_MODELS,
                 false);
+        boolean mmapModel = intent.getBooleanExtra(EXTRA_MEMORY_MAP_MODEL, false);
 
         final boolean runModelCompilationOnly = intent.getBooleanExtra(
                 EXTRA_RUN_MODEL_COMPILATION_ONLY, false);
 
         mCoordinator.startTest(RunModelsInParallel.class,
-                RunModelsInParallel.intentInitializer(testList, threadCount,
-                        Duration.ofMillis(testDurationMillis), mTestName, acceleratorName,
-                        ignoreUnsupportedModels, runModelCompilationOnly),
-                mTestStatus, runInSeparateProcess, mTestName);
+            RunModelsInParallel.intentInitializer(testList, threadCount,
+                Duration.ofMillis(testDurationMillis), mTestName, acceleratorName,
+                ignoreUnsupportedModels, runModelCompilationOnly, mmapModel),
+            mTestStatus, runInSeparateProcess, mTestName);
 
         mStopTestButton.setEnabled(true);
     }

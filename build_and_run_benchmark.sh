@@ -37,12 +37,15 @@ case "$MODE" in
     CLASS=com.android.nn.benchmark.app.NNMultipleProcessModelLoadTest
     INSTALL_NATIVE_TESTS=true
     ;;
+  memory-mapped-model-load-stress)
+    CLASS=com.android.nn.benchmark.app.NNMemoryMappedModelCompilationTest
+    ;;
   *)
     echo "Unknown execution mode: $1"
     echo "Known modes: scoring (default), inference-stress, model-loading-stress, " \
       "parallel-inference-stress, parallel-inference-stress-in-process, " \
       "client-early-termination-stress, multi-process-inference-stress, " \
-      "multi-process-model-load-stress"
+      "multi-process-model-load-stress memory-mapped-model-load-stress"
     exit 1
     ;;
 esac

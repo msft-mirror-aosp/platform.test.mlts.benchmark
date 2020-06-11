@@ -39,16 +39,17 @@ Java_com_android_nn_benchmark_core_NNTestBase_initModel(
         jstring _modelFileName,
         jboolean _useNnApi,
         jboolean _enableIntermediateTensorsDump,
-        jstring _nnApiDeviceName) {
+        jstring _nnApiDeviceName,
+        jboolean _mmapModel) {
     const char *modelFileName = env->GetStringUTFChars(_modelFileName, NULL);
     const char *nnApiDeviceName =
         _nnApiDeviceName == NULL
             ? NULL
             : env->GetStringUTFChars(_nnApiDeviceName, NULL);
     int nnapiErrno = 0;
-    void *handle = BenchmarkModel::create(modelFileName, _useNnApi,
-                                          _enableIntermediateTensorsDump,
-                                          &nnapiErrno, nnApiDeviceName);
+    void *handle = BenchmarkModel::create(
+        modelFileName, _useNnApi, _enableIntermediateTensorsDump, &nnapiErrno,
+        nnApiDeviceName, _mmapModel);
     env->ReleaseStringUTFChars(_modelFileName, modelFileName);
     if (_nnApiDeviceName != NULL) {
         env->ReleaseStringUTFChars(_nnApiDeviceName, nnApiDeviceName);

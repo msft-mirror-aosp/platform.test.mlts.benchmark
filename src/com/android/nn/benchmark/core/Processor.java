@@ -54,6 +54,7 @@ public class Processor implements Runnable {
     private Processor.Callback mCallback;
 
     private boolean mUseNNApi;
+    private boolean mMmapModel;
     private boolean mCompleteInputSet;
     private boolean mToggleLong;
     private boolean mTogglePause;
@@ -101,6 +102,10 @@ public class Processor implements Runnable {
         mRunModelCompilationOnly = value;
     }
 
+    public void setMmapModel(boolean value) {
+        mMmapModel = value;
+    }
+
     // Method to retrieve benchmark results for instrumentation tests.
     public BenchmarkResult getInstrumentationResult(
             TestModels.TestModelEntry t, float warmupTimeSeconds, float runTimeSeconds)
@@ -112,19 +117,19 @@ public class Processor implements Runnable {
         return result;
     }
 
-    public static boolean isTestModelSupportedByAccelerator(
-            Context context, TestModels.TestModelEntry testModelEntry, String acceleratorName)
+    public static boolean isTestModelSupportedByAccelerator(Context context,
+            TestModels.TestModelEntry testModelEntry, String acceleratorName)
             throws NnApiDelegationFailure {
-        NNTestBase tb = testModelEntry.createNNTestBase(/*useNnnapi=*/true,
-                /*enableIntermediateTensorsDump=*/false);
+        NNTestBase tb = testModelEntry.createNNTestBase(/*useNnnapi=*/ true,
+                /*enableIntermediateTensorsDump=*/false,
+                /*mmapModel=*/ false);
         tb.setNNApiDeviceName(acceleratorName);
         try {
             return tb.setupModel(context);
         } catch (IOException e) {
             Log.w(TAG,
                     String.format("Error trying to check support for model %s on accelerator %s",
-                            testModelEntry.mModelName, acceleratorName),
-                    e);
+                            testModelEntry.mModelName, acceleratorName), e);
             return false;
         } finally {
             tb.destroy();
@@ -137,7 +142,8 @@ public class Processor implements Runnable {
             // Make sure we don't leak memory.
             oldTestBase.destroy();
         }
-        NNTestBase tb = t.createNNTestBase(mUseNNApi, /*enableIntermediateTensorsDump=*/ false);
+        NNTestBase tb = t.createNNTestBase(mUseNNApi, /*enableIntermediateTensorsDump=*/false,
+                mMmapModel);
         if (mUseNNApi) {
             tb.setNNApiDeviceName(mAcceleratorName);
         }

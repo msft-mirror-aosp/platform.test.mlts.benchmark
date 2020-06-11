@@ -76,11 +76,16 @@ public class TestModels {
                     mEvaluator, mMinSdkVersion);
         }
 
-        public NNTestBase createNNTestBase(boolean useNNApi,
-                boolean enableIntermediateTensorsDump) {
+        public NNTestBase createNNTestBase(boolean useNNApi, boolean enableIntermediateTensorsDump) {
+            return createNNTestBase(useNNApi, enableIntermediateTensorsDump, /*mmapModel=*/false);
+        }
+
+        public NNTestBase createNNTestBase(boolean useNNApi, boolean enableIntermediateTensorsDump,
+                boolean mmapModel) {
             NNTestBase test = createNNTestBase();
             test.useNNApi(useNNApi);
             test.enableIntermediateTensorsDump(enableIntermediateTensorsDump);
+            test.setMmapModel(mmapModel);
             return test;
         }
 

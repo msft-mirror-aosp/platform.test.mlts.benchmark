@@ -21,6 +21,7 @@
 #include <sys/time.h>
 
 #include <cstdio>
+#include <fstream>
 
 #include "tensorflow/lite/delegates/nnapi/nnapi_delegate.h"
 #include "tensorflow/lite/kernels/register.h"
@@ -65,26 +66,31 @@ static TraceFunc kTraceFunc{setupTraceFunc()};
 }  // namespace
 
 BenchmarkModel* BenchmarkModel::create(const char* modelfile, bool use_nnapi,
-                                       bool enable_intermediate_tensors_dump,
-                                       int* nnapiErrno,
-                                       const char* nnapi_device_name) {
-  BenchmarkModel* model = new BenchmarkModel();
-  if (!model->init(modelfile, use_nnapi, enable_intermediate_tensors_dump,
-                   nnapiErrno, nnapi_device_name)) {
-    __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Failed to init model %s",
-                        modelfile);
-    delete model;
-    return nullptr;
-  }
-  return model;
+                                       bool enable_intermediate_tensors_dump, int* nnapiErrno,
+                                       const char* nnapi_device_name, bool mmapModel) {
+    BenchmarkModel* model = new BenchmarkModel();
+    if (!model->init(modelfile, use_nnapi, enable_intermediate_tensors_dump,
+                     nnapiErrno, nnapi_device_name, mmapModel)) {
+     __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Failed to init model %s",
+                             modelfile);
+      delete model;
+      return nullptr;
+    }
+    return model;
 }
 
 bool BenchmarkModel::init(const char* modelfile, bool use_nnapi,
                           bool enable_intermediate_tensors_dump,
-                          int* nnapiErrno, const char* nnapi_device_name) {
-  // Memory map the model. NOTE this needs lifetime greater than or equal
-  // to interpreter context.
-  mTfliteModel = tflite::FlatBufferModel::BuildFromFile(modelfile);
+                          int* nnapiErrno, const char* nnapi_device_name, bool mmapModel) {
+  if (mmapModel) {
+    // Memory map the model. NOTE this needs lifetime greater than or equal
+    // to interpreter context.
+    mTfliteModel = tflite::FlatBufferModel::BuildFromFile(modelfile);
+  } else {
+    std::ifstream t(modelfile);
+    mModelBuffer = std::string((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
+    mTfliteModel = tflite::FlatBufferModel::BuildFromBuffer(mModelBuffer.c_str(), mModelBuffer.size());
+  }
   if (!mTfliteModel) {
     __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Failed to load model %s",
                         modelfile);

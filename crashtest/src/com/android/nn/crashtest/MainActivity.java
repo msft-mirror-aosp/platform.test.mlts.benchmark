@@ -23,6 +23,7 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.NumberPicker;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -65,6 +66,8 @@ public class MainActivity extends AppCompatActivity {
     private NumberPicker mTestDurationMinutes;
     private ArrayAdapter<String> mModelsAdapter;
     private List<String> mAllTestModels;
+    private CheckBox mMmapModel;
+    private CheckBox mCompileModelsOnly;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -156,6 +159,9 @@ public class MainActivity extends AppCompatActivity {
 
         mTestDurationMinutes.setMinValue(1);
         mTestDurationMinutes.setMaxValue(60);
+
+        mMmapModel = (CheckBox) findViewById(R.id.mmap_model);
+        mCompileModelsOnly = (CheckBox) findViewById(R.id.compile_only);
     }
 
     private List<String> modelsForAccelerator(String acceleratorName) {
@@ -267,20 +273,24 @@ public class MainActivity extends AppCompatActivity {
         final int testTimeoutMillis = testDurationMinutes * 1500;
         final String testName = "in-app-test@" + System.currentTimeMillis();
         final String acceleratorName = mAcceleratorName.get();
+        final boolean mmapModel = mMmapModel.isChecked();
+        final boolean runModelCompilationOnly = mCompileModelsOnly.isChecked();
         coordinator.startTest(RunModelsInParallel.class,
                 RunModelsInParallel.intentInitializer(testList, threadCount,
                         Duration.ofMinutes(testDurationMinutes),
-                        testName, acceleratorName, false, false),
+                        testName, acceleratorName, false, runModelCompilationOnly, mmapModel),
                 testCompletionListener,
                 mUseSeparateProcess.get(), testName);
 
         mMessage.setText(
                 String.format(
-                        "Inference test started with %d threads for %d minutes on %s\n",
+                        "%s test started with %d threads for %d minutes on %s\n",
+                        runModelCompilationOnly ? "Compilation" : "Inference",
                         threadCount,
                         testDurationMinutes,
                         acceleratorName != null ? "accelerator " + acceleratorName
                                 : "NNAPI-selected accelerator"));
+
     }
 
 }

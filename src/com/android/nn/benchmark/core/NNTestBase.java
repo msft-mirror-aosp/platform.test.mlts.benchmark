@@ -70,7 +70,8 @@ public class NNTestBase {
             String modelFileName,
             boolean useNNApi,
             boolean enableIntermediateTensorsDump,
-            String nnApiDeviceName);
+            String nnApiDeviceName,
+            boolean mmapModel) throws NnApiDelegationFailure;
 
     private synchronized native void destroyModel(long modelHandle);
 
@@ -101,19 +102,20 @@ public class NNTestBase {
 
     protected Context mContext;
     protected TextView mText;
-    private String mModelName;
-    private String mModelFile;
+    private final String mModelName;
+    private final String mModelFile;
     private long mModelHandle;
-    private int[] mInputShape;
-    private InferenceInOutSequence.FromAssets[] mInputOutputAssets;
-    private InferenceInOutSequence.FromDataset[] mInputOutputDatasets;
-    private EvaluatorConfig mEvaluatorConfig;
+    private final int[] mInputShape;
+    private final InferenceInOutSequence.FromAssets[] mInputOutputAssets;
+    private final InferenceInOutSequence.FromDataset[] mInputOutputDatasets;
+    private final EvaluatorConfig mEvaluatorConfig;
     private EvaluatorInterface mEvaluator;
     private boolean mHasGoldenOutputs;
     private boolean mUseNNApi = false;
     private boolean mEnableIntermediateTensorsDump = false;
-    private int mMinSdkVersion;
+    private final int mMinSdkVersion;
     private Optional<String> mNNApiDeviceName = Optional.empty();
+    private boolean mMmapModel = false;
 
     public NNTestBase(String modelName, String modelFile, int[] inputShape,
             InferenceInOutSequence.FromAssets[] inputOutputAssets,
@@ -161,12 +163,16 @@ public class NNTestBase {
         mNNApiDeviceName = Optional.ofNullable(value);
     }
 
+    public void setMmapModel(boolean value) {
+        mMmapModel = value;
+    }
+
     public final boolean setupModel(Context ipcxt) throws IOException, NnApiDelegationFailure {
         mContext = ipcxt;
         String modelFileName = copyAssetToFile();
         mModelHandle = initModel(
                 modelFileName, mUseNNApi, mEnableIntermediateTensorsDump,
-                mNNApiDeviceName.orElse(null));
+                mNNApiDeviceName.orElse(null), mMmapModel);
         if (mModelHandle == 0) {
             Log.e(TAG, "Failed to init the model");
             return false;
