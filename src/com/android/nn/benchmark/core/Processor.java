@@ -112,25 +112,32 @@ public class Processor implements Runnable {
         return result;
     }
 
-    public static boolean isTestModelSupportedByAccelerator(Context context,
-            TestModels.TestModelEntry testModelEntry, String acceleratorName) {
-        NNTestBase tb = testModelEntry.createNNTestBase(true,
-                false /* enableIntermediateTensorsDump */);
+    public static boolean isTestModelSupportedByAccelerator(
+            Context context, TestModels.TestModelEntry testModelEntry, String acceleratorName)
+            throws NnApiDelegationFailure {
+        NNTestBase tb = testModelEntry.createNNTestBase(/*useNnnapi=*/true,
+                /*enableIntermediateTensorsDump=*/false);
         tb.setNNApiDeviceName(acceleratorName);
         try {
             return tb.setupModel(context);
+        } catch (IOException e) {
+            Log.w(TAG,
+                    String.format("Error trying to check support for model %s on accelerator %s",
+                            testModelEntry.mModelName, acceleratorName),
+                    e);
+            return false;
         } finally {
             tb.destroy();
         }
     }
 
     private NNTestBase changeTest(NNTestBase oldTestBase, TestModels.TestModelEntry t)
-            throws UnsupportedModelException {
+            throws IOException, UnsupportedModelException, NnApiDelegationFailure {
         if (oldTestBase != null) {
             // Make sure we don't leak memory.
             oldTestBase.destroy();
         }
-        NNTestBase tb = t.createNNTestBase(mUseNNApi, false /* enableIntermediateTensorsDump */);
+        NNTestBase tb = t.createNNTestBase(mUseNNApi, /*enableIntermediateTensorsDump=*/ false);
         if (mUseNNApi) {
             tb.setNNApiDeviceName(mAcceleratorName);
         }
@@ -230,6 +237,11 @@ public class Processor implements Runnable {
             }
             mCallback.onBenchmarkFinish(success);
         } finally {
+            if (mTest != null) {
+                // Make sure we don't leak memory.
+                mTest.destroy();
+                mTest = null;
+            }
             mCompleted.countDown();
         }
     }

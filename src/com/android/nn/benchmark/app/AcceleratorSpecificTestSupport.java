@@ -21,6 +21,7 @@ import android.util.Log;
 
 import com.android.nn.benchmark.core.BenchmarkException;
 import com.android.nn.benchmark.core.NNTestBase;
+import com.android.nn.benchmark.core.NnApiDelegationFailure;
 import com.android.nn.benchmark.core.Processor;
 import com.android.nn.benchmark.core.TestModels;
 
@@ -37,12 +38,13 @@ public interface AcceleratorSpecificTestSupport {
     String TAG = "AcceleratorTest";
 
     default Optional<TestModels.TestModelEntry> findTestModelRunningOnAccelerator(
-            Context context, String acceleratorName) {
-        return TestModels.modelsList().stream()
-                .filter(
-                        model -> Processor.isTestModelSupportedByAccelerator(
-                                context,
-                                model, acceleratorName)).findAny();
+            Context context, String acceleratorName) throws NnApiDelegationFailure {
+        for (TestModels.TestModelEntry model : TestModels.modelsList()) {
+            if (Processor.isTestModelSupportedByAccelerator(context, model, acceleratorName)) {
+                return Optional.of(model);
+            }
+        }
+        return Optional.empty();
     }
 
     default long ramdomInRange(long min, long max) {
@@ -99,6 +101,7 @@ public interface AcceleratorSpecificTestSupport {
                     mProcessor.getInstrumentationResult(mTestModelEntry, 0, 3);
                 } catch (IOException | BenchmarkException e) {
                     Log.e(TAG, String.format("Error running model %s", mTestModelEntry.mModelName));
+                    return false;
                 }
             }
 

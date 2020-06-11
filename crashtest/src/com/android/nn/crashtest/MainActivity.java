@@ -30,6 +30,7 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.android.nn.benchmark.core.NNTestBase;
+import com.android.nn.benchmark.core.NnApiDelegationFailure;
 import com.android.nn.benchmark.core.Processor;
 import com.android.nn.benchmark.core.TestModels;
 import com.android.nn.benchmark.core.TestModelsListLoader;
@@ -37,7 +38,9 @@ import com.android.nn.benchmark.crashtest.CrashTestCoordinator;
 import com.android.nn.benchmark.crashtest.test.RunModelsInParallel;
 import com.android.nn.benchmark.util.TestExternalStorageActivity;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -164,9 +167,31 @@ public class MainActivity extends AppCompatActivity {
             result.add("All supported models");
             result.addAll(TestModels.modelsList().stream()
                     .map(TestModels.TestModelEntry::withDisabledEvaluation).filter(
-                            model -> Processor.isTestModelSupportedByAccelerator(
-                                    this,
-                                    model, acceleratorName)).map(
+                            model -> {
+                                try {
+                                    return Processor.isTestModelSupportedByAccelerator(
+                                            this,
+                                            model, acceleratorName);
+                                } catch (NnApiDelegationFailure nnApiDelegationFailure) {
+                                    runOnUiThread(() -> {
+                                        mMessage.append(String.format(
+                                                "Driver %s failed when trying to check support "
+                                                        + "for model %s!!\n",
+                                                acceleratorName, model.mModelName));
+                                        ByteArrayOutputStream stsackTraceByteOS =
+                                                new ByteArrayOutputStream();
+                                        try (PrintStream stackTracePrintStream = new PrintStream(
+                                                stsackTraceByteOS)) {
+                                            nnApiDelegationFailure.printStackTrace(
+                                                    stackTracePrintStream);
+                                            mMessage.append(
+                                                    stackTracePrintStream.toString() + "\n");
+                                        }
+                                        mStartTestButton.setEnabled(true);
+                                    });
+                                    return false;
+                                }
+                            }).map(
                             TestModels.TestModelEntry::getTestName).collect(
                             Collectors.toList()));
         }

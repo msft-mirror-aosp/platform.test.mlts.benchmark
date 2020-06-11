@@ -67,6 +67,7 @@ class BenchmarkModel {
 
   static BenchmarkModel* create(const char* modelfile, bool use_nnapi,
                                 bool enable_intermediate_tensors_dump,
+                                int* nnapiErrno,
                                 const char* nnapi_device_name = nullptr);
 
   bool resizeInputTensors(std::vector<int> shape);
@@ -86,7 +87,7 @@ class BenchmarkModel {
   BenchmarkModel();
   bool init(const char* modelfile, bool use_nnapi,
             bool enable_intermediate_tensors_dump,
-            const char* nnapi_device_name);
+            int* nnapiErrno, const char* nnapi_device_name);
 
   void getOutputError(const uint8_t* dataPtr, size_t length,
                       InferenceResult* result, int output_index);

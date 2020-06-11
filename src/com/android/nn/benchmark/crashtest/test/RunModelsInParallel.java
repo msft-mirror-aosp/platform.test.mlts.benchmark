@@ -66,7 +66,8 @@ public class RunModelsInParallel implements CrashTest {
 
     static public CrashTestIntentInitializer intentInitializer(int[] models, int threadCount,
             Duration duration, String testName, String acceleratorName,
-            boolean ignoreUnsupportedModels, boolean runModelCompilationOnly) {
+            boolean ignoreUnsupportedModels,
+            boolean runModelCompilationOnly) {
         return intent -> {
             intent.putExtra(MODELS, models);
             intent.putExtra(DURATION, duration.toMillis());
@@ -174,15 +175,6 @@ public class RunModelsInParallel implements CrashTest {
         } catch (InterruptedException ignored) {
             Thread.currentThread().interrupt();
         }
-
-        if (mTestCompletionResults.size() <= mThreadCount) {
-            //Couldn't complete any subtest, considering it a success anyway since we had
-            // no failures
-            return success();
-        }
-
-        // ignoring last result for each thread since it will likely be a killed test
-        mTestCompletionResults.remove(mTestCompletionResults.size() - mThreadCount);
 
         final long failedTestCount = mTestCompletionResults.stream().filter(
                 testResult -> !testResult).count();

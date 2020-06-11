@@ -19,13 +19,13 @@ package com.android.nn.benchmark.app;
 import static com.android.nn.benchmark.app.CrashTestStatus.TestResult.SUCCESS;
 
 import android.content.Intent;
-import android.os.RemoteException;
 import android.test.ActivityInstrumentationTestCase2;
 import android.test.UiThreadTest;
 import android.test.suitebuilder.annotation.LargeTest;
 
 import androidx.test.InstrumentationRegistry;
 
+import com.android.nn.benchmark.core.NnApiDelegationFailure;
 import com.android.nn.benchmark.core.TestModels;
 
 import org.junit.Before;
@@ -75,23 +75,28 @@ public abstract class NNMultipleProcessTest
     public void setUp() {
         injectInstrumentation(InstrumentationRegistry.getInstrumentation());
         BenchmarkTestBase.waitUntilCharged(getInstrumentation().getTargetContext(), 90);
-        mModelForLivenessTest = findTestModelRunningOnAccelerator(
-                getInstrumentation().getTargetContext(), mAcceleratorName);
         setActivityIntent(getRunModelsInMultipleProcessesConfigIntent());
+    }
+
+    protected Optional<TestModels.TestModelEntry> findModelForLivenessTest()
+            throws NnApiDelegationFailure {
+        return findTestModelRunningOnAccelerator(
+                getInstrumentation().getTargetContext(), mAcceleratorName);
     }
 
     @Test
     @LargeTest
     @UiThreadTest
     public void testDriverDoesNotFailWithParallelWorkload()
-            throws ExecutionException, InterruptedException, RemoteException {
+            throws ExecutionException, InterruptedException, NnApiDelegationFailure {
         final NNMultiProcessTestActivity activity = getActivity();
 
+        Optional<TestModels.TestModelEntry> modelForLivenessTest = findModelForLivenessTest();
         assertTrue("No model available to be run on accelerator " + mAcceleratorName,
-                mModelForLivenessTest.isPresent());
+                modelForLivenessTest.isPresent());
 
         final DriverLivenessChecker driverLivenessChecker =
-                new DriverLivenessChecker(activity, mAcceleratorName, mModelForLivenessTest.get());
+                new DriverLivenessChecker(activity, mAcceleratorName, modelForLivenessTest.get());
         Future<Boolean> driverDidNotCrash =
                 mDriverLivenessValidationExecutor.submit(driverLivenessChecker);
 

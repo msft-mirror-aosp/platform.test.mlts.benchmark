@@ -66,21 +66,22 @@ static TraceFunc kTraceFunc{setupTraceFunc()};
 
 BenchmarkModel* BenchmarkModel::create(const char* modelfile, bool use_nnapi,
                                        bool enable_intermediate_tensors_dump,
+                                       int* nnapiErrno,
                                        const char* nnapi_device_name) {
-    BenchmarkModel* model = new BenchmarkModel();
-    if (!model->init(modelfile, use_nnapi, enable_intermediate_tensors_dump,
-                     nnapi_device_name)) {
-     __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Failed to init model %s",
-                             modelfile);
-      delete model;
-      return nullptr;
-    }
-    return model;
+  BenchmarkModel* model = new BenchmarkModel();
+  if (!model->init(modelfile, use_nnapi, enable_intermediate_tensors_dump,
+                   nnapiErrno, nnapi_device_name)) {
+    __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Failed to init model %s",
+                        modelfile);
+    delete model;
+    return nullptr;
+  }
+  return model;
 }
 
 bool BenchmarkModel::init(const char* modelfile, bool use_nnapi,
                           bool enable_intermediate_tensors_dump,
-                          const char* nnapi_device_name) {
+                          int* nnapiErrno, const char* nnapi_device_name) {
   // Memory map the model. NOTE this needs lifetime greater than or equal
   // to interpreter context.
   mTfliteModel = tflite::FlatBufferModel::BuildFromFile(modelfile);
@@ -119,11 +120,13 @@ bool BenchmarkModel::init(const char* modelfile, bool use_nnapi,
     nnapi_options.accelerator_name = nnapi_device_name;
     mTfliteNnapiDelegate = std::make_unique<tflite::StatefulNnApiDelegate>(nnapi_options);
     int delegationStatus = mTfliteInterpreter->ModifyGraphWithDelegate(mTfliteNnapiDelegate.get());
-    int nnapiErrno = mTfliteNnapiDelegate->GetNnApiErrno();
-    if ( delegationStatus != kTfLiteOk ||  nnapiErrno != ANEURALNETWORKS_NO_ERROR ) {
-      __android_log_print(ANDROID_LOG_ERROR, LOG_TAG,
-                          "Failed to initialize NNAPI Delegate for model %s, nnapi_errno is %d",
-                          modelfile, mTfliteNnapiDelegate->GetNnApiErrno());
+    *nnapiErrno = mTfliteNnapiDelegate->GetNnApiErrno();
+    if (delegationStatus != kTfLiteOk ||
+        *nnapiErrno != ANEURALNETWORKS_NO_ERROR) {
+      __android_log_print(
+          ANDROID_LOG_ERROR, LOG_TAG,
+          "Failed to initialize NNAPI Delegate for model %s, nnapi_errno is %d",
+          modelfile, *nnapiErrno);
       return false;
     }
   }

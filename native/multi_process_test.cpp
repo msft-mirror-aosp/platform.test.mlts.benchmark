@@ -109,9 +109,10 @@ bool runModel(const char* modelFileName,
   if (justCompileModel) {
     std::time_t startTime = std::time(nullptr);
     while (std::difftime(std::time(nullptr), startTime) < durationSeconds) {
+      int nnapiErrno = 0;
       std::unique_ptr<BenchmarkModel> model(BenchmarkModel::create(
           modelFileName, /*useNnApi=*/true,
-          /*enableIntermediateTensorsDump=*/false,
+          /*enableIntermediateTensorsDump=*/false, &nnapiErrno,
           nnApiDeviceName.empty() ? nullptr : nnApiDeviceName.c_str()));
 
       if (!model) {
@@ -128,9 +129,10 @@ bool runModel(const char* modelFileName,
 
     return true;
   } else {
+    int nnapiErrno = 0;
     std::unique_ptr<BenchmarkModel> model(BenchmarkModel::create(
         modelFileName, /*useNnApi=*/true,
-        /*enableIntermediateTensorsDump=*/false,
+        /*enableIntermediateTensorsDump=*/false, &nnapiErrno,
         nnApiDeviceName.empty() ? nullptr : nnApiDeviceName.c_str()));
 
     if (!model) {
@@ -146,6 +148,23 @@ bool runModel(const char* modelFileName,
   }
 }
 
+bool getBooleanArg(int argc, char* argv[], int argIndex, bool defaultValue) {
+  if (argc > argIndex) {
+    std::string argAsString(argv[argIndex]);
+    return argAsString == "true";
+  } else {
+    return defaultValue;
+  }
+}
+
+int getIntArg(int argc, char* argv[], int argIndex, int defaultValue) {
+  if (argc > argIndex) {
+    return std::atoi(argv[argIndex]);
+  } else {
+    return defaultValue;
+  }
+}
+
 int main(int argc, char* argv[]) {
   if (argc < kMandatoryArgsCount) {
     __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, kUsage, kMandatoryArgsCount,
@@ -158,21 +177,20 @@ int main(int argc, char* argv[]) {
   const char* testName = argv[kArgTestName];
   std::string nnApiDeviceName{
       argc > kArgNnApiDeviceName ? argv[kArgNnApiDeviceName] : ""};
-  int numProcesses = std::atoi(argv[kArgProcessCount]);
-  int numThreads = std::atoi(argv[kArgThreadCount]);
-  int durationSeconds = std::atoi(argv[kArgDurationSeconds]);
-  bool justCompileModel = false;
-  if (argc > kArgJustCompileModel) {
-    std::string strJustCompileModel(argv[kArgJustCompileModel]);
-    justCompileModel = strJustCompileModel == "true";
-  }
+  int numProcesses = getIntArg(argc, argv, kArgProcessCount, 0);
+  int numThreads = getIntArg(argc, argv, kArgThreadCount, 0);
+  int durationSeconds = getIntArg(argc, argv, kArgDurationSeconds, 0);
+  bool justCompileModel =
+      getBooleanArg(argc, argv, kArgJustCompileModel, false);
   std::vector<int> inputShape;
   std::istringstream inputShapeStream(argv[kArgInputShape]);
   std::string currSizeToken;
   while (std::getline(inputShapeStream, currSizeToken, ',')) {
     inputShape.push_back(std::stoi(currSizeToken));
   }
-  int inputElementSize = std::atoi(argv[kArgInputElementSize]);
+  int inputElementSize = getIntArg(argc, argv, kArgInputElementSize, 0);
+  int processFailureRate =
+      getIntArg(argc, argv, kArgProcessFailureRatePercent, 0);
 
   // Validate params
 
@@ -192,9 +210,12 @@ int main(int argc, char* argv[]) {
       return kInvalidArguments;
     }
   }
-  int processFailureRate = argc > kArgProcessFailureRatePercent
-                               ? std::stoi(argv[kArgProcessFailureRatePercent])
-                               : 0;
+
+  if (numProcesses <= 0 || numThreads <= 0 || durationSeconds <= 0 ||
+      inputElementSize <= 0) {
+    __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Invalid arguments");
+    return kInvalidArguments;
+  }
 
   __android_log_print(
       ANDROID_LOG_INFO, LOG_TAG,

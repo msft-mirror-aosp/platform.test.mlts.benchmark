@@ -25,6 +25,7 @@ import android.test.suitebuilder.annotation.LargeTest;
 import androidx.test.InstrumentationRegistry;
 
 import com.android.nn.benchmark.core.NNTestBase;
+import com.android.nn.benchmark.core.NnApiDelegationFailure;
 import com.android.nn.benchmark.core.TestModels;
 
 import org.junit.Before;
@@ -73,17 +74,24 @@ public class NNClientEarlyTerminationTest extends
     @Override
     public void setUp() {
         injectInstrumentation(InstrumentationRegistry.getInstrumentation());
-        final Intent runSomeInferencesInASeparateProcess = compileSupportedModelsOnNThreadsFor(
-                NNAPI_CLIENTS_COUNT,
-                MAX_SEPARATE_PROCESS_EXECUTION_TIME);
-        setActivityIntent(runSomeInferencesInASeparateProcess);
+        try {
+            final Intent runSomeInferencesInASeparateProcess = compileSupportedModelsOnNThreadsFor(
+                    NNAPI_CLIENTS_COUNT, MAX_SEPARATE_PROCESS_EXECUTION_TIME);
+            setActivityIntent(runSomeInferencesInASeparateProcess);
+        } catch (NnApiDelegationFailure nnApiDelegationFailure) {
+            throw new RuntimeException(
+                    "Cannot initialize test, failure looking for supported models, please check "
+                            + "the driver status",
+                    nnApiDelegationFailure);
+        }
     }
 
     @Test
     @LargeTest
     @UiThreadTest
     public void testDriverDoesNotFailWithParallelThreads()
-            throws ExecutionException, InterruptedException, RemoteException {
+            throws ExecutionException, InterruptedException, RemoteException,
+            NnApiDelegationFailure {
         final NNParallelTestActivity activity = getActivity();
 
         Optional<TestModels.TestModelEntry> modelForLivenessTest =
@@ -119,7 +127,8 @@ public class NNClientEarlyTerminationTest extends
                 driverDidNotCrash.get());
     }
 
-    private Intent compileSupportedModelsOnNThreadsFor(int threadCount, Duration testDuration) {
+    private Intent compileSupportedModelsOnNThreadsFor(int threadCount, Duration testDuration)
+            throws NnApiDelegationFailure {
         Intent intent = new Intent();
         intent.putExtra(
                 NNParallelTestActivity.EXTRA_TEST_LIST, IntStream.range(0,
