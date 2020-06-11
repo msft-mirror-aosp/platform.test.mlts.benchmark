@@ -267,8 +267,9 @@ public class Processor implements Runnable {
                             "Cannot initialise test %d: '%s' on accelerator %s, skipping", ct,
                             testModel.mTestName, mAcceleratorName));
                 } else {
-                    Log.e(TAG, String.format("Cannot initialise test %d: '%s'  on accelerator %s.", ct,
-                            testModel.mTestName, mAcceleratorName), e);
+                    Log.e(TAG,
+                            String.format("Cannot initialise test %d: '%s'  on accelerator %s.", ct,
+                                    testModel.mTestName, mAcceleratorName), e);
                     throw e;
                 }
             }

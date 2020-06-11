@@ -23,11 +23,11 @@ import android.os.Build;
 import android.util.Log;
 import android.util.Pair;
 import android.widget.TextView;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -49,6 +49,7 @@ public class NNTestBase {
 
     /**
      * Fills resultList with the name of the available NNAPI accelerators
+     *
      * @return False if any error occurred, true otherwise
      */
     private static native boolean getAcceleratorNames(List<String> resultList);
@@ -197,40 +198,40 @@ public class NNTestBase {
     private List<InferenceInOutSequence> getInputOutputAssets() throws IOException {
         // TODO: Caching, don't read inputs for every inference
         List<InferenceInOutSequence> inOutList =
-            getInputOutputAssets(mContext, mInputOutputAssets, mInputOutputDatasets);
+                getInputOutputAssets(mContext, mInputOutputAssets, mInputOutputDatasets);
 
         Boolean lastGolden = null;
         for (InferenceInOutSequence sequence : inOutList) {
             mHasGoldenOutputs = sequence.hasGoldenOutput();
             if (lastGolden == null) {
-              lastGolden = mHasGoldenOutputs;
+                lastGolden = mHasGoldenOutputs;
             } else {
-              if (lastGolden != mHasGoldenOutputs) {
-                throw new IllegalArgumentException(
-                    "Some inputs for " + mModelName + " have outputs while some don't.");
-              }
+                if (lastGolden != mHasGoldenOutputs) {
+                    throw new IllegalArgumentException(
+                            "Some inputs for " + mModelName + " have outputs while some don't.");
+                }
             }
         }
         return inOutList;
     }
 
     public static List<InferenceInOutSequence> getInputOutputAssets(Context context,
-        InferenceInOutSequence.FromAssets[] inputOutputAssets,
-        InferenceInOutSequence.FromDataset[] inputOutputDatasets) throws IOException {
-      // TODO: Caching, don't read inputs for every inference
-      List<InferenceInOutSequence> inOutList = new ArrayList<>();
-      if (inputOutputAssets != null) {
-        for (InferenceInOutSequence.FromAssets ioAsset : inputOutputAssets) {
-          inOutList.add(ioAsset.readAssets(context.getAssets()));
+            InferenceInOutSequence.FromAssets[] inputOutputAssets,
+            InferenceInOutSequence.FromDataset[] inputOutputDatasets) throws IOException {
+        // TODO: Caching, don't read inputs for every inference
+        List<InferenceInOutSequence> inOutList = new ArrayList<>();
+        if (inputOutputAssets != null) {
+            for (InferenceInOutSequence.FromAssets ioAsset : inputOutputAssets) {
+                inOutList.add(ioAsset.readAssets(context.getAssets()));
+            }
         }
-      }
-      if (inputOutputDatasets != null) {
-        for (InferenceInOutSequence.FromDataset dataset : inputOutputDatasets) {
-          inOutList.addAll(dataset.readDataset(context.getAssets(), context.getCacheDir()));
+        if (inputOutputDatasets != null) {
+            for (InferenceInOutSequence.FromDataset dataset : inputOutputDatasets) {
+                inOutList.addAll(dataset.readDataset(context.getAssets(), context.getCacheDir()));
+            }
         }
-      }
 
-      return inOutList;
+        return inOutList;
     }
 
     public int getDefaultFlags() {
@@ -332,41 +333,42 @@ public class NNTestBase {
 
     // We need to copy it to cache dir, so that TFlite can load it directly.
     private String copyAssetToFile() {
-      @SuppressLint("DefaultLocale")
-      String outFileName =
-          String.format("%s/%s-%d-%d.tflite", mContext.getCacheDir().getAbsolutePath(), mModelFile,
-              Thread.currentThread().getId(), mRandom.nextInt(10000));
+        @SuppressLint("DefaultLocale")
+        String outFileName =
+                String.format("%s/%s-%d-%d.tflite", mContext.getCacheDir().getAbsolutePath(),
+                        mModelFile,
+                        Thread.currentThread().getId(), mRandom.nextInt(10000));
 
-      return copyAssetToFile(mContext, mModelFile + ".tflite", outFileName) ? outFileName : null;
+        return copyAssetToFile(mContext, mModelFile + ".tflite", outFileName) ? outFileName : null;
     }
 
     public static boolean copyModelToFile(Context context, String modelFileName, File targetFile)
-        throws IOException {
-      if (!targetFile.exists() && !targetFile.createNewFile()) {
-        Log.w(TAG, String.format("Unable to create file %s", targetFile.getAbsolutePath()));
-        return false;
-      }
-      return NNTestBase.copyAssetToFile(context, modelFileName, targetFile.getAbsolutePath());
+            throws IOException {
+        if (!targetFile.exists() && !targetFile.createNewFile()) {
+            Log.w(TAG, String.format("Unable to create file %s", targetFile.getAbsolutePath()));
+            return false;
+        }
+        return NNTestBase.copyAssetToFile(context, modelFileName, targetFile.getAbsolutePath());
     }
 
     public static boolean copyAssetToFile(
-        Context context, String modelAssetName, String targetPath) {
-      AssetManager assetManager = context.getAssets();
-      try {
-        File outFile = new File(targetPath);
+            Context context, String modelAssetName, String targetPath) {
+        AssetManager assetManager = context.getAssets();
+        try {
+            File outFile = new File(targetPath);
 
-        try (InputStream in = assetManager.open(modelAssetName);
-             FileOutputStream out = new FileOutputStream(outFile)) {
-          byte[] byteBuffer = new byte[1024];
-          int readBytes = -1;
-          while ((readBytes = in.read(byteBuffer)) != -1) {
-            out.write(byteBuffer, 0, readBytes);
-          }
+            try (InputStream in = assetManager.open(modelAssetName);
+                 FileOutputStream out = new FileOutputStream(outFile)) {
+                byte[] byteBuffer = new byte[1024];
+                int readBytes = -1;
+                while ((readBytes = in.read(byteBuffer)) != -1) {
+                    out.write(byteBuffer, 0, readBytes);
+                }
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to copy asset file: " + modelAssetName, e);
+            return false;
         }
-      } catch (IOException e) {
-        Log.e(TAG, "Failed to copy asset file: " + modelAssetName, e);
-        return false;
-      }
-      return true;
+        return true;
     }
 }

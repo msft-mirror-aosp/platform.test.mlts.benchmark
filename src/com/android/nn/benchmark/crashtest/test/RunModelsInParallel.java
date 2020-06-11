@@ -49,6 +49,20 @@ public class RunModelsInParallel implements CrashTest {
     private static final String ACCELERATOR_NAME = "accelerator_name";
     private static final String IGNORE_UNSUPPORTED_MODELS = "ignore_unsupported_models";
     private static final String RUN_MODEL_COMPILATION_ONLY = "run_model_compilation_only";
+    private final Set<Processor> activeTests = new HashSet<>();
+    private final List<Boolean> mTestCompletionResults = Collections.synchronizedList(
+            new ArrayList<>());
+    private long mTestDurationMillis = 0;
+    private int mThreadCount = 0;
+    private int[] mTestList = new int[0];
+    private String mTestName;
+    private String mAcceleratorName;
+    private boolean mIgnoreUnsupportedModels;
+    private Context mContext;
+    private boolean mRunModelCompilationOnly;
+    private ExecutorService mExecutorService = null;
+    private CountDownLatch mParallelTestComplete;
+    private ProgressListener mProgressListener;
 
     static public CrashTestIntentInitializer intentInitializer(int[] models, int threadCount,
             Duration duration, String testName, String acceleratorName,
@@ -63,22 +77,6 @@ public class RunModelsInParallel implements CrashTest {
             intent.putExtra(RUN_MODEL_COMPILATION_ONLY, runModelCompilationOnly);
         };
     }
-
-    private long mTestDurationMillis = 0;
-    private int mThreadCount = 0;
-    private int[] mTestList = new int[0];
-    private String mTestName;
-    private String mAcceleratorName;
-    private boolean mIgnoreUnsupportedModels;
-    private Context mContext;
-    private boolean mRunModelCompilationOnly;
-
-    private ExecutorService mExecutorService = null;
-    private final Set<Processor> activeTests = new HashSet<>();
-    private CountDownLatch mParallelTestComplete;
-    private final List<Boolean> mTestCompletionResults = Collections.synchronizedList(
-            new ArrayList<>());
-    private ProgressListener mProgressListener;
 
     @Override
     public void init(Context context, Intent configParams,
@@ -124,7 +122,8 @@ public class RunModelsInParallel implements CrashTest {
             }
 
             @Override
-            public void onStatusUpdate(int testNumber, int numTests, String modelName) {}
+            public void onStatusUpdate(int testNumber, int numTests, String modelName) {
+            }
         }, testList);
         result.setUseNNApi(true);
         result.setCompleteInputSet(false);

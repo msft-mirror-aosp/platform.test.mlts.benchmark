@@ -18,10 +18,12 @@ package com.android.nn.benchmark.app;
 
 import android.content.Context;
 import android.util.Log;
+
 import com.android.nn.benchmark.core.BenchmarkException;
 import com.android.nn.benchmark.core.NNTestBase;
 import com.android.nn.benchmark.core.Processor;
 import com.android.nn.benchmark.core.TestModels;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,18 +50,19 @@ public interface AcceleratorSpecificTestSupport {
     }
 
     static List<Object[]> perAcceleratorTestConfig(List<Object[]> testConfig) {
-      List<String> accelerators = new ArrayList<>();
-      accelerators.addAll(NNTestBase.availableAcceleratorNames());
-      accelerators.add(null); // running tests with no target accelerator too
+        List<String> accelerators = new ArrayList<>();
+        accelerators.addAll(NNTestBase.availableAcceleratorNames());
+        accelerators.add(null); // running tests with no target accelerator too
 
-      return testConfig.stream()
-          .flatMap(currConfigurationParams -> accelerators.stream().map(accelerator -> {
-            Object[] result =
-                Arrays.copyOf(currConfigurationParams, currConfigurationParams.length + 1);
-            result[currConfigurationParams.length] = accelerator;
-            return result;
-          }))
-          .collect(Collectors.toList());
+        return testConfig.stream()
+                .flatMap(currConfigurationParams -> accelerators.stream().map(accelerator -> {
+                    Object[] result =
+                            Arrays.copyOf(currConfigurationParams,
+                                    currConfigurationParams.length + 1);
+                    result[currConfigurationParams.length] = accelerator;
+                    return result;
+                }))
+                .collect(Collectors.toList());
     }
 
     class DriverLivenessChecker implements Callable<Boolean> {

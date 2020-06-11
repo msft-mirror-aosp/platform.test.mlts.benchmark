@@ -17,38 +17,42 @@
 package com.android.nn.benchmark.app;
 
 import android.content.Intent;
+
 import com.android.nn.benchmark.crashtest.test.RunModelsInMultipleProcesses;
-import java.time.Duration;
-import java.util.Arrays;
-import java.util.List;
+
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
+
 @RunWith(Parameterized.class)
 public class NNMultipleProcessModelLoadTest extends NNMultipleProcessTest {
-  public NNMultipleProcessModelLoadTest(int processCount, int threadCount, Duration duration,
-      int failureRatePercent, String acceleratorName) {
-    super(processCount, threadCount, duration, failureRatePercent, acceleratorName);
-  }
+    public NNMultipleProcessModelLoadTest(int processCount, int threadCount, Duration duration,
+            int failureRatePercent, String acceleratorName) {
+        super(processCount, threadCount, duration, failureRatePercent, acceleratorName);
+    }
 
-  @Parameters(name = "{0} processes, {1} threads for {2} on accelerator({4}) with early "
-          + "termination rate({3}%)")
-  public static List<Object[]> testConfiguration() {
-    return AcceleratorSpecificTestSupport.perAcceleratorTestConfig(
-        Arrays.asList(new Object[] {6, 10, Duration.ofMinutes(20), 0},
-            new Object[] {6, 10, Duration.ofMinutes(20), 50},
-            new Object[] {6, 10, Duration.ofMinutes(10), 100}));
-  }
+    @Parameters(name = "{0} processes, {1} threads for {2} on accelerator({4}) with early "
+            + "termination rate({3}%)")
+    public static List<Object[]> testConfiguration() {
+        return AcceleratorSpecificTestSupport.perAcceleratorTestConfig(
+                Arrays.asList(new Object[]{6, 10, Duration.ofMinutes(20), 0},
+                        new Object[]{6, 10, Duration.ofMinutes(20), 50},
+                        new Object[]{6, 10, Duration.ofMinutes(10), 100}));
+    }
 
-  @Override
-  protected Intent getRunModelsInMultipleProcessesConfigIntent() {
-    Intent result = new Intent();
-    RunModelsInMultipleProcesses
-        .intentInitializer(mTestName.getMethodName(), mModelForLivenessTest.get().mModelName,
-            mProcessCount, mThreadCount, mDuration, mAcceleratorName,
-            /*justCompileModel=*/true, mFailureRatePercent)
-        .addIntentParams(result);
-    return result;
-  }
+    @Override
+    protected Intent getRunModelsInMultipleProcessesConfigIntent() {
+        Intent result = new Intent();
+        RunModelsInMultipleProcesses
+                .intentInitializer(mTestName.getMethodName(),
+                        mModelForLivenessTest.get().mModelName,
+                        mProcessCount, mThreadCount, mDuration, mAcceleratorName,
+                        /*justCompileModel=*/true, mFailureRatePercent)
+                .addIntentParams(result);
+        return result;
+    }
 }
