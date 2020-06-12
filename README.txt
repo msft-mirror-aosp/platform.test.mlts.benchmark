@@ -60,3 +60,6 @@ early termination
 * multi-process-model-load-stress: this extends the `parallel-inference-stress` running inference
 on a single model in multiple processes and threads with different probabilities in client process
 early termination
+
+* memory-mapped-model-load-stress: runs a series of parallel model compilation with memory mapped
+TFLite models

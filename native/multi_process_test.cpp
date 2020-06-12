@@ -49,18 +49,20 @@ enum Arguments : int {
   kArgTestName,
   kArgJustCompileModel,
   kArgProcessFailureRatePercent,
-  kArgNnApiDeviceName
+  kArgNnApiDeviceName,
+  kArgMmapModel
 };
 
 constexpr int kMandatoryArgsCount = 9;
 
 const char* kUsage =
-    R"""(%s modelFileName inputDataFile inputShape inputElementByteSize procCount threadCount durationInSeconds testName justCompileModel [processFailureRate] [nnapiDeviceName]
+    R"""(%s modelFileName inputDataFile inputShape inputElementByteSize procCount threadCount durationInSeconds testName justCompileModel [processFailureRate] [nnapiDeviceName] [mmapModel]
 
                           where:
                               inputShape comma separated list of integers (e.g. '1,224,224,3')
                               justCompileModel: true/false)
-                              processFailureRate: 0 to 100 percent probability of having one of the client processes failing. Defaults to 0.)""";
+                              processFailureRate: 0 to 100 percent probability of having one of the client processes failing. Defaults to 0.)
+                              mmapModel: true/false select if the TFLite model should be memory mapped to the given file or created from program memory)""";
 
 bool canReadInputFile(const char* path) {
   std::string modelFileName(path);
@@ -105,14 +107,16 @@ bool readInputData(const char* inputDataFileName, std::vector<int> input_shape,
 bool runModel(const char* modelFileName,
               const std::vector<InferenceInOutSequence>& data,
               int durationSeconds, const std::string& nnApiDeviceName,
-              bool justCompileModel) {
+              bool justCompileModel, bool mmapModel) {
   if (justCompileModel) {
     std::time_t startTime = std::time(nullptr);
     while (std::difftime(std::time(nullptr), startTime) < durationSeconds) {
+      int nnapiErrno = 0;
       std::unique_ptr<BenchmarkModel> model(BenchmarkModel::create(
           modelFileName, /*useNnApi=*/true,
           /*enableIntermediateTensorsDump=*/false,
-          nnApiDeviceName.empty() ? nullptr : nnApiDeviceName.c_str()));
+          &nnapiErrno,
+          nnApiDeviceName.empty() ? nullptr : nnApiDeviceName.c_str(), mmapModel));
 
       if (!model) {
         __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Error creating model");
@@ -128,10 +132,12 @@ bool runModel(const char* modelFileName,
 
     return true;
   } else {
+    int nnapiErrno = 0;
     std::unique_ptr<BenchmarkModel> model(BenchmarkModel::create(
         modelFileName, /*useNnApi=*/true,
         /*enableIntermediateTensorsDump=*/false,
-        nnApiDeviceName.empty() ? nullptr : nnApiDeviceName.c_str()));
+        &nnapiErrno,
+        nnApiDeviceName.empty() ? nullptr : nnApiDeviceName.c_str(), mmapModel));
 
     if (!model) {
       __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Error creating model");
@@ -146,6 +152,23 @@ bool runModel(const char* modelFileName,
   }
 }
 
+bool getBooleanArg(int argc, char* argv[], int argIndex, bool defaultValue) {
+    if (argc > argIndex) {
+        std::string argAsString(argv[argIndex]);
+        return argAsString == "true";
+    } else {
+        return defaultValue;
+    }
+}
+
+int getIntArg(int argc, char* argv[], int argIndex, int defaultValue) {
+    if (argc > argIndex) {
+        return std::atoi(argv[argIndex]);
+    } else {
+        return defaultValue;
+    }
+}
+
 int main(int argc, char* argv[]) {
   if (argc < kMandatoryArgsCount) {
     __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, kUsage, kMandatoryArgsCount,
@@ -158,21 +181,22 @@ int main(int argc, char* argv[]) {
   const char* testName = argv[kArgTestName];
   std::string nnApiDeviceName{
       argc > kArgNnApiDeviceName ? argv[kArgNnApiDeviceName] : ""};
-  int numProcesses = std::atoi(argv[kArgProcessCount]);
-  int numThreads = std::atoi(argv[kArgThreadCount]);
-  int durationSeconds = std::atoi(argv[kArgDurationSeconds]);
-  bool justCompileModel = false;
-  if (argc > kArgJustCompileModel) {
-    std::string strJustCompileModel(argv[kArgJustCompileModel]);
-    justCompileModel = strJustCompileModel == "true";
-  }
+  int numProcesses = getIntArg(argc, argv, kArgProcessCount, 0);
+  int numThreads = getIntArg(argc, argv, kArgThreadCount, 0);
+  int durationSeconds = getIntArg(argc, argv, kArgDurationSeconds, 0);
+  bool justCompileModel =
+      getBooleanArg(argc, argv, kArgJustCompileModel, false);
   std::vector<int> inputShape;
   std::istringstream inputShapeStream(argv[kArgInputShape]);
   std::string currSizeToken;
   while (std::getline(inputShapeStream, currSizeToken, ',')) {
     inputShape.push_back(std::stoi(currSizeToken));
   }
-  int inputElementSize = std::atoi(argv[kArgInputElementSize]);
+  int inputElementSize = getIntArg(argc, argv, kArgInputElementSize, 0);
+  int processFailureRate = getIntArg(argc, argv, kArgProcessFailureRatePercent, 0);
+
+
+  bool mmapModel = getBooleanArg(argc, argv, kArgMmapModel, true);
 
   // Validate params
 
@@ -192,9 +216,12 @@ int main(int argc, char* argv[]) {
       return kInvalidArguments;
     }
   }
-  int processFailureRate = argc > kArgProcessFailureRatePercent
-                               ? std::stoi(argv[kArgProcessFailureRatePercent])
-                               : 0;
+
+  if (numProcesses <= 0 || numThreads <= 0 || durationSeconds <= 0 ||
+      inputElementSize <= 0) {
+    __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Invalid arguments");
+    return kInvalidArguments;
+  }
 
   __android_log_print(
       ANDROID_LOG_INFO, LOG_TAG,
@@ -259,7 +286,7 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < numThreads; i++) {
       threads.push_back(std::thread([&]() {
         runModel(modelFileName, inputData, durationSeconds, nnApiDeviceName,
-                 justCompileModel);
+                 justCompileModel, mmapModel);
       }));
     }
     std::for_each(threads.begin(), threads.end(),

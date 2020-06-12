@@ -70,7 +70,8 @@ public class NNTestBase {
             String modelFileName,
             boolean useNNApi,
             boolean enableIntermediateTensorsDump,
-            String nnApiDeviceName);
+            String nnApiDeviceName,
+            boolean mmapModel) throws NnApiDelegationFailure;
 
     private synchronized native void destroyModel(long modelHandle);
 
@@ -101,19 +102,20 @@ public class NNTestBase {
 
     protected Context mContext;
     protected TextView mText;
-    private String mModelName;
-    private String mModelFile;
+    private final String mModelName;
+    private final String mModelFile;
     private long mModelHandle;
-    private int[] mInputShape;
-    private InferenceInOutSequence.FromAssets[] mInputOutputAssets;
-    private InferenceInOutSequence.FromDataset[] mInputOutputDatasets;
-    private EvaluatorConfig mEvaluatorConfig;
+    private final int[] mInputShape;
+    private final InferenceInOutSequence.FromAssets[] mInputOutputAssets;
+    private final InferenceInOutSequence.FromDataset[] mInputOutputDatasets;
+    private final EvaluatorConfig mEvaluatorConfig;
     private EvaluatorInterface mEvaluator;
     private boolean mHasGoldenOutputs;
     private boolean mUseNNApi = false;
     private boolean mEnableIntermediateTensorsDump = false;
-    private int mMinSdkVersion;
+    private final int mMinSdkVersion;
     private Optional<String> mNNApiDeviceName = Optional.empty();
+    private boolean mMmapModel = false;
 
     public NNTestBase(String modelName, String modelFile, int[] inputShape,
             InferenceInOutSequence.FromAssets[] inputOutputAssets,
@@ -161,19 +163,22 @@ public class NNTestBase {
         mNNApiDeviceName = Optional.ofNullable(value);
     }
 
-    public final boolean setupModel(Context ipcxt) {
+    public void setMmapModel(boolean value) {
+        mMmapModel = value;
+    }
+
+    public final boolean setupModel(Context ipcxt) throws IOException, NnApiDelegationFailure {
         mContext = ipcxt;
         String modelFileName = copyAssetToFile();
-        if (modelFileName != null) {
-            mModelHandle = initModel(
-                    modelFileName, mUseNNApi, mEnableIntermediateTensorsDump,
-                    mNNApiDeviceName.orElse(null));
-            if (mModelHandle == 0) {
-                Log.e(TAG, "Failed to init the model");
-                return false;
-            }
-            resizeInputTensors(mModelHandle, mInputShape);
+        mModelHandle = initModel(
+                modelFileName, mUseNNApi, mEnableIntermediateTensorsDump,
+                mNNApiDeviceName.orElse(null), mMmapModel);
+        if (mModelHandle == 0) {
+            Log.e(TAG, "Failed to init the model");
+            return false;
         }
+        resizeInputTensors(mModelHandle, mInputShape);
+
         if (mEvaluatorConfig != null) {
             mEvaluator = mEvaluatorConfig.createEvaluator(mContext.getAssets());
         }
@@ -198,18 +203,18 @@ public class NNTestBase {
     private List<InferenceInOutSequence> getInputOutputAssets() throws IOException {
         // TODO: Caching, don't read inputs for every inference
         List<InferenceInOutSequence> inOutList =
-                getInputOutputAssets(mContext, mInputOutputAssets, mInputOutputDatasets);
+            getInputOutputAssets(mContext, mInputOutputAssets, mInputOutputDatasets);
 
         Boolean lastGolden = null;
         for (InferenceInOutSequence sequence : inOutList) {
             mHasGoldenOutputs = sequence.hasGoldenOutput();
             if (lastGolden == null) {
-                lastGolden = mHasGoldenOutputs;
+              lastGolden = mHasGoldenOutputs;
             } else {
-                if (lastGolden != mHasGoldenOutputs) {
-                    throw new IllegalArgumentException(
-                            "Some inputs for " + mModelName + " have outputs while some don't.");
-                }
+              if (lastGolden != mHasGoldenOutputs) {
+                throw new IllegalArgumentException(
+                    "Some inputs for " + mModelName + " have outputs while some don't.");
+              }
             }
         }
         return inOutList;
@@ -332,14 +337,15 @@ public class NNTestBase {
     private final Random mRandom = new Random(System.currentTimeMillis());
 
     // We need to copy it to cache dir, so that TFlite can load it directly.
-    private String copyAssetToFile() {
+    private String copyAssetToFile() throws IOException {
         @SuppressLint("DefaultLocale")
         String outFileName =
                 String.format("%s/%s-%d-%d.tflite", mContext.getCacheDir().getAbsolutePath(),
                         mModelFile,
                         Thread.currentThread().getId(), mRandom.nextInt(10000));
 
-        return copyAssetToFile(mContext, mModelFile + ".tflite", outFileName) ? outFileName : null;
+        copyAssetToFile(mContext, mModelFile + ".tflite", outFileName);
+        return outFileName;
     }
 
     public static boolean copyModelToFile(Context context, String modelFileName, File targetFile)
@@ -348,11 +354,12 @@ public class NNTestBase {
             Log.w(TAG, String.format("Unable to create file %s", targetFile.getAbsolutePath()));
             return false;
         }
-        return NNTestBase.copyAssetToFile(context, modelFileName, targetFile.getAbsolutePath());
+        NNTestBase.copyAssetToFile(context, modelFileName, targetFile.getAbsolutePath());
+        return true;
     }
 
-    public static boolean copyAssetToFile(
-            Context context, String modelAssetName, String targetPath) {
+    public static void copyAssetToFile(Context context, String modelAssetName, String targetPath)
+            throws IOException {
         AssetManager assetManager = context.getAssets();
         try {
             File outFile = new File(targetPath);
@@ -367,8 +374,7 @@ public class NNTestBase {
             }
         } catch (IOException e) {
             Log.e(TAG, "Failed to copy asset file: " + modelAssetName, e);
-            return false;
+            throw e;
         }
-        return true;
     }
 }

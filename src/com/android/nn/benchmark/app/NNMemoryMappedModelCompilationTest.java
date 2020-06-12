@@ -28,6 +28,8 @@ import com.android.nn.benchmark.core.NNTestBase;
 import com.android.nn.benchmark.core.NnApiDelegationFailure;
 import com.android.nn.benchmark.core.TestModels;
 
+import junit.framework.Assert;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -45,11 +47,11 @@ import java.util.concurrent.Future;
 import java.util.stream.IntStream;
 
 @RunWith(Parameterized.class)
-public class NNClientEarlyTerminationTest extends
+public class NNMemoryMappedModelCompilationTest extends
         ActivityInstrumentationTestCase2<NNParallelTestActivity> implements
         AcceleratorSpecificTestSupport {
 
-    private static final String TAG = "NNClientEarlyTermination";
+    private static final String TAG = "NNMemoryMappedModelCompilation";
     private static final Duration MAX_SEPARATE_PROCESS_EXECUTION_TIME = Duration.ofSeconds(70);
     public static final int NNAPI_CLIENTS_COUNT = 4;
 
@@ -60,7 +62,7 @@ public class NNClientEarlyTerminationTest extends
     @Rule
     public TestName mTestName = new TestName();
 
-    public NNClientEarlyTerminationTest(String acceleratorName) {
+    public NNMemoryMappedModelCompilationTest(String acceleratorName) {
         super(NNParallelTestActivity.class);
         mAcceleratorName = acceleratorName;
     }
@@ -74,16 +76,18 @@ public class NNClientEarlyTerminationTest extends
     @Override
     public void setUp() {
         injectInstrumentation(InstrumentationRegistry.getInstrumentation());
+        final Intent runSomeInferencesInASeparateProcess;
         try {
-            final Intent runSomeInferencesInASeparateProcess = compileSupportedModelsOnNThreadsFor(
-                    NNAPI_CLIENTS_COUNT, MAX_SEPARATE_PROCESS_EXECUTION_TIME);
-            setActivityIntent(runSomeInferencesInASeparateProcess);
+            runSomeInferencesInASeparateProcess = compileSupportedModelsMemoryMappedOnNThreadsFor(
+                    NNAPI_CLIENTS_COUNT,
+                    MAX_SEPARATE_PROCESS_EXECUTION_TIME);
         } catch (NnApiDelegationFailure nnApiDelegationFailure) {
             throw new RuntimeException(
                     "Cannot initialize test, failure looking for supported models, please check "
                             + "the driver status",
                     nnApiDelegationFailure);
         }
+        setActivityIntent(runSomeInferencesInASeparateProcess);
     }
 
     @Test
@@ -99,47 +103,31 @@ public class NNClientEarlyTerminationTest extends
         assertTrue("No model available to be run on accelerator " + mAcceleratorName,
                 modelForLivenessTest.isPresent());
 
+        // This should not be necessary
         final DriverLivenessChecker driverLivenessChecker = new DriverLivenessChecker(activity,
                 mAcceleratorName, modelForLivenessTest.get());
         Future<Boolean> driverDidNotCrash = mDriverLivenessValidationExecutor.submit(
                 driverLivenessChecker);
 
-        // Causing failure before tests would end on their own.
-        final long maxTerminationTime = MAX_SEPARATE_PROCESS_EXECUTION_TIME.toMillis() / 2;
-        final long minTerminationTime = MAX_SEPARATE_PROCESS_EXECUTION_TIME.toMillis() / 4;
-        Thread.sleep(ramdomInRange(minTerminationTime, maxTerminationTime));
+        Assert.assertEquals(CrashTestStatus.TestResult.SUCCESS, activity.testResult());
 
-        try {
-            activity.killTestProcess();
-        } catch (RemoteException e) {
-            driverLivenessChecker.stop();
-            throw e;
-        }
-
-        CrashTestStatus.TestResult testResult = activity.testResult();
         driverLivenessChecker.stop();
-
-        assertEquals("Remote process is expected to be killed",
-                CrashTestStatus.TestResult.CRASH,
-                testResult);
-
-        assertTrue("Driver shouldn't crash if a client process is terminated",
-                driverDidNotCrash.get());
+        assertTrue("Driver shouldn't have crashed", driverDidNotCrash.get());
     }
 
-    private Intent compileSupportedModelsOnNThreadsFor(int threadCount, Duration testDuration)
-            throws NnApiDelegationFailure {
+    private Intent compileSupportedModelsMemoryMappedOnNThreadsFor(int threadCount,
+            Duration testDuration) throws NnApiDelegationFailure {
         Intent intent = new Intent();
-        intent.putExtra(
-                NNParallelTestActivity.EXTRA_TEST_LIST, IntStream.range(0,
-                        TestModels.modelsList().size()).toArray());
+        int modelsCount = TestModels.modelsList().size();
+        intent.putExtra(NNParallelTestActivity.EXTRA_TEST_LIST, IntStream.range(0, modelsCount).toArray());
         intent.putExtra(NNParallelTestActivity.EXTRA_THREAD_COUNT, threadCount);
         intent.putExtra(NNParallelTestActivity.EXTRA_TEST_DURATION_MILLIS, testDuration.toMillis());
         intent.putExtra(NNParallelTestActivity.EXTRA_RUN_IN_SEPARATE_PROCESS, true);
         intent.putExtra(NNParallelTestActivity.EXTRA_TEST_NAME, mTestName.getMethodName());
         intent.putExtra(NNParallelTestActivity.EXTRA_ACCELERATOR_NAME, mAcceleratorName);
-        intent.putExtra(NNParallelTestActivity.EXTRA_IGNORE_UNSUPPORTED_MODELS, true);
         intent.putExtra(NNParallelTestActivity.EXTRA_RUN_MODEL_COMPILATION_ONLY, true);
+        intent.putExtra(NNParallelTestActivity.EXTRA_MEMORY_MAP_MODEL, true);
+        intent.putExtra(NNParallelTestActivity.EXTRA_IGNORE_UNSUPPORTED_MODELS, true);
         return intent;
     }
 }

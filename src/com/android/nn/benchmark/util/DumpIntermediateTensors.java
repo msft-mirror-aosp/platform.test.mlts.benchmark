@@ -91,7 +91,7 @@ public class DumpIntermediateTensors extends Activity {
                     String useNNAPIDir = useNNAPI ? NNAPI_DIR : CPU_DIR;
                     TestModelEntry modelEntry = TestModels.getModelByName(modelName);
                     NNTestBase testBase = modelEntry.createNNTestBase(
-                            useNNAPI, /*enableIntermediateTensorsDump*/ true);
+                        useNNAPI, /*enableIntermediateTensorsDump*/true, /*mmapModel*/false);
                     testBase.setupModel(this);
                     File outputDir = new File(getFilesDir() + "/" + DUMP_DIR +
                             "/" + modelName, useNNAPIDir);
