@@ -224,7 +224,9 @@ bool BenchmarkModel::resizeInputTensors(std::vector<int> shape) {
 
 bool BenchmarkModel::runInference() {
   auto status = mTfliteInterpreter->Invoke();
-  auto nnapi_errno = mTfliteNnapiDelegate->GetNnApiErrno();
+  auto nnapi_errno = mTfliteNnapiDelegate
+                         ? mTfliteNnapiDelegate->GetNnApiErrno()
+                         : ANEURALNETWORKS_NO_ERROR;
   if (status != kTfLiteOk || nnapi_errno != ANEURALNETWORKS_NO_ERROR) {
     __android_log_print(ANDROID_LOG_ERROR, LOG_TAG,
                         "Failed to invoke, tflite status: %d, nnapi errno: %d!",
