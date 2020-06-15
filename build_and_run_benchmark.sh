@@ -6,6 +6,46 @@
 # parallel-inference-stress tests produce no output except for the success or failure notification,
 # which is not logged.
 
+
+OPTS="$(getopt -o f:r -l filter-driver:,include-nnapi-reference,nnapi-reference-only -- "$@")"
+
+if [ $? -ne 0 ]; then
+    echo "Invalid arguments, accepted options are"
+    echo " -f <regex> | --filter-driver <regex> : to run crash tests only on the drivers (ignoring nnapi-reference) matching the specified regular expression"
+    echo " -r | --include-nnapi-reference : to include nnapi-reference in target drivers"
+    echo " --nnapi-reference-only : to run tests only vs nnapi-reference"
+    exit
+fi
+
+eval set -- "$OPTS"
+
+DRIVER_FILTER_OPT=""
+INCLUDE_NNAPI_REF_OPT=""
+while [ $# -gt 0 ] ; do
+  case "$1" in
+    -f|--filter-driver)
+      DRIVER_FILTER_OPT="-e nnCrashtestDeviceFilter $2"
+      shift 2
+      ;;
+    -r|--include-nnapi-reference)
+      INCLUDE_NNAPI_REF_OPT="-e nnCrashtestIncludeNnapiReference true"
+      shift
+      ;;
+    --nnapi-reference-only)
+      DRIVER_FILTER_OPT="-e nnCrashtestDeviceFilter no-device"
+      INCLUDE_NNAPI_REF_OPT="-e nnCrashtestIncludeNnapiReference true"
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      echo "Unsupported arg $1"
+      exit 1
+  esac
+done
+
 MODE="${1:-scoring}"
 
 INSTALL_NATIVE_TESTS=false
@@ -91,9 +131,9 @@ fi
 
 # Pass --no-isolated-storage to am instrument?
 BUILD_VERSION_RELEASE=`adb shell getprop ro.build.version.release`
-AM_INSTRUMENT_FLAGS=""
+AM_INSTRUMENT_FLAGS="$DRIVER_FILTER_OPT $INCLUDE_NNAPI_REF_OPT"
 if [[ $BUILD_VERSION_RELEASE == "Q" ]]; then
-  AM_INSTRUMENT_FLAGS+="--no-isolated-storage"
+  AM_INSTRUMENT_FLAGS+=" --no-isolated-storage"
 fi
 
 if [[ "$MLTS_RELEASE_DEVICE" == "True" ]]; then
