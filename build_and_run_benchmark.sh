@@ -6,10 +6,48 @@
 # parallel-inference-stress tests produce no output except for the success or failure notification,
 # which is not logged.
 
+
+OPTS="$(getopt -o f:r -l filter-driver:,include-nnapi-reference,nnapi-reference-only -- "$@")"
+
+if [ $? -ne 0 ]; then
+    echo "Invalid arguments, accepted options are"
+    echo " -f <regex> | --filter-driver <regex> : to run crash tests only on the drivers (ignoring nnapi-reference) matching the specified regular expression"
+    echo " -r | --include-nnapi-reference : to include nnapi-reference in target drivers"
+    echo " --nnapi-reference-only : to run tests only vs nnapi-reference"
+    exit
+fi
+
+eval set -- "$OPTS"
+
+DRIVER_FILTER_OPT=""
+INCLUDE_NNAPI_REF_OPT=""
+while [ $# -gt 0 ] ; do
+  case "$1" in
+    -f|--filter-driver)
+      DRIVER_FILTER_OPT="-e nnCrashtestDeviceFilter $2"
+      shift 2
+      ;;
+    -r|--include-nnapi-reference)
+      INCLUDE_NNAPI_REF_OPT="-e nnCrashtestIncludeNnapiReference true"
+      shift
+      ;;
+    --nnapi-reference-only)
+      DRIVER_FILTER_OPT="-e nnCrashtestDeviceFilter no-device"
+      INCLUDE_NNAPI_REF_OPT="-e nnCrashtestIncludeNnapiReference true"
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      echo "Unsupported arg $1"
+      exit 1
+  esac
+done
+
 MODE="${1:-scoring}"
-
 INSTALL_NATIVE_TESTS=false
-
 case "$MODE" in
   scoring)
     CLASS=com.android.nn.benchmark.app.NNScoringTest
@@ -91,45 +129,47 @@ fi
 
 # Pass --no-isolated-storage to am instrument?
 BUILD_VERSION_RELEASE=`adb shell getprop ro.build.version.release`
-AM_INSTRUMENT_FLAGS=""
+AM_INSTRUMENT_FLAGS="$DRIVER_FILTER_OPT $INCLUDE_NNAPI_REF_OPT"
 if [[ $BUILD_VERSION_RELEASE == "Q" ]]; then
-  AM_INSTRUMENT_FLAGS+="--no-isolated-storage"
+  AM_INSTRUMENT_FLAGS+=" --no-isolated-storage"
 fi
 
-if [[ "$MLTS_RELEASE_DEVICE" == "True" ]]; then
-  TEST_EXTENRAL_STORAGE="com.android.nn.benchmark.app/com.android.nn.benchmark.util.TestExternalStorageActivity"
-  while ! adb shell "am start -W $TEST_EXTENRAL_STORAGE && rm /sdcard/mlts_write_external_storage" > /dev/null 2>&1; do
-     echo "************************************************************"
-     echo "Grant External storage write permissions to MLTS to proceed!"
-     echo "************************************************************"
-     read -n 1 -r -p "Continue? (press any key)"
-     echo
-  done
-else
-  adb root
-  adb shell "pm grant com.android.nn.benchmark.app android.permission.WRITE_EXTERNAL_STORAGE"
-  # Skip setup wizard and remount (read-write)
-  if ! adb shell test -f /data/local.prop; then
-    adb shell 'echo ro.setupwizard.mode=DISABLED > /data/local.prop'
-    adb shell 'chmod 644 /data/local.prop'
-    adb shell 'settings put global device_provisioned 1*'
-    adb shell 'settings put secure user_setup_complete 1'
-    adb disable-verity
-    adb reboot
-    sleep 5
-    adb wait-for-usb-device root
-    adb wait-for-usb-device remount
-    sleep 5
+if [[ "$MODE" == "scoring" ]]; then
+  if [[ "$MLTS_RELEASE_DEVICE" == "True" ]]; then
+    TEST_EXTENRAL_STORAGE="com.android.nn.benchmark.app/com.android.nn.benchmark.util.TestExternalStorageActivity"
+    while ! adb shell "am start -W $TEST_EXTENRAL_STORAGE && rm /sdcard/mlts_write_external_storage" > /dev/null 2>&1; do
+       echo "************************************************************"
+       echo "Grant External storage write permissions to MLTS to proceed!"
+       echo "************************************************************"
+       read -n 1 -r -p "Continue? (press any key)"
+       echo
+    done
+  else
+    adb root
+    adb shell "pm grant com.android.nn.benchmark.app android.permission.WRITE_EXTERNAL_STORAGE"
+    # Skip setup wizard and remount (read-write)
+    if ! adb shell test -f /data/local.prop; then
+      adb shell 'echo ro.setupwizard.mode=DISABLED > /data/local.prop'
+      adb shell 'chmod 644 /data/local.prop'
+      adb shell 'settings put global device_provisioned 1*'
+      adb shell 'settings put secure user_setup_complete 1'
+      adb disable-verity
+      adb reboot
+      sleep 5
+      adb wait-for-usb-device root
+      adb wait-for-usb-device remount
+      sleep 5
+    fi
+    set +e
+    # Enable menu key press through adb
+    adb shell 'echo testing > /data/local/enable_menu_key'
+    # Leave screen on (affects scheduling)
+    adb shell settings put system screen_off_timeout 86400000
+    # Stop background apps, seem to take ~10% CPU otherwise
+    adb shell 'pm disable com.google.android.googlequicksearchbox'
+    adb shell 'pm list packages -f' | sed -e 's/.*=//' | sed 's/\r//g' | grep "com.breel.wallpapers" | while read pkg; do adb shell "pm disable $pkg"; done;
+    set -e
   fi
-  set +e
-  # Enable menu key press through adb
-  adb shell 'echo testing > /data/local/enable_menu_key'
-  # Leave screen on (affects scheduling)
-  adb shell settings put system screen_off_timeout 86400000
-  # Stop background apps, seem to take ~10% CPU otherwise
-  adb shell 'pm disable com.google.android.googlequicksearchbox'
-  adb shell 'pm list packages -f' | sed -e 's/.*=//' | sed 's/\r//g' | grep "com.breel.wallpapers" | while read pkg; do adb shell "pm disable $pkg"; done;
-  set -e
 fi
 
 adb shell setprop debug.nn.cpuonly 0

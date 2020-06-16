@@ -19,6 +19,8 @@ package com.android.nn.benchmark.app;
 import android.content.Context;
 import android.util.Log;
 
+import androidx.test.platform.app.InstrumentationRegistry;
+
 import com.android.nn.benchmark.core.BenchmarkException;
 import com.android.nn.benchmark.core.NNTestBase;
 import com.android.nn.benchmark.core.NnApiDelegationFailure;
@@ -51,13 +53,33 @@ public interface AcceleratorSpecificTestSupport {
         return min + (long) (Math.random() * (max - min));
     }
 
-    static List<Object[]> perAcceleratorTestConfig(List<Object[]> testConfig) {
-        List<String> accelerators = new ArrayList<>();
-        accelerators.addAll(NNTestBase.availableAcceleratorNames());
-        accelerators.add(null); // running tests with no target accelerator too
+    static String getTestParameter(String key, String defaultValue) {
+        return InstrumentationRegistry.getArguments().getString(key, defaultValue);
+    }
 
+    static boolean getBooleanTestParameter(String key, boolean defaultValue) {
+        return InstrumentationRegistry.getArguments().getBoolean(key, defaultValue);
+    }
+
+    static final String ACCELERATOR_FILTER_PROPERTY = "nnCrashtestDeviceFilter";
+    static final String INCLUDE_NNAPI_SELECTED_ACCELERATOR_PROPERTY =
+            "nnCrashtestDeviceFilter";
+    static List<String> getTargetAcceleratorNames() {
+        List<String> accelerators = new ArrayList<>();
+        String acceleratorFilter = getTestParameter(ACCELERATOR_FILTER_PROPERTY, ".+");
+        accelerators.addAll(NNTestBase.availableAcceleratorNames().stream().filter(
+                name -> name.matches(acceleratorFilter)).collect(
+                Collectors.toList()));
+        if (getBooleanTestParameter(INCLUDE_NNAPI_SELECTED_ACCELERATOR_PROPERTY, false)) {
+            accelerators.add(null); // running tests with no specified target accelerator too
+        }
+        return accelerators;
+    }
+
+
+    static List<Object[]> perAcceleratorTestConfig(List<Object[]> testConfig) {
         return testConfig.stream()
-                .flatMap(currConfigurationParams -> accelerators.stream().map(accelerator -> {
+                .flatMap(currConfigurationParams -> getTargetAcceleratorNames().stream().map(accelerator -> {
                     Object[] result =
                             Arrays.copyOf(currConfigurationParams,
                                     currConfigurationParams.length + 1);

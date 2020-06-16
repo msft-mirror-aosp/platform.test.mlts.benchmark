@@ -67,7 +67,7 @@ public class NNClientEarlyTerminationTest extends
 
     @Parameters(name = "Accelerator({0})")
     public static Iterable<String> targetAccelerators() {
-        return NNTestBase.availableAcceleratorNames();
+        return AcceleratorSpecificTestSupport.getTargetAcceleratorNames();
     }
 
     @Before
