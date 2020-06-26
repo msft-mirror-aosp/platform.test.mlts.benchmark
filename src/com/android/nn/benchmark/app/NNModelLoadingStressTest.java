@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 The Android Open Source Project
+ * Copyright (C) 2020 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,9 @@
 package com.android.nn.benchmark.app;
 
 import android.test.suitebuilder.annotation.LargeTest;
-import android.util.Log;
-import com.android.nn.benchmark.core.InferenceInOutSequence;
+
 import com.android.nn.benchmark.core.TestModels;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import java.util.List;

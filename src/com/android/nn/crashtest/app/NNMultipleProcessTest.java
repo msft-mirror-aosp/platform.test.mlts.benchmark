@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package com.android.nn.benchmark.app;
+package com.android.nn.crashtest.app;
 
-import static com.android.nn.benchmark.app.CrashTestStatus.TestResult.SUCCESS;
+import static com.android.nn.crashtest.app.CrashTestStatus.TestResult.SUCCESS;
 
 import android.content.Intent;
 import android.test.ActivityInstrumentationTestCase2;
@@ -25,6 +25,7 @@ import android.test.suitebuilder.annotation.LargeTest;
 
 import androidx.test.InstrumentationRegistry;
 
+import com.android.nn.benchmark.app.BenchmarkTestBase;
 import com.android.nn.benchmark.core.NnApiDelegationFailure;
 import com.android.nn.benchmark.core.TestModels;
 

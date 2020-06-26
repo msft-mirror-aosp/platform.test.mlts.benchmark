@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.nn.benchmark.app;
+package com.android.nn.crashtest.app;
 
 import android.content.Context;
 import android.util.Log;

@@ -24,7 +24,7 @@ LOCAL_JAVA_LIBRARIES := android.test.runner.stubs android.test.base.stubs
 LOCAL_MODULE_TAGS := tests
 LOCAL_COMPATIBILITY_SUITE += device-tests
 
-LOCAL_SRC_FILES := $(call all-java-files-under, src)
+LOCAL_SRC_FILES := $(call all-java-files-under, src/com/android/nn/benchmark)
 LOCAL_JNI_SHARED_LIBRARIES := libnnbenchmark_jni
 
 # need fread_unlocked in version 28
@@ -37,6 +37,29 @@ LOCAL_ASSET_DIR += $(GOOGLE_TEST_MODELS_DIR)
 endif
 
 LOCAL_PACKAGE_NAME := NeuralNetworksApiBenchmark
+include $(BUILD_PACKAGE)
+
+include $(CLEAR_VARS)
+
+LOCAL_STATIC_JAVA_LIBRARIES := androidx.test.rules
+LOCAL_JAVA_LIBRARIES := android.test.runner.stubs android.test.base.stubs
+
+LOCAL_MODULE_TAGS := tests
+LOCAL_COMPATIBILITY_SUITE += device-tests
+
+LOCAL_SRC_FILES := $(call all-java-files-under, src)
+LOCAL_JNI_SHARED_LIBRARIES := libnnbenchmark_jni
+
+# need fread_unlocked in version 28
+LOCAL_SDK_VERSION := 28
+LOCAL_ASSET_DIR := $(LOCAL_PATH)/../models/assets
+
+GOOGLE_TEST_MODELS_DIR := vendor/google/tests/mlts/models/assets
+ifneq ($(wildcard $(GOOGLE_TEST_MODELS_DIR)),)
+LOCAL_ASSET_DIR += $(GOOGLE_TEST_MODELS_DIR)
+endif
+
+LOCAL_PACKAGE_NAME := NeuralNetworksApiCrashTest
 include $(BUILD_PACKAGE)
 
 include $(CLEAR_VARS)

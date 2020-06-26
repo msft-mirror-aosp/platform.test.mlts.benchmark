@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package com.android.nn.benchmark.app;
+package com.android.nn.crashtest.app;
 
 import android.annotation.SuppressLint;
 import android.util.Log;
 
-import com.android.nn.benchmark.crashtest.CrashTestCoordinator;
+import com.android.nn.crashtest.core.CrashTestCoordinator;
 
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;

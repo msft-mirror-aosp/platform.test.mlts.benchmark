@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package com.android.nn.benchmark.app;
+package com.android.nn.crashtest.app;
 
 import android.content.Intent;
 
 import com.android.nn.benchmark.core.NnApiDelegationFailure;
-import com.android.nn.benchmark.crashtest.test.RunModelsInMultipleProcesses;
+import com.android.nn.crashtest.core.test.RunModelsInMultipleProcesses;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;

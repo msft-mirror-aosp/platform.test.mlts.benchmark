@@ -48,6 +48,7 @@ done
 
 MODE="${1:-scoring}"
 INSTALL_NATIVE_TESTS=false
+APP="NeuralNetworksApiBenchmark"
 case "$MODE" in
   scoring)
     CLASS=com.android.nn.benchmark.app.NNScoringTest
@@ -59,24 +60,30 @@ case "$MODE" in
     CLASS=com.android.nn.benchmark.app.NNModelLoadingStressTest
     ;;
   parallel-inference-stress)
-    CLASS=com.android.nn.benchmark.app.NNParallelCrashResistantInferenceTest
+    CLASS=com.android.nn.crashtest.app.NNParallelCrashResistantInferenceTest
+    APP="NeuralNetworksApiCrashTest"
     ;;
   parallel-inference-stress-in-process)
-    CLASS=com.android.nn.benchmark.app.NNParallelInProcessInferenceTest
+    CLASS=com.android.nn.crashtest.app.NNParallelInProcessInferenceTest
+    APP="NeuralNetworksApiCrashTest"
     ;;
   client-early-termination-stress)
-    CLASS=com.android.nn.benchmark.app.NNClientEarlyTerminationTest
+    CLASS=com.android.nn.crashtest.app.NNClientEarlyTerminationTest
+    APP="NeuralNetworksApiCrashTest"
     ;;
   multi-process-inference-stress)
-    CLASS=com.android.nn.benchmark.app.NNMultipleProcessInferenceTest
+    CLASS=com.android.nn.crashtest.app.NNMultipleProcessInferenceTest
+    APP="NeuralNetworksApiCrashTest"
     INSTALL_NATIVE_TESTS=true
     ;;
   multi-process-model-load-stress)
-    CLASS=com.android.nn.benchmark.app.NNMultipleProcessModelLoadTest
+    CLASS=com.android.nn.crashtest.app.NNMultipleProcessModelLoadTest
+    APP="NeuralNetworksApiCrashTest"
     INSTALL_NATIVE_TESTS=true
     ;;
   memory-mapped-model-load-stress)
-    CLASS=com.android.nn.benchmark.app.NNMemoryMappedModelCompilationTest
+    CLASS=com.android.nn.crashtest.app.NNMemoryMappedModelCompilationTest
+    APP="NeuralNetworksApiCrashTest"
     ;;
   *)
     echo "Unknown execution mode: $1"
@@ -99,16 +106,16 @@ cd $ANDROID_BUILD_TOP
 
 # Build and install benchmark app
 TMPFILE=$(mktemp)
-build/soong/soong_ui.bash --make-mode NeuralNetworksApiBenchmark 2>&1 | tee ${TMPFILE}
+build/soong/soong_ui.bash --make-mode ${APP}  2>&1 | tee ${TMPFILE}
 TARGET_ARCH=$(cat ${TMPFILE} | grep TARGET_ARCH= | sed -e 's/TARGET_ARCH=//')
 if [ "${TARGET_ARCH}" = "aarch64" ]; then
     APK_DIR=arm64
 else
     APK_DIR=${TARGET_ARCH}
 fi
-if ! adb install -r $OUT/testcases/NeuralNetworksApiBenchmark/${APK_DIR}/NeuralNetworksApiBenchmark.apk; then
+if ! adb install -r $OUT/testcases/${APP}/${APK_DIR}/${APP}.apk; then
   adb uninstall com.android.nn.benchmark.app
-  adb install -r $OUT/testcases/NeuralNetworksApiBenchmark/${APK_DIR}/NeuralNetworksApiBenchmark.apk
+  adb install -r $OUT/testcases/${APP}/${APK_DIR}/${APP}.apk
 fi
 
 if [ "$INSTALL_NATIVE_TESTS" = true ]; then

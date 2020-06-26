@@ -26,10 +26,11 @@ LOCAL_COMPATIBILITY_SUITE += device-tests
 
 LOCAL_SRC_FILES := $(call all-java-files-under, src) \
     $(call all-java-files-under, ../src/com/android/nn/benchmark/core) \
-    $(call all-java-files-under, ../src/com/android/nn/benchmark/crashtest) \
     $(call all-java-files-under, ../src/com/android/nn/benchmark/evaluators) \
     $(call all-java-files-under, ../src/com/android/nn/benchmark/imageprocessors) \
-    $(call all-java-files-under, ../src/com/android/nn/benchmark/util)
+    $(call all-java-files-under, ../src/com/android/nn/benchmark/util) \
+    $(call all-java-files-under, ../src/com/android/nn/crashtest/core)
+
 LOCAL_JNI_SHARED_LIBRARIES := libnnbenchmark_jni
 
 LOCAL_SDK_VERSION := 27
@@ -42,7 +43,7 @@ endif
 
 LOCAL_RESOURCE_DIR := $(LOCAL_PATH)/res $(LOCAL_PATH)/../res
 
-LOCAL_PACKAGE_NAME := NeuralNetworksApiCrashTest
+LOCAL_PACKAGE_NAME := NeuralNetworksApiCrashTestApp
 include $(BUILD_PACKAGE)
 
 include $(call all-makefiles-under,$(LOCAL_PATH))

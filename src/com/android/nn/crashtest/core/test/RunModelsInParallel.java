@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.nn.benchmark.crashtest.test;
+package com.android.nn.crashtest.core.test;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -24,8 +24,8 @@ import android.content.Intent;
 import android.util.Log;
 
 import com.android.nn.benchmark.core.Processor;
-import com.android.nn.benchmark.crashtest.CrashTest;
-import com.android.nn.benchmark.crashtest.CrashTestCoordinator.CrashTestIntentInitializer;
+import com.android.nn.crashtest.core.CrashTest;
+import com.android.nn.crashtest.core.CrashTestCoordinator.CrashTestIntentInitializer;
 
 import java.time.Duration;
 import java.util.ArrayList;

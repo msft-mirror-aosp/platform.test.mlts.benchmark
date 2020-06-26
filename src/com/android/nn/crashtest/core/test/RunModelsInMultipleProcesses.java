@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.nn.benchmark.crashtest.test;
+package com.android.nn.crashtest.core.test;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -24,8 +24,8 @@ import com.android.nn.benchmark.core.InferenceInOut;
 import com.android.nn.benchmark.core.InferenceInOutSequence;
 import com.android.nn.benchmark.core.NNTestBase;
 import com.android.nn.benchmark.core.TestModels;
-import com.android.nn.benchmark.crashtest.CrashTest;
-import com.android.nn.benchmark.crashtest.CrashTestCoordinator;
+import com.android.nn.crashtest.core.CrashTest;
+import com.android.nn.crashtest.core.CrashTestCoordinator;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
