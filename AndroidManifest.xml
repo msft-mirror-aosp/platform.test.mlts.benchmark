@@ -41,20 +41,20 @@
         </activity>
         <activity android:exported="true" android:name="com.android.nn.benchmark.util.TestExternalStorageActivity">
         </activity>
-        <activity android:name=".NNParallelTestActivity">
+        <activity android:name="com.android.nn.crashtest.app.NNParallelTestActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
             </intent-filter>
         </activity>
-        <activity android:name=".NNMultiProcessTestActivity">
+        <activity android:name="com.android.nn.crashtest.app.NNMultiProcessTestActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
             </intent-filter>
         </activity>
 
-        <service android:name="com.android.nn.benchmark.crashtest.OutOfProcessCrashTestService"
+        <service android:name="com.android.nn.crashtest.core.OutOfProcessCrashTestService"
             android:process=":CrashTest" />
-        <service android:name="com.android.nn.benchmark.crashtest.InProcessCrashTestService"
+        <service android:name="com.android.nn.crashtest.core.InProcessCrashTestService"
             android:process=".CrashTest" />
     </application>
     <instrumentation android:name="androidx.test.runner.AndroidJUnitRunner"

@@ -35,8 +35,8 @@ import com.android.nn.benchmark.core.NnApiDelegationFailure;
 import com.android.nn.benchmark.core.Processor;
 import com.android.nn.benchmark.core.TestModels;
 import com.android.nn.benchmark.core.TestModelsListLoader;
-import com.android.nn.benchmark.crashtest.CrashTestCoordinator;
-import com.android.nn.benchmark.crashtest.test.RunModelsInParallel;
+import com.android.nn.crashtest.core.CrashTestCoordinator;
+import com.android.nn.crashtest.core.test.RunModelsInParallel;
 import com.android.nn.benchmark.util.TestExternalStorageActivity;
 
 import java.io.ByteArrayOutputStream;

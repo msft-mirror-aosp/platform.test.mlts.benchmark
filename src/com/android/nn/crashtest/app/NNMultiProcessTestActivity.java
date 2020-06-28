@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package com.android.nn.benchmark.app;
+package com.android.nn.crashtest.app;
 
 import android.app.Activity;
 import android.content.Intent;
 import android.util.Log;
-import com.android.nn.benchmark.crashtest.CrashTestCoordinator;
-import com.android.nn.benchmark.crashtest.test.RunModelsInMultipleProcesses;
+import com.android.nn.crashtest.core.CrashTestCoordinator;
+import com.android.nn.crashtest.core.test.RunModelsInMultipleProcesses;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 

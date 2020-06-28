@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package com.android.nn.benchmark.app;
+package com.android.nn.crashtest.app;
 
 
-import static com.android.nn.benchmark.app.CrashTestStatus.TestResult.HANG;
+import static com.android.nn.crashtest.app.CrashTestStatus.TestResult.HANG;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -32,8 +32,9 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
 
-import com.android.nn.benchmark.crashtest.CrashTestCoordinator;
-import com.android.nn.benchmark.crashtest.test.RunModelsInParallel;
+import com.android.nn.benchmark.app.R;
+import com.android.nn.crashtest.core.CrashTestCoordinator;
+import com.android.nn.crashtest.core.test.RunModelsInParallel;
 
 import java.time.Duration;
 

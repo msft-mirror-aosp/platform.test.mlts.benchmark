@@ -29,5 +29,6 @@ cc_binary {
         "libnnbenchmark_jni_static",
         "libtflite_static",
     ],
+    sdk_version: "current",
     stl: "libc++_static",
 }
