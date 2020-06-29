@@ -25,7 +25,7 @@
 #define LOG_TAG "CrashTest"
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_android_nn_benchmark_crashtest_test_CrashingCrashTest_nativeSegViolation(
+Java_com_android_nn_crashtest_core_test_CrashingCrashTest_nativeSegViolation(
     JNIEnv* env, jobject /* this */) {
   __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Causing NATIVE crash");
 
