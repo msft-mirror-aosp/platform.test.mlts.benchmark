@@ -326,7 +326,6 @@ Java_com_android_nn_benchmark_core_NNTestBase_runBenchmark(
                            &rentry.meanSquareErrors[0],
                            rentry.meanSquareErrors.size() * sizeof(float));
                     env->ReleaseFloatArrayElements(meanSquareErrorArray, bytes, 0);
-                    env->DeleteLocalRef(meanSquareErrorArray);
                 }
                 {
                     jfloat *bytes = env->GetFloatArrayElements(maxSingleErrorArray, nullptr);
@@ -334,7 +333,6 @@ Java_com_android_nn_benchmark_core_NNTestBase_runBenchmark(
                            &rentry.maxSingleErrors[0],
                            rentry.maxSingleErrors.size() * sizeof(float));
                     env->ReleaseFloatArrayElements(maxSingleErrorArray, bytes, 0);
-                    env->DeleteLocalRef(maxSingleErrorArray);
                 }
             }
 
@@ -365,8 +363,14 @@ Java_com_android_nn_benchmark_core_NNTestBase_runBenchmark(
             env->CallBooleanMethod(resultList, list_add, object);
             if (env->ExceptionCheck()) { return false; }
 
-            // Releasing local reference to object to avoid local reference table overflow
+            // Releasing local references to objects to avoid local reference table overflow
             // if tests is set to run for long time.
+            if (meanSquareErrorArray) {
+                env->DeleteLocalRef(meanSquareErrorArray);
+            }
+            if (maxSingleErrorArray) {
+                env->DeleteLocalRef(maxSingleErrorArray);
+            }
             env->DeleteLocalRef(object);
         }
     }
