@@ -68,3 +68,5 @@ early termination
 
 * memory-mapped-model-load-stress: runs a series of parallel model compilation with memory mapped
 TFLite models
+
+* model-load-random-stress: test compiling a large set of randomly generated models

@@ -231,7 +231,6 @@ public class Processor implements Runnable {
             while (mRun.get()) {
                 try {
                     benchmarkAllModels();
-                    Log.d(TAG, "Processor completed work");
                 } catch (IOException | BenchmarkException e) {
                     Log.e(TAG, "Exception during benchmark run", e);
                     success = false;
@@ -241,6 +240,7 @@ public class Processor implements Runnable {
                     throw e;
                 }
             }
+            Log.d(TAG, "Processor completed work");
             mCallback.onBenchmarkFinish(success);
         } finally {
             if (mTest != null) {

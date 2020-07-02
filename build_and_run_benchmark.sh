@@ -85,12 +85,17 @@ case "$MODE" in
     CLASS=com.android.nn.crashtest.app.NNMemoryMappedModelCompilationTest
     APP="NeuralNetworksApiCrashTest"
     ;;
+  model-load-random-stress)
+    APP="NeuralNetworksApiCrashTest"
+    CLASS=com.android.nn.crashtest.app.NNRandomGraphLoadTest
+    ;;
   *)
     echo "Unknown execution mode: $1"
     echo "Known modes: scoring (default), inference-stress, model-loading-stress, " \
       "parallel-inference-stress, parallel-inference-stress-in-process, " \
       "client-early-termination-stress, multi-process-inference-stress, " \
-      "multi-process-model-load-stress memory-mapped-model-load-stress"
+      "multi-process-model-load-stress memory-mapped-model-load-stress, " \
+      "model-load-random-stress"
     exit 1
     ;;
 esac

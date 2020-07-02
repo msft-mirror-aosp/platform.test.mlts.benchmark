@@ -22,6 +22,7 @@ import android.util.Log;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.android.nn.benchmark.core.BenchmarkException;
+import com.android.nn.benchmark.core.BenchmarkResult;
 import com.android.nn.benchmark.core.NNTestBase;
 import com.android.nn.benchmark.core.NnApiDelegationFailure;
 import com.android.nn.benchmark.core.Processor;
@@ -120,7 +121,13 @@ public interface AcceleratorSpecificTestSupport {
         public Boolean call() throws Exception {
             while (mRun.get()) {
                 try {
-                    mProcessor.getInstrumentationResult(mTestModelEntry, 0, 3);
+                    BenchmarkResult modelExecutionResult = mProcessor.getInstrumentationResult(
+                            mTestModelEntry, 0, 3);
+                    if (modelExecutionResult.hasBenchmarkError()) {
+                        Log.e(TAG, String.format("Benchmark failed with message %s",
+                                modelExecutionResult.getBenchmarkError()));
+                        return false;
+                    }
                 } catch (IOException | BenchmarkException e) {
                     Log.e(TAG, String.format("Error running model %s", mTestModelEntry.mModelName));
                     return false;
