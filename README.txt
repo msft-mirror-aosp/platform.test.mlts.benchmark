@@ -70,3 +70,5 @@ early termination
 TFLite models
 
 * model-load-random-stress: test compiling a large set of randomly generated models
+
+* inference-random-stress: test running a large set of randomly generated models

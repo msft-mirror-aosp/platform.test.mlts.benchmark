@@ -16,16 +16,18 @@
 
 package com.android.nn.crashtest.app;
 
+import com.android.nn.crashtest.app.NNRandomGraphTest;
+
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import java.time.Duration;
 
 @RunWith(Parameterized.class)
-public class NNRandomGraphLoadTest extends NNRandomGraphTest {
-    public NNRandomGraphLoadTest(int modelCount, int graphSize, int dimensionRange,
+public class NNRandomGraphExecutionTest extends NNRandomGraphTest {
+    public NNRandomGraphExecutionTest(int modelCount, int graphSize, int dimensionRange,
             Duration duration, String acceleratorName) {
         super(modelCount, graphSize, dimensionRange, duration,
-                acceleratorName, /*runModelCompilationOnly=*/true);
+                acceleratorName, /*runModelCompilationOnly=*/false);
     }
 }
