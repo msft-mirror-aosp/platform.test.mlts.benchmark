@@ -35,7 +35,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.stream.Collectors;
 
-public class NNTestBase {
+public class NNTestBase implements AutoCloseable {
     protected static final String TAG = "NN_TESTBASE";
 
     // Used to load the 'native-lib' library on application startup.
@@ -54,18 +54,6 @@ public class NNTestBase {
      */
     private static native boolean getAcceleratorNames(List<String> resultList);
 
-    public static List<String> availableAcceleratorNames() {
-        List<String> availableAccelerators = new ArrayList<>();
-        if (NNTestBase.getAcceleratorNames(availableAccelerators)) {
-            return availableAccelerators.stream().filter(
-                    acceleratorName -> !acceleratorName.equalsIgnoreCase(
-                            "nnapi-reference")).collect(Collectors.toList());
-        } else {
-            Log.e(TAG, "Unable to retrieve accelerator names!!");
-            return Collections.EMPTY_LIST;
-        }
-    }
-
     private synchronized native long initModel(
             String modelFileName,
             boolean useNNApi,
@@ -76,17 +64,6 @@ public class NNTestBase {
     private synchronized native void destroyModel(long modelHandle);
 
     private synchronized native boolean resizeInputTensors(long modelHandle, int[] inputShape);
-
-    /** Discard inference output in inference results. */
-    public static final int FLAG_DISCARD_INFERENCE_OUTPUT = 1 << 0;
-    /**
-     * Do not expect golden outputs with inference inputs.
-     *
-     * Useful in cases where there's no straightforward golden output values
-     * for the benchmark. This will also skip calculating basic (golden
-     * output based) error metrics.
-     */
-    public static final int FLAG_IGNORE_GOLDEN_OUTPUT = 1 << 1;
 
     private synchronized native boolean runBenchmark(long modelHandle,
             List<InferenceInOutSequence> inOutList,
@@ -99,6 +76,30 @@ public class NNTestBase {
             long modelHandle,
             String dumpPath,
             List<InferenceInOutSequence> inOutList);
+
+    public static List<String> availableAcceleratorNames() {
+        List<String> availableAccelerators = new ArrayList<>();
+        if (NNTestBase.getAcceleratorNames(availableAccelerators)) {
+            return availableAccelerators.stream().filter(
+                    acceleratorName -> !acceleratorName.equalsIgnoreCase(
+                            "nnapi-reference")).collect(Collectors.toList());
+        } else {
+            Log.e(TAG, "Unable to retrieve accelerator names!!");
+            return Collections.EMPTY_LIST;
+        }
+    }
+
+    /** Discard inference output in inference results. */
+    public static final int FLAG_DISCARD_INFERENCE_OUTPUT = 1 << 0;
+    /**
+     * Do not expect golden outputs with inference inputs.
+     *
+     * Useful in cases where there's no straightforward golden output values
+     * for the benchmark. This will also skip calculating basic (golden
+     * output based) error metrics.
+     */
+    public static final int FLAG_IGNORE_GOLDEN_OUTPUT = 1 << 1;
+
 
     protected Context mContext;
     protected TextView mText;
@@ -116,6 +117,8 @@ public class NNTestBase {
     private final int mMinSdkVersion;
     private Optional<String> mNNApiDeviceName = Optional.empty();
     private boolean mMmapModel = false;
+    // Path where the current model has been stored for execution
+    private String mTemporaryModelFilePath;
 
     public NNTestBase(String modelName, String modelFile, int[] inputShape,
             InferenceInOutSequence.FromAssets[] inputOutputAssets,
@@ -169,9 +172,12 @@ public class NNTestBase {
 
     public final boolean setupModel(Context ipcxt) throws IOException, NnApiDelegationFailure {
         mContext = ipcxt;
-        String modelFileName = copyAssetToFile();
+        if (mTemporaryModelFilePath != null) {
+            deleteOrWarn(mTemporaryModelFilePath);
+        }
+        mTemporaryModelFilePath = copyAssetToFile();
         mModelHandle = initModel(
-                modelFileName, mUseNNApi, mEnableIntermediateTensorsDump,
+                mTemporaryModelFilePath, mUseNNApi, mEnableIntermediateTensorsDump,
                 mNNApiDeviceName.orElse(null), mMmapModel);
         if (mModelHandle == 0) {
             Log.e(TAG, "Failed to init the model");
@@ -200,21 +206,30 @@ public class NNTestBase {
         }
     }
 
+    private void deleteOrWarn(String path) {
+        if (!new File(path).delete()) {
+            Log.w(TAG, String.format(
+                    "Unable to delete file '%s'. This might cause device to run out of space.",
+                    path));
+        }
+    }
+
+
     private List<InferenceInOutSequence> getInputOutputAssets() throws IOException {
         // TODO: Caching, don't read inputs for every inference
         List<InferenceInOutSequence> inOutList =
-            getInputOutputAssets(mContext, mInputOutputAssets, mInputOutputDatasets);
+                getInputOutputAssets(mContext, mInputOutputAssets, mInputOutputDatasets);
 
         Boolean lastGolden = null;
         for (InferenceInOutSequence sequence : inOutList) {
             mHasGoldenOutputs = sequence.hasGoldenOutput();
             if (lastGolden == null) {
-              lastGolden = mHasGoldenOutputs;
+                lastGolden = mHasGoldenOutputs;
             } else {
-              if (lastGolden != mHasGoldenOutputs) {
-                throw new IllegalArgumentException(
-                    "Some inputs for " + mModelName + " have outputs while some don't.");
-              }
+                if (lastGolden != mHasGoldenOutputs) {
+                    throw new IllegalArgumentException(
+                            "Some inputs for " + mModelName + " have outputs while some don't.");
+                }
             }
         }
         return inOutList;
@@ -332,6 +347,10 @@ public class NNTestBase {
             destroyModel(mModelHandle);
             mModelHandle = 0;
         }
+        if (mTemporaryModelFilePath != null) {
+            deleteOrWarn(mTemporaryModelFilePath);
+            mTemporaryModelFilePath = null;
+        }
     }
 
     private final Random mRandom = new Random(System.currentTimeMillis());
@@ -376,5 +395,10 @@ public class NNTestBase {
             Log.e(TAG, "Failed to copy asset file: " + modelAssetName, e);
             throw e;
         }
+    }
+
+    @Override
+    public void close()  {
+        destroy();
     }
 }
