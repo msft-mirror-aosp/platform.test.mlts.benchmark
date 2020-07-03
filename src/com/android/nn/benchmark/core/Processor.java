@@ -133,6 +133,14 @@ public class Processor implements Runnable {
                     String.format("Error trying to check support for model %s on accelerator %s",
                             testModelEntry.mModelName, acceleratorName), e);
             return false;
+        }  catch (NnApiDelegationFailure nnApiDelegationFailure) {
+            if (nnApiDelegationFailure.getNnApiErrno() == 4 /*ANEURALNETWORKS_BAD_DATA*/) {
+                // Compilation will fail with ANEURALNETWORKS_BAD_DATA if the device is not
+                // supporting all operation in the model
+                return false;
+            }
+
+            throw nnApiDelegationFailure;
         }
     }
 
