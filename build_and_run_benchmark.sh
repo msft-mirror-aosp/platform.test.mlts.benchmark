@@ -48,6 +48,7 @@ done
 
 MODE="${1:-scoring}"
 INSTALL_NATIVE_TESTS=false
+CRASH_TEST_APP="NeuralNetworksApiCrashTest"
 APP="NeuralNetworksApiBenchmark"
 case "$MODE" in
   scoring)
@@ -61,36 +62,45 @@ case "$MODE" in
     ;;
   parallel-inference-stress)
     CLASS=com.android.nn.crashtest.app.NNParallelCrashResistantInferenceTest
-    APP="NeuralNetworksApiCrashTest"
+    APP="$CRASH_TEST_APP"
     ;;
   parallel-inference-stress-in-process)
     CLASS=com.android.nn.crashtest.app.NNParallelInProcessInferenceTest
-    APP="NeuralNetworksApiCrashTest"
+    APP="$CRASH_TEST_APP"
     ;;
   client-early-termination-stress)
     CLASS=com.android.nn.crashtest.app.NNClientEarlyTerminationTest
-    APP="NeuralNetworksApiCrashTest"
+    APP="$CRASH_TEST_APP"
     ;;
   multi-process-inference-stress)
     CLASS=com.android.nn.crashtest.app.NNMultipleProcessInferenceTest
-    APP="NeuralNetworksApiCrashTest"
+    APP="$CRASH_TEST_APP"
     INSTALL_NATIVE_TESTS=true
     ;;
   multi-process-model-load-stress)
     CLASS=com.android.nn.crashtest.app.NNMultipleProcessModelLoadTest
-    APP="NeuralNetworksApiCrashTest"
+    APP="$CRASH_TEST_APP"
     INSTALL_NATIVE_TESTS=true
     ;;
   memory-mapped-model-load-stress)
     CLASS=com.android.nn.crashtest.app.NNMemoryMappedModelCompilationTest
-    APP="NeuralNetworksApiCrashTest"
+    APP="$CRASH_TEST_APP"
+    ;;
+  model-load-random-stress)
+    APP="$CRASH_TEST_APP"
+    CLASS=com.android.nn.crashtest.app.NNRandomGraphLoadTest
+    ;;
+  inference-random-stress)
+    APP="$CRASH_TEST_APP"
+    CLASS=com.android.nn.crashtest.app.NNRandomGraphExecutionTest
     ;;
   *)
     echo "Unknown execution mode: $1"
     echo "Known modes: scoring (default), inference-stress, model-loading-stress, " \
       "parallel-inference-stress, parallel-inference-stress-in-process, " \
       "client-early-termination-stress, multi-process-inference-stress, " \
-      "multi-process-model-load-stress memory-mapped-model-load-stress"
+      "multi-process-model-load-stress memory-mapped-model-load-stress, " \
+      "model-load-random-stress  inference-random-stress"
     exit 1
     ;;
 esac

@@ -19,14 +19,16 @@ package com.android.nn.crashtest.app;
 import android.app.Activity;
 import android.content.Intent;
 import android.util.Log;
+
+
 import com.android.nn.crashtest.core.CrashTestCoordinator;
-import com.android.nn.crashtest.core.test.RunModelsInMultipleProcesses;
+import com.android.nn.crashtest.core.test.RandomGraphTest;
+
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
-public class NNMultiProcessTestActivity extends Activity {
-  private static final String TAG = "NNMultiProcessTest";
-  public static final Duration MAX_TEST_DELAY_BEFORE_HANG = Duration.ofSeconds(30);
+public class NNRandomGraphTestActivity extends Activity {
+  private static final String TAG = "NN_RAND_MODEL";
 
   private final CrashTestStatus mTestStatus = new CrashTestStatus(this::logMessage);
   private final CrashTestCoordinator mCoordinator = new CrashTestCoordinator(this);
@@ -43,25 +45,29 @@ public class NNMultiProcessTestActivity extends Activity {
     final Intent intent = getIntent();
 
     mDuration = Duration.ofMillis(intent.getLongExtra(
-        RunModelsInMultipleProcesses.TEST_DURATION, Duration.ofSeconds(30).toMillis()));
-    mCoordinator.startTest(RunModelsInMultipleProcesses.class,
-        RunModelsInMultipleProcesses.intentInitializer(
-            intent.getStringExtra(RunModelsInMultipleProcesses.TEST_NAME),
-            intent.getStringExtra(RunModelsInMultipleProcesses.MODEL_NAME),
-            intent.getIntExtra(RunModelsInMultipleProcesses.PROCESSES, 3),
-            intent.getIntExtra(RunModelsInMultipleProcesses.THREADS, 1), mDuration,
-            intent.getStringExtra(RunModelsInMultipleProcesses.NNAPI_DEVICE_NAME),
-            intent.getBooleanExtra(RunModelsInMultipleProcesses.JUST_COMPILE, false),
-            intent.getIntExtra(RunModelsInMultipleProcesses.CLIENT_FAILURE_RATE_PERCENT, 0)),
+        RandomGraphTest.MAX_TEST_DURATION, RandomGraphTest.DEFAULT_MAX_TEST_DURATION_MILLIS));
+    mCoordinator.startTest(RandomGraphTest.class,
+        RandomGraphTest.intentInitializer(
+            intent.getIntExtra(RandomGraphTest.GRAPH_SIZE, RandomGraphTest.DEFAULT_GRAPH_SIZE),
+            intent.getIntExtra(
+                RandomGraphTest.DIMENSIONS_RANGE, RandomGraphTest.DEFAULT_DIMENSIONS_RANGE),
+            intent.getIntExtra(RandomGraphTest.MODELS_COUNT, RandomGraphTest.DEFAULT_MODELS_COUNT),
+            intent.getLongExtra(RandomGraphTest.PAUSE_BETWEEN_MODELS_MS,
+                RandomGraphTest.DEFAULT_PAUSE_BETWEEN_MODELS_MILLIS),
+            intent.getBooleanExtra(
+                RandomGraphTest.COMPILATION_ONLY, RandomGraphTest.DEFAULT_COMPILATION_ONLY),
+            intent.getStringExtra(RandomGraphTest.DEVICE_NAME),
+            mDuration.toMillis(),
+            intent.getStringExtra(RandomGraphTest.TEST_NAME)),
         mTestStatus,
-        /*separateProcess=*/false, intent.getStringExtra(RunModelsInMultipleProcesses.TEST_NAME));
+        /*separateProcess=*/true, intent.getStringExtra(RandomGraphTest.TEST_NAME));
   }
 
   // This method blocks until the tests complete and returns true if all tests completed
   // successfully
   public CrashTestStatus.TestResult testResult() {
     try {
-      final Duration testTimeout = mDuration.plus(MAX_TEST_DELAY_BEFORE_HANG);
+      final Duration testTimeout = mDuration.plus(Duration.ofSeconds(15));
       boolean completed =
           mTestStatus.waitForCompletion(testTimeout.toMillis(), TimeUnit.MILLISECONDS);
       if (!completed) {

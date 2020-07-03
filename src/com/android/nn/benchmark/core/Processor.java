@@ -111,28 +111,28 @@ public class Processor implements Runnable {
             TestModels.TestModelEntry t, float warmupTimeSeconds, float runTimeSeconds)
             throws IOException, BenchmarkException {
         mTest = changeTest(mTest, t);
-        BenchmarkResult result = getBenchmark(warmupTimeSeconds, runTimeSeconds);
-        mTest.destroy();
-        mTest = null;
-        return result;
+        try {
+            BenchmarkResult result = getBenchmark(warmupTimeSeconds, runTimeSeconds);
+            return result;
+        } finally {
+            mTest.destroy();
+            mTest = null;
+        }
     }
 
     public static boolean isTestModelSupportedByAccelerator(Context context,
             TestModels.TestModelEntry testModelEntry, String acceleratorName)
             throws NnApiDelegationFailure {
-        NNTestBase tb = testModelEntry.createNNTestBase(/*useNnnapi=*/ true,
+        try(NNTestBase tb = testModelEntry.createNNTestBase(/*useNnnapi=*/ true,
                 /*enableIntermediateTensorsDump=*/false,
-                /*mmapModel=*/ false);
-        tb.setNNApiDeviceName(acceleratorName);
-        try {
+                /*mmapModel=*/ false)) {
+            tb.setNNApiDeviceName(acceleratorName);
             return tb.setupModel(context);
         } catch (IOException e) {
             Log.w(TAG,
                     String.format("Error trying to check support for model %s on accelerator %s",
                             testModelEntry.mModelName, acceleratorName), e);
             return false;
-        } finally {
-            tb.destroy();
         }
     }
 
@@ -231,7 +231,6 @@ public class Processor implements Runnable {
             while (mRun.get()) {
                 try {
                     benchmarkAllModels();
-                    Log.d(TAG, "Processor completed work");
                 } catch (IOException | BenchmarkException e) {
                     Log.e(TAG, "Exception during benchmark run", e);
                     success = false;
@@ -241,6 +240,7 @@ public class Processor implements Runnable {
                     throw e;
                 }
             }
+            Log.d(TAG, "Processor completed work");
             mCallback.onBenchmarkFinish(success);
         } finally {
             if (mTest != null) {

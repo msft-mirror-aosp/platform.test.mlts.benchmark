@@ -19,7 +19,6 @@ cc_binary {
     header_libs: [
         "flatbuffer_headers",
         "jni_headers",
-        "libnnbenchmark_jni_headers",
         "tensorflow_headers",
     ],
     shared_libs: [
@@ -31,4 +30,7 @@ cc_binary {
     ],
     sdk_version: "current",
     stl: "libc++_static",
+    strip: {
+        keep_symbols: true,
+    },
 }

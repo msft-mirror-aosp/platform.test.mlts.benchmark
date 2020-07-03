@@ -28,6 +28,7 @@ import collections
 import csv
 import os
 import re
+import math
 
 
 class ScoreException(Exception):
@@ -54,6 +55,8 @@ KNOWN_GROUPS = [
     (re.compile('mobilenet_v1.*'), 'MobileNet v1 Float'),
     (re.compile('mobilenet_v2.*quant.*'), 'MobileNet v2 Quantized'),
     (re.compile('mobilenet_v2.*'), 'MobileNet v2 Float'),
+    (re.compile('mobilenet_v3.*uint8.*'), 'MobileNet v3 Quantized'),
+    (re.compile('mobilenet_v3.*'), 'MobileNet v3 Float'),
     (re.compile('tts.*'), 'LSTM Text-to-speech'),
     (re.compile('asr.*'), 'LSTM Automatic Speech Recognition'),
 ]
@@ -146,9 +149,13 @@ def get_frequency_graph_min_max(results_with_bl):
 def get_frequency_graph(time_freq_start_sec, time_freq_step_sec, time_freq_sec,
                         start_sec, end_sec):
   """Generate input x/y data for latency frequency graph."""
-  left_to_pad = int((time_freq_start_sec - start_sec) / time_freq_step_sec)
+  left_to_pad = (int((time_freq_start_sec - start_sec) / time_freq_step_sec)
+                 if time_freq_step_sec != 0
+                 else math.inf)
   end_time = time_freq_start_sec + len(time_freq_sec) * time_freq_step_sec
-  right_to_pad = int((end_sec - end_time) / time_freq_step_sec)
+  right_to_pad = (int((end_sec - end_time) / time_freq_step_sec)
+                  if time_freq_step_sec != 0
+                  else math.inf)
 
   # After pading more that 64 values, graphs start to look messy,
   # bail out in that case.
