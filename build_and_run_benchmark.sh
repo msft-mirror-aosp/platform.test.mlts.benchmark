@@ -7,13 +7,14 @@
 # which is not logged.
 
 
-OPTS="$(getopt -o f:r -l filter-driver:,include-nnapi-reference,nnapi-reference-only -- "$@")"
+OPTS="$(getopt -o f:rb -l filter-driver:,include-nnapi-reference,nnapi-reference-only,skip-build -- "$@")"
 
 if [ $? -ne 0 ]; then
     echo "Invalid arguments, accepted options are"
     echo " -f <regex> | --filter-driver <regex> : to run crash tests only on the drivers (ignoring nnapi-reference) matching the specified regular expression"
     echo " -r | --include-nnapi-reference : to include nnapi-reference in target drivers"
     echo " --nnapi-reference-only : to run tests only vs nnapi-reference"
+    echo " -b | --skip-build : skip build and installation of tests"
     exit
 fi
 
@@ -21,6 +22,7 @@ eval set -- "$OPTS"
 
 DRIVER_FILTER_OPT=""
 INCLUDE_NNAPI_REF_OPT=""
+BUILD_AND_INSTALL=true
 while [ $# -gt 0 ] ; do
   case "$1" in
     -f|--filter-driver)
@@ -34,6 +36,10 @@ while [ $# -gt 0 ] ; do
     --nnapi-reference-only)
       DRIVER_FILTER_OPT="-e nnCrashtestDeviceFilter no-device"
       INCLUDE_NNAPI_REF_OPT="-e nnCrashtestIncludeNnapiReference true"
+      shift
+      ;;
+    -b|--skip-build)
+      BUILD_AND_INSTALL=false
       shift
       ;;
     --)
@@ -114,23 +120,25 @@ fi
 set -e
 cd $ANDROID_BUILD_TOP
 
-# Build and install benchmark app
-TMPFILE=$(mktemp)
-build/soong/soong_ui.bash --make-mode ${APP}  2>&1 | tee ${TMPFILE}
-TARGET_ARCH=$(cat ${TMPFILE} | grep TARGET_ARCH= | sed -e 's/TARGET_ARCH=//')
-if [ "${TARGET_ARCH}" = "aarch64" ]; then
-    APK_DIR=arm64
-else
-    APK_DIR=${TARGET_ARCH}
-fi
-if ! adb install -r $OUT/testcases/${APP}/${APK_DIR}/${APP}.apk; then
-  adb uninstall com.android.nn.benchmark.app
-  adb install -r $OUT/testcases/${APP}/${APK_DIR}/${APP}.apk
-fi
+if [ "$BUILD_AND_INSTALL" = true ]; then
+  # Build and install benchmark app
+  TMPFILE=$(mktemp)
+  build/soong/soong_ui.bash --make-mode ${APP} 2>&1 | tee ${TMPFILE}
+  TARGET_ARCH=$(cat ${TMPFILE} | grep TARGET_ARCH= | sed -e 's/TARGET_ARCH=//')
+  if [ "${TARGET_ARCH}" = "aarch64" ]; then
+      APK_DIR=arm64
+  else
+      APK_DIR=${TARGET_ARCH}
+  fi
+  if ! adb install -r $OUT/testcases/${APP}/${APK_DIR}/${APP}.apk; then
+    adb uninstall com.android.nn.benchmark.app
+    adb install -r $OUT/testcases/${APP}/${APK_DIR}/${APP}.apk
+  fi
 
-if [ "$INSTALL_NATIVE_TESTS" = true ]; then
-  build/soong/soong_ui.bash --make-mode nn_stress_test
-  adb push $OUT/system/bin/nn_stress_test /bin/
+  if [ "$INSTALL_NATIVE_TESTS" = true ]; then
+    build/soong/soong_ui.bash --make-mode nn_stress_test
+    adb push $OUT/system/bin/nn_stress_test /bin/
+  fi
 fi
 
 # Should we figure out if we run on release device
