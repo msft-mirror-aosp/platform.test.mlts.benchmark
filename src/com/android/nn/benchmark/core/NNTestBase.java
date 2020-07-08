@@ -16,6 +16,7 @@
 
 package com.android.nn.benchmark.core;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.os.Build;
@@ -27,7 +28,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -35,7 +35,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.stream.Collectors;
 
-public class NNTestBase {
+public class NNTestBase implements AutoCloseable {
     protected static final String TAG = "NN_TESTBASE";
 
     // Used to load the 'native-lib' library on application startup.
@@ -49,42 +49,21 @@ public class NNTestBase {
 
     /**
      * Fills resultList with the name of the available NNAPI accelerators
+     *
      * @return False if any error occurred, true otherwise
      */
     private static native boolean getAcceleratorNames(List<String> resultList);
-
-    public static List<String> availableAcceleratorNames() {
-        List<String> availableAccelerators = new ArrayList<>();
-        if (NNTestBase.getAcceleratorNames(availableAccelerators)) {
-            return availableAccelerators.stream().filter(
-                    acceleratorName -> !acceleratorName.equalsIgnoreCase(
-                            "nnapi-reference")).collect(Collectors.toList());
-        } else {
-            Log.e(TAG, "Unable to retrieve accelerator names!!");
-            return Collections.EMPTY_LIST;
-        }
-    }
 
     private synchronized native long initModel(
             String modelFileName,
             boolean useNNApi,
             boolean enableIntermediateTensorsDump,
-            String nnApiDeviceName);
+            String nnApiDeviceName,
+            boolean mmapModel) throws NnApiDelegationFailure;
 
     private synchronized native void destroyModel(long modelHandle);
 
     private synchronized native boolean resizeInputTensors(long modelHandle, int[] inputShape);
-
-    /** Discard inference output in inference results. */
-    public static final int FLAG_DISCARD_INFERENCE_OUTPUT = 1 << 0;
-    /**
-     * Do not expect golden outputs with inference inputs.
-     *
-     * Useful in cases where there's no straightforward golden output values
-     * for the benchmark. This will also skip calculating basic (golden
-     * output based) error metrics.
-     */
-    public static final int FLAG_IGNORE_GOLDEN_OUTPUT = 1 << 1;
 
     private synchronized native boolean runBenchmark(long modelHandle,
             List<InferenceInOutSequence> inOutList,
@@ -98,21 +77,48 @@ public class NNTestBase {
             String dumpPath,
             List<InferenceInOutSequence> inOutList);
 
+    public static List<String> availableAcceleratorNames() {
+        List<String> availableAccelerators = new ArrayList<>();
+        if (NNTestBase.getAcceleratorNames(availableAccelerators)) {
+            return availableAccelerators.stream().filter(
+                    acceleratorName -> !acceleratorName.equalsIgnoreCase(
+                            "nnapi-reference")).collect(Collectors.toList());
+        } else {
+            Log.e(TAG, "Unable to retrieve accelerator names!!");
+            return Collections.EMPTY_LIST;
+        }
+    }
+
+    /** Discard inference output in inference results. */
+    public static final int FLAG_DISCARD_INFERENCE_OUTPUT = 1 << 0;
+    /**
+     * Do not expect golden outputs with inference inputs.
+     *
+     * Useful in cases where there's no straightforward golden output values
+     * for the benchmark. This will also skip calculating basic (golden
+     * output based) error metrics.
+     */
+    public static final int FLAG_IGNORE_GOLDEN_OUTPUT = 1 << 1;
+
+
     protected Context mContext;
     protected TextView mText;
-    private String mModelName;
-    private String mModelFile;
+    private final String mModelName;
+    private final String mModelFile;
     private long mModelHandle;
-    private int[] mInputShape;
-    private InferenceInOutSequence.FromAssets[] mInputOutputAssets;
-    private InferenceInOutSequence.FromDataset[] mInputOutputDatasets;
-    private EvaluatorConfig mEvaluatorConfig;
+    private final int[] mInputShape;
+    private final InferenceInOutSequence.FromAssets[] mInputOutputAssets;
+    private final InferenceInOutSequence.FromDataset[] mInputOutputDatasets;
+    private final EvaluatorConfig mEvaluatorConfig;
     private EvaluatorInterface mEvaluator;
     private boolean mHasGoldenOutputs;
     private boolean mUseNNApi = false;
     private boolean mEnableIntermediateTensorsDump = false;
-    private int mMinSdkVersion;
+    private final int mMinSdkVersion;
     private Optional<String> mNNApiDeviceName = Optional.empty();
+    private boolean mMmapModel = false;
+    // Path where the current model has been stored for execution
+    private String mTemporaryModelFilePath;
 
     public NNTestBase(String modelName, String modelFile, int[] inputShape,
             InferenceInOutSequence.FromAssets[] inputOutputAssets,
@@ -160,19 +166,25 @@ public class NNTestBase {
         mNNApiDeviceName = Optional.ofNullable(value);
     }
 
-    public final boolean setupModel(Context ipcxt) {
+    public void setMmapModel(boolean value) {
+        mMmapModel = value;
+    }
+
+    public final boolean setupModel(Context ipcxt) throws IOException, NnApiDelegationFailure {
         mContext = ipcxt;
-        String modelFileName = copyAssetToFile();
-        if (modelFileName != null) {
-            mModelHandle = initModel(
-                    modelFileName, mUseNNApi, mEnableIntermediateTensorsDump,
-                    mNNApiDeviceName.orElse(null));
-            if (mModelHandle == 0) {
-                Log.e(TAG, "Failed to init the model");
-                return false;
-            }
-            resizeInputTensors(mModelHandle, mInputShape);
+        if (mTemporaryModelFilePath != null) {
+            deleteOrWarn(mTemporaryModelFilePath);
         }
+        mTemporaryModelFilePath = copyAssetToFile();
+        mModelHandle = initModel(
+                mTemporaryModelFilePath, mUseNNApi, mEnableIntermediateTensorsDump,
+                mNNApiDeviceName.orElse(null), mMmapModel);
+        if (mModelHandle == 0) {
+            Log.e(TAG, "Failed to init the model");
+            return false;
+        }
+        resizeInputTensors(mModelHandle, mInputShape);
+
         if (mEvaluatorConfig != null) {
             mEvaluator = mEvaluatorConfig.createEvaluator(mContext.getAssets());
         }
@@ -194,33 +206,51 @@ public class NNTestBase {
         }
     }
 
+    private void deleteOrWarn(String path) {
+        if (!new File(path).delete()) {
+            Log.w(TAG, String.format(
+                    "Unable to delete file '%s'. This might cause device to run out of space.",
+                    path));
+        }
+    }
+
+
     private List<InferenceInOutSequence> getInputOutputAssets() throws IOException {
         // TODO: Caching, don't read inputs for every inference
-        List<InferenceInOutSequence> inOutList = new ArrayList<>();
-        if (mInputOutputAssets != null) {
-            for (InferenceInOutSequence.FromAssets ioAsset : mInputOutputAssets) {
-                inOutList.add(ioAsset.readAssets(mContext.getAssets()));
-            }
-        }
-        if (mInputOutputDatasets != null) {
-            for (InferenceInOutSequence.FromDataset dataset : mInputOutputDatasets) {
-                inOutList.addAll(dataset.readDataset(mContext.getAssets(),
-                        mContext.getCacheDir()));
-            }
-        }
+        List<InferenceInOutSequence> inOutList =
+                getInputOutputAssets(mContext, mInputOutputAssets, mInputOutputDatasets);
 
         Boolean lastGolden = null;
         for (InferenceInOutSequence sequence : inOutList) {
             mHasGoldenOutputs = sequence.hasGoldenOutput();
             if (lastGolden == null) {
-                lastGolden = new Boolean(mHasGoldenOutputs);
+                lastGolden = mHasGoldenOutputs;
             } else {
-                if (lastGolden.booleanValue() != mHasGoldenOutputs) {
-                    throw new IllegalArgumentException("Some inputs for " + mModelName +
-                            " have outputs while some don't.");
+                if (lastGolden != mHasGoldenOutputs) {
+                    throw new IllegalArgumentException(
+                            "Some inputs for " + mModelName + " have outputs while some don't.");
                 }
             }
         }
+        return inOutList;
+    }
+
+    public static List<InferenceInOutSequence> getInputOutputAssets(Context context,
+            InferenceInOutSequence.FromAssets[] inputOutputAssets,
+            InferenceInOutSequence.FromDataset[] inputOutputDatasets) throws IOException {
+        // TODO: Caching, don't read inputs for every inference
+        List<InferenceInOutSequence> inOutList = new ArrayList<>();
+        if (inputOutputAssets != null) {
+            for (InferenceInOutSequence.FromAssets ioAsset : inputOutputAssets) {
+                inOutList.add(ioAsset.readAssets(context.getAssets()));
+            }
+        }
+        if (inputOutputDatasets != null) {
+            for (InferenceInOutSequence.FromDataset dataset : inputOutputDatasets) {
+                inOutList.addAll(dataset.readDataset(context.getAssets(), context.getCacheDir()));
+            }
+        }
+
         return inOutList;
     }
 
@@ -317,24 +347,44 @@ public class NNTestBase {
             destroyModel(mModelHandle);
             mModelHandle = 0;
         }
+        if (mTemporaryModelFilePath != null) {
+            deleteOrWarn(mTemporaryModelFilePath);
+            mTemporaryModelFilePath = null;
+        }
     }
 
     private final Random mRandom = new Random(System.currentTimeMillis());
 
     // We need to copy it to cache dir, so that TFlite can load it directly.
-    private String copyAssetToFile() {
-        String outFileName;
-        String modelAssetName = mModelFile + ".tflite";
-        AssetManager assetManager = mContext.getAssets();
+    private String copyAssetToFile() throws IOException {
+        @SuppressLint("DefaultLocale")
+        String outFileName =
+                String.format("%s/%s-%d-%d.tflite", mContext.getCacheDir().getAbsolutePath(),
+                        mModelFile,
+                        Thread.currentThread().getId(), mRandom.nextInt(10000));
+
+        copyAssetToFile(mContext, mModelFile + ".tflite", outFileName);
+        return outFileName;
+    }
+
+    public static boolean copyModelToFile(Context context, String modelFileName, File targetFile)
+            throws IOException {
+        if (!targetFile.exists() && !targetFile.createNewFile()) {
+            Log.w(TAG, String.format("Unable to create file %s", targetFile.getAbsolutePath()));
+            return false;
+        }
+        NNTestBase.copyAssetToFile(context, modelFileName, targetFile.getAbsolutePath());
+        return true;
+    }
+
+    public static void copyAssetToFile(Context context, String modelAssetName, String targetPath)
+            throws IOException {
+        AssetManager assetManager = context.getAssets();
         try {
-            outFileName = String.format("%s/%s-%d-%d.tflite",
-                    mContext.getCacheDir().getAbsolutePath(), mModelFile,
-                    Thread.currentThread().getId(), mRandom.nextInt(10000));
-            File outFile = new File(outFileName);
+            File outFile = new File(targetPath);
 
             try (InputStream in = assetManager.open(modelAssetName);
                  FileOutputStream out = new FileOutputStream(outFile)) {
-
                 byte[] byteBuffer = new byte[1024];
                 int readBytes = -1;
                 while ((readBytes = in.read(byteBuffer)) != -1) {
@@ -343,8 +393,12 @@ public class NNTestBase {
             }
         } catch (IOException e) {
             Log.e(TAG, "Failed to copy asset file: " + modelAssetName, e);
-            return null;
+            throw e;
         }
-        return outFileName;
+    }
+
+    @Override
+    public void close()  {
+        destroy();
     }
 }

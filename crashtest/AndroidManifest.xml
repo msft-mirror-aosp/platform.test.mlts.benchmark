@@ -19,9 +19,9 @@
       </intent-filter>
     </activity>
 
-    <service android:name="com.android.nn.benchmark.crashtest.OutOfProcessCrashTestService"
+    <service android:name="com.android.nn.crashtest.core.OutOfProcessCrashTestService"
         android:process=":CrashTest" />
-    <service android:name="com.android.nn.benchmark.crashtest.InProcessCrashTestService"
+    <service android:name="com.android.nn.crashtest.core.InProcessCrashTestService"
         android:process=".CrashTest" />
   </application>
 

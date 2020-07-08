@@ -14,22 +14,17 @@
  * limitations under the License.
  */
 
-package com.android.nn.benchmark.app;
+package com.android.nn.crashtest.app;
 
-import android.annotation.SuppressLint;
-import android.content.Context;
 import android.content.Intent;
 import android.os.RemoteException;
 import android.test.ActivityInstrumentationTestCase2;
 import android.test.UiThreadTest;
 import android.test.suitebuilder.annotation.LargeTest;
-import android.util.Log;
 
 import androidx.test.InstrumentationRegistry;
 
-import com.android.nn.benchmark.core.BenchmarkException;
-import com.android.nn.benchmark.core.NNTestBase;
-import com.android.nn.benchmark.core.Processor;
+import com.android.nn.benchmark.core.NnApiDelegationFailure;
 import com.android.nn.benchmark.core.TestModels;
 
 import org.junit.Before;
@@ -40,20 +35,18 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.Optional;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.IntStream;
 
 @RunWith(Parameterized.class)
 public class NNClientEarlyTerminationTest extends
-        ActivityInstrumentationTestCase2<NNParallelTestActivity> {
+        ActivityInstrumentationTestCase2<NNParallelTestActivity> implements
+        AcceleratorSpecificTestSupport {
 
     private static final String TAG = "NNClientEarlyTermination";
     private static final Duration MAX_SEPARATE_PROCESS_EXECUTION_TIME = Duration.ofSeconds(70);
@@ -73,47 +66,31 @@ public class NNClientEarlyTerminationTest extends
 
     @Parameters(name = "Accelerator({0})")
     public static Iterable<String> targetAccelerators() {
-        return NNTestBase.availableAcceleratorNames();
-    }
-
-    private static Optional<TestModels.TestModelEntry> findTestModelRunningOnAccelerator(
-            Context context, String acceleratorName) {
-        return TestModels.modelsList().stream()
-                .map(model -> new TestModels.TestModelEntry(
-                        model.mModelName,
-                        model.mBaselineSec,
-                        model.mInputShape,
-                        model.mInOutAssets,
-                        model.mInOutDatasets,
-                        model.mTestName,
-                        model.mModelFile,
-                        null, // Disable evaluation.
-                        model.mMinSdkVersion)
-                ).filter(
-                        model -> Processor.isTestModelSupportedByAccelerator(
-                                context,
-                                model, acceleratorName)).findAny();
+        return AcceleratorSpecificTestSupport.getTargetAcceleratorNames();
     }
 
     @Before
     @Override
     public void setUp() {
         injectInstrumentation(InstrumentationRegistry.getInstrumentation());
-        final Intent runSomeInferencesInASeparateProcess = compileSupportedModelsOnNThreadsFor(
-                NNAPI_CLIENTS_COUNT,
-                MAX_SEPARATE_PROCESS_EXECUTION_TIME);
-        setActivityIntent(runSomeInferencesInASeparateProcess);
-    }
-
-    private long ramdomInRange(long min, long max) {
-        return min + (long) (Math.random() * (max - min));
+        try {
+            final Intent runSomeInferencesInASeparateProcess = compileSupportedModelsOnNThreadsFor(
+                    NNAPI_CLIENTS_COUNT, MAX_SEPARATE_PROCESS_EXECUTION_TIME);
+            setActivityIntent(runSomeInferencesInASeparateProcess);
+        } catch (NnApiDelegationFailure nnApiDelegationFailure) {
+            throw new RuntimeException(
+                    "Cannot initialize test, failure looking for supported models, please check "
+                            + "the driver status",
+                    nnApiDelegationFailure);
+        }
     }
 
     @Test
     @LargeTest
     @UiThreadTest
     public void testDriverDoesNotFailWithParallelThreads()
-            throws ExecutionException, InterruptedException, RemoteException {
+            throws ExecutionException, InterruptedException, RemoteException,
+            NnApiDelegationFailure {
         final NNParallelTestActivity activity = getActivity();
 
         Optional<TestModels.TestModelEntry> modelForLivenessTest =
@@ -138,18 +115,19 @@ public class NNClientEarlyTerminationTest extends
             throw e;
         }
 
-        NNParallelTestActivity.TestResult testResult = activity.testResult();
+        CrashTestStatus.TestResult testResult = activity.testResult();
         driverLivenessChecker.stop();
 
         assertEquals("Remote process is expected to be killed",
-                NNParallelTestActivity.TestResult.CRASH,
+                CrashTestStatus.TestResult.CRASH,
                 testResult);
 
         assertTrue("Driver shouldn't crash if a client process is terminated",
                 driverDidNotCrash.get());
     }
 
-    private Intent compileSupportedModelsOnNThreadsFor(int threadCount, Duration testDuration) {
+    private Intent compileSupportedModelsOnNThreadsFor(int threadCount, Duration testDuration)
+            throws NnApiDelegationFailure {
         Intent intent = new Intent();
         intent.putExtra(
                 NNParallelTestActivity.EXTRA_TEST_LIST, IntStream.range(0,
@@ -162,47 +140,5 @@ public class NNClientEarlyTerminationTest extends
         intent.putExtra(NNParallelTestActivity.EXTRA_IGNORE_UNSUPPORTED_MODELS, true);
         intent.putExtra(NNParallelTestActivity.EXTRA_RUN_MODEL_COMPILATION_ONLY, true);
         return intent;
-    }
-
-    static class DriverLivenessChecker implements Callable<Boolean> {
-        final Processor mProcessor;
-        private final AtomicBoolean mRun = new AtomicBoolean(true);
-        private final TestModels.TestModelEntry mTestModelEntry;
-
-        public DriverLivenessChecker(Context context, String acceleratorName,
-                TestModels.TestModelEntry testModelEntry) {
-            mProcessor = new Processor(context,
-                    new Processor.Callback() {
-                        @SuppressLint("DefaultLocale")
-                        @Override
-                        public void onBenchmarkFinish(boolean ok) {
-                        }
-
-                        @Override
-                        public void onStatusUpdate(int testNumber, int numTests, String modelName) {
-                        }
-                    }, new int[0]);
-            mProcessor.setUseNNApi(true);
-            mProcessor.setCompleteInputSet(false);
-            mProcessor.setNnApiAcceleratorName(acceleratorName);
-            mTestModelEntry = testModelEntry;
-        }
-
-        public void stop() {
-            mRun.set(false);
-        }
-
-        @Override
-        public Boolean call() throws Exception {
-            while (mRun.get()) {
-                try {
-                    mProcessor.getInstrumentationResult(mTestModelEntry, 0, 3);
-                } catch (IOException | BenchmarkException e) {
-                    Log.e(TAG, String.format("Error running model %s", mTestModelEntry.mModelName));
-                }
-            }
-
-            return true;
-        }
     }
 }

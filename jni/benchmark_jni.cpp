@@ -39,18 +39,30 @@ Java_com_android_nn_benchmark_core_NNTestBase_initModel(
         jstring _modelFileName,
         jboolean _useNnApi,
         jboolean _enableIntermediateTensorsDump,
-        jstring _nnApiDeviceName) {
+        jstring _nnApiDeviceName,
+        jboolean _mmapModel) {
     const char *modelFileName = env->GetStringUTFChars(_modelFileName, NULL);
     const char *nnApiDeviceName =
         _nnApiDeviceName == NULL
             ? NULL
             : env->GetStringUTFChars(_nnApiDeviceName, NULL);
-    void *handle =
-        BenchmarkModel::create(modelFileName, _useNnApi,
-                               _enableIntermediateTensorsDump, nnApiDeviceName);
+    int nnapiErrno = 0;
+    void *handle = BenchmarkModel::create(
+        modelFileName, _useNnApi, _enableIntermediateTensorsDump, &nnapiErrno,
+        nnApiDeviceName, _mmapModel);
     env->ReleaseStringUTFChars(_modelFileName, modelFileName);
     if (_nnApiDeviceName != NULL) {
         env->ReleaseStringUTFChars(_nnApiDeviceName, nnApiDeviceName);
+    }
+
+    if (_useNnApi && nnapiErrno != 0) {
+      jclass nnapiFailureClass = env->FindClass(
+          "com/android/nn/benchmark/core/NnApiDelegationFailure");
+      jmethodID constructor =
+          env->GetMethodID(nnapiFailureClass, "<init>", "(I)V");
+      jobject exception =
+          env->NewObject(nnapiFailureClass, constructor, nnapiErrno);
+      env->Throw(static_cast<jthrowable>(exception));
     }
 
     return (jlong)(uintptr_t)handle;
@@ -350,6 +362,16 @@ Java_com_android_nn_benchmark_core_NNTestBase_runBenchmark(
 
             env->CallBooleanMethod(resultList, list_add, object);
             if (env->ExceptionCheck()) { return false; }
+
+            // Releasing local references to objects to avoid local reference table overflow
+            // if tests is set to run for long time.
+            if (meanSquareErrorArray) {
+                env->DeleteLocalRef(meanSquareErrorArray);
+            }
+            if (maxSingleErrorArray) {
+                env->DeleteLocalRef(maxSingleErrorArray);
+            }
+            env->DeleteLocalRef(object);
         }
     }
 

@@ -54,6 +54,7 @@ public class Processor implements Runnable {
     private Processor.Callback mCallback;
 
     private boolean mUseNNApi;
+    private boolean mMmapModel;
     private boolean mCompleteInputSet;
     private boolean mToggleLong;
     private boolean mTogglePause;
@@ -101,36 +102,56 @@ public class Processor implements Runnable {
         mRunModelCompilationOnly = value;
     }
 
+    public void setMmapModel(boolean value) {
+        mMmapModel = value;
+    }
+
     // Method to retrieve benchmark results for instrumentation tests.
     public BenchmarkResult getInstrumentationResult(
             TestModels.TestModelEntry t, float warmupTimeSeconds, float runTimeSeconds)
             throws IOException, BenchmarkException {
         mTest = changeTest(mTest, t);
-        BenchmarkResult result = getBenchmark(warmupTimeSeconds, runTimeSeconds);
-        mTest.destroy();
-        mTest = null;
-        return result;
+        try {
+            BenchmarkResult result = getBenchmark(warmupTimeSeconds, runTimeSeconds);
+            return result;
+        } finally {
+            mTest.destroy();
+            mTest = null;
+        }
     }
 
     public static boolean isTestModelSupportedByAccelerator(Context context,
-            TestModels.TestModelEntry testModelEntry, String acceleratorName) {
-        NNTestBase tb = testModelEntry.createNNTestBase(true,
-                false /* enableIntermediateTensorsDump */);
-        tb.setNNApiDeviceName(acceleratorName);
-        try {
+            TestModels.TestModelEntry testModelEntry, String acceleratorName)
+            throws NnApiDelegationFailure {
+        try(NNTestBase tb = testModelEntry.createNNTestBase(/*useNnnapi=*/ true,
+                /*enableIntermediateTensorsDump=*/false,
+                /*mmapModel=*/ false)) {
+            tb.setNNApiDeviceName(acceleratorName);
             return tb.setupModel(context);
-        } finally {
-            tb.destroy();
+        } catch (IOException e) {
+            Log.w(TAG,
+                    String.format("Error trying to check support for model %s on accelerator %s",
+                            testModelEntry.mModelName, acceleratorName), e);
+            return false;
+        }  catch (NnApiDelegationFailure nnApiDelegationFailure) {
+            if (nnApiDelegationFailure.getNnApiErrno() == 4 /*ANEURALNETWORKS_BAD_DATA*/) {
+                // Compilation will fail with ANEURALNETWORKS_BAD_DATA if the device is not
+                // supporting all operation in the model
+                return false;
+            }
+
+            throw nnApiDelegationFailure;
         }
     }
 
     private NNTestBase changeTest(NNTestBase oldTestBase, TestModels.TestModelEntry t)
-            throws UnsupportedModelException {
+            throws IOException, UnsupportedModelException, NnApiDelegationFailure {
         if (oldTestBase != null) {
             // Make sure we don't leak memory.
             oldTestBase.destroy();
         }
-        NNTestBase tb = t.createNNTestBase(mUseNNApi, false /* enableIntermediateTensorsDump */);
+        NNTestBase tb = t.createNNTestBase(mUseNNApi, /*enableIntermediateTensorsDump=*/false,
+                mMmapModel);
         if (mUseNNApi) {
             tb.setNNApiDeviceName(mAcceleratorName);
         }
@@ -218,7 +239,6 @@ public class Processor implements Runnable {
             while (mRun.get()) {
                 try {
                     benchmarkAllModels();
-                    Log.d(TAG, "Processor completed work");
                 } catch (IOException | BenchmarkException e) {
                     Log.e(TAG, "Exception during benchmark run", e);
                     success = false;
@@ -228,8 +248,14 @@ public class Processor implements Runnable {
                     throw e;
                 }
             }
+            Log.d(TAG, "Processor completed work");
             mCallback.onBenchmarkFinish(success);
         } finally {
+            if (mTest != null) {
+                // Make sure we don't leak memory.
+                mTest.destroy();
+                mTest = null;
+            }
             mCompleted.countDown();
         }
     }
@@ -267,8 +293,9 @@ public class Processor implements Runnable {
                             "Cannot initialise test %d: '%s' on accelerator %s, skipping", ct,
                             testModel.mTestName, mAcceleratorName));
                 } else {
-                    Log.e(TAG, String.format("Cannot initialise test %d: '%s'  on accelerator %s.", ct,
-                            testModel.mTestName, mAcceleratorName), e);
+                    Log.e(TAG,
+                            String.format("Cannot initialise test %d: '%s'  on accelerator %s.", ct,
+                                    testModel.mTestName, mAcceleratorName), e);
                     throw e;
                 }
             }

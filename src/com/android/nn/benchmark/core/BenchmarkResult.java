@@ -232,9 +232,19 @@ public class BenchmarkResult implements Parcelable {
         return result.toString();
     }
 
+    public boolean hasBenchmarkError() {
+        return !TextUtils.isEmpty(mBenchmarkError);
+    }
+
+    public String getBenchmarkError() {
+        if (!hasBenchmarkError()) return null;
+
+        return mBenchmarkError;
+    }
+
     public String getSummary(float baselineSec) {
-        if (!TextUtils.isEmpty(mBenchmarkError)) {
-            return mBenchmarkError;
+        if (hasBenchmarkError()) {
+            return getBenchmarkError();
         }
 
         java.text.DecimalFormat df = new java.text.DecimalFormat("######.##");

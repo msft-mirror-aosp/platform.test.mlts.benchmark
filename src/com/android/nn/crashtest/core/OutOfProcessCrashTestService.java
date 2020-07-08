@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.nn.benchmark.crashtest;
+package com.android.nn.crashtest.core;
 
 import android.util.Log;
 

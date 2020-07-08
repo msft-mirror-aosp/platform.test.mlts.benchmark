@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.nn.benchmark.crashtest;
+package com.android.nn.crashtest.core;
 
 import android.app.Service;
 import android.content.Intent;
@@ -28,8 +28,10 @@ import android.util.Log;
 
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class CrashTestService extends Service {
 
@@ -43,11 +45,16 @@ public class CrashTestService extends Service {
     public static final int SET_COMM_CHANNEL = 4;
     public static final int KILL_PROCESS = 5;
 
+    // Starting tests only after the crash test coordinator has set the communication
+    // channel to me in order to avoid event notifications
+    private final CountDownLatch startTest = new CountDownLatch(1);
+
     Messenger lifecycleListener = null;
     final Messenger mMessenger = new Messenger(new Handler(message -> {
         switch (message.what) {
             case SET_COMM_CHANNEL:
                 lifecycleListener = message.replyTo;
+                startTest.countDown();
                 break;
 
             case KILL_PROCESS:
@@ -95,18 +102,31 @@ public class CrashTestService extends Service {
 
             executor.submit(() -> {
                 try {
+                    startTest.await(3, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.interrupted();
+                    Log.e(TAG, "Interrupted before starting test", e);
+                    stopSelf();
+                    return;
+                }
+
+                try {
                     final Optional<String> testResult = crashTest.call();
                     Log.d(TAG, String.format("Test '%s' completed with result: %s", testClassName,
                             testResult.orElse("success")));
                     notify(testResult.isPresent() ? FAILURE : SUCCESS, testResult.orElse(null));
-                } catch (Exception e) {
+                } catch (Throwable e) {
                     Log.e(TAG, "Exception in crash test", e);
+                    notify(FAILURE, "Exception in crash test: " + e);
                     stopSelf();
                 }
             });
         } catch (Exception e) {
             Log.e(TAG, "Exception starting test ", e);
             stopSelf();
+        } catch (Error error) {
+            Log.e(TAG, "Error starting test ", error);
+            throw error;
         }
 
         return mMessenger.getBinder();

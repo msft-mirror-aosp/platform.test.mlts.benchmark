@@ -53,13 +53,31 @@
       android:layout_marginBottom="10dp"
       />
 
+  <CheckBox
+      android:id="@+id/compile_only"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="Run models compilation only"
+      android:layout_below="@id/test_type"
+      android:textStyle="bold"
+      />
+
+  <CheckBox
+      android:id="@+id/mmap_model"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="Memory map model"
+      android:layout_below="@id/compile_only"
+      android:textStyle="bold"
+      />
+
   <TextView
       android:id="@+id/thread_count_label"
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
       android:text="Thread count"
       android:textStyle="bold"
-      android:layout_below="@id/test_type"
+      android:layout_below="@id/mmap_model"
       android:layout_marginRight="10dp"
       />
   <NumberPicker
@@ -76,7 +94,7 @@
       android:layout_height="wrap_content"
       android:text="Duration (mins)"
       android:textStyle="bold"
-      android:layout_below="@id/test_type"
+      android:layout_below="@id/mmap_model"
       android:layout_toRightOf="@id/thread_count_label"
       />
   <NumberPicker

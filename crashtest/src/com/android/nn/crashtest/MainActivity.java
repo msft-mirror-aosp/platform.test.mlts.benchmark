@@ -23,6 +23,7 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.NumberPicker;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -30,14 +31,17 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.android.nn.benchmark.core.NNTestBase;
+import com.android.nn.benchmark.core.NnApiDelegationFailure;
 import com.android.nn.benchmark.core.Processor;
 import com.android.nn.benchmark.core.TestModels;
 import com.android.nn.benchmark.core.TestModelsListLoader;
-import com.android.nn.benchmark.crashtest.CrashTestCoordinator;
-import com.android.nn.benchmark.crashtest.test.RunModelsInParallel;
+import com.android.nn.crashtest.core.CrashTestCoordinator;
+import com.android.nn.crashtest.core.test.RunModelsInParallel;
 import com.android.nn.benchmark.util.TestExternalStorageActivity;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -62,6 +66,8 @@ public class MainActivity extends AppCompatActivity {
     private NumberPicker mTestDurationMinutes;
     private ArrayAdapter<String> mModelsAdapter;
     private List<String> mAllTestModels;
+    private CheckBox mMmapModel;
+    private CheckBox mCompileModelsOnly;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -153,6 +159,9 @@ public class MainActivity extends AppCompatActivity {
 
         mTestDurationMinutes.setMinValue(1);
         mTestDurationMinutes.setMaxValue(60);
+
+        mMmapModel = (CheckBox) findViewById(R.id.mmap_model);
+        mCompileModelsOnly = (CheckBox) findViewById(R.id.compile_only);
     }
 
     private List<String> modelsForAccelerator(String acceleratorName) {
@@ -163,20 +172,32 @@ public class MainActivity extends AppCompatActivity {
         } else {
             result.add("All supported models");
             result.addAll(TestModels.modelsList().stream()
-                    .map(model -> new TestModels.TestModelEntry(
-                            model.mModelName,
-                            model.mBaselineSec,
-                            model.mInputShape,
-                            model.mInOutAssets,
-                            model.mInOutDatasets,
-                            model.mTestName,
-                            model.mModelFile,
-                            null, // Disable evaluation.
-                            model.mMinSdkVersion)
-                    ).filter(
-                            model -> Processor.isTestModelSupportedByAccelerator(
-                                    this,
-                                    model, acceleratorName)).map(
+                    .map(TestModels.TestModelEntry::withDisabledEvaluation).filter(
+                            model -> {
+                                try {
+                                    return Processor.isTestModelSupportedByAccelerator(
+                                            this,
+                                            model, acceleratorName);
+                                } catch (NnApiDelegationFailure nnApiDelegationFailure) {
+                                    runOnUiThread(() -> {
+                                        mMessage.append(String.format(
+                                                "Driver %s failed when trying to check support "
+                                                        + "for model %s!!\n",
+                                                acceleratorName, model.mModelName));
+                                        ByteArrayOutputStream stsackTraceByteOS =
+                                                new ByteArrayOutputStream();
+                                        try (PrintStream stackTracePrintStream = new PrintStream(
+                                                stsackTraceByteOS)) {
+                                            nnApiDelegationFailure.printStackTrace(
+                                                    stackTracePrintStream);
+                                            mMessage.append(
+                                                    stackTracePrintStream.toString() + "\n");
+                                        }
+                                        mStartTestButton.setEnabled(true);
+                                    });
+                                    return false;
+                                }
+                            }).map(
                             TestModels.TestModelEntry::getTestName).collect(
                             Collectors.toList()));
         }
@@ -252,20 +273,24 @@ public class MainActivity extends AppCompatActivity {
         final int testTimeoutMillis = testDurationMinutes * 1500;
         final String testName = "in-app-test@" + System.currentTimeMillis();
         final String acceleratorName = mAcceleratorName.get();
+        final boolean mmapModel = mMmapModel.isChecked();
+        final boolean runModelCompilationOnly = mCompileModelsOnly.isChecked();
         coordinator.startTest(RunModelsInParallel.class,
                 RunModelsInParallel.intentInitializer(testList, threadCount,
                         Duration.ofMinutes(testDurationMinutes),
-                        testName, acceleratorName, false, false),
+                        testName, acceleratorName, false, runModelCompilationOnly, mmapModel),
                 testCompletionListener,
                 mUseSeparateProcess.get(), testName);
 
         mMessage.setText(
                 String.format(
-                        "Inference test started with %d threads for %d minutes on %s\n",
+                        "%s test started with %d threads for %d minutes on %s\n",
+                        runModelCompilationOnly ? "Compilation" : "Inference",
                         threadCount,
                         testDurationMinutes,
                         acceleratorName != null ? "accelerator " + acceleratorName
                                 : "NNAPI-selected accelerator"));
+
     }
 
 }
