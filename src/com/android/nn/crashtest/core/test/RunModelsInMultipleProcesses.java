@@ -47,6 +47,11 @@ public class RunModelsInMultipleProcesses implements CrashTest {
   public static final String NNAPI_DEVICE_NAME = "nnapi_device_name";
   public static final String JUST_COMPILE = "just_compile";
   public static final String CLIENT_FAILURE_RATE_PERCENT = "client_failure_rate_percent";
+  public static final long DEFAULT_TEST_DURATION = Duration.ofSeconds(60).toMillis();
+  public static final int DEFAULT_PROCESSES = 3;
+  public static final int DEFAULT_THREADS = 1;
+  public static final boolean DEFAULT_JUST_COMPILE = false;
+  public static final int DEFAULT_CLIENT_FAILURE_RATE_PERCENT = 0;
 
   private Context mContext;
   private int mThreadCount;
@@ -72,6 +77,20 @@ public class RunModelsInMultipleProcesses implements CrashTest {
       intent.putExtra(CLIENT_FAILURE_RATE_PERCENT, clientFailureRatePercent);
     };
   }
+  static public CrashTestCoordinator.CrashTestIntentInitializer intentInitializer(
+            Intent copyFrom) {
+    return intentInitializer(
+            copyFrom.getStringExtra(RunModelsInMultipleProcesses.TEST_NAME),
+            copyFrom.getStringExtra(RunModelsInMultipleProcesses.MODEL_NAME),
+            copyFrom.getIntExtra(RunModelsInMultipleProcesses.PROCESSES, DEFAULT_PROCESSES),
+            copyFrom.getIntExtra(RunModelsInMultipleProcesses.THREADS, DEFAULT_THREADS),
+            Duration.ofMillis(copyFrom.getLongExtra(TEST_DURATION, DEFAULT_TEST_DURATION)),
+            copyFrom.getStringExtra(RunModelsInMultipleProcesses.NNAPI_DEVICE_NAME),
+            copyFrom.getBooleanExtra(RunModelsInMultipleProcesses.JUST_COMPILE,
+                    DEFAULT_JUST_COMPILE),
+            copyFrom.getIntExtra(RunModelsInMultipleProcesses.CLIENT_FAILURE_RATE_PERCENT,
+                    DEFAULT_CLIENT_FAILURE_RATE_PERCENT));
+  }
 
   @Override
   public void init(
@@ -79,13 +98,14 @@ public class RunModelsInMultipleProcesses implements CrashTest {
     mContext = context;
     mTestName = configParams.getStringExtra(TEST_NAME);
     mTestModelEntry = TestModels.getModelByName(configParams.getStringExtra(MODEL_NAME));
-    mProcessCount = configParams.getIntExtra(PROCESSES, 3);
-    mThreadCount = configParams.getIntExtra(THREADS, 1);
+    mProcessCount = configParams.getIntExtra(PROCESSES, DEFAULT_PROCESSES);
+    mThreadCount = configParams.getIntExtra(THREADS, DEFAULT_THREADS);
     mTestDuration = Duration.ofMillis(
-        configParams.getLongExtra(TEST_DURATION, Duration.ofSeconds(60).toMillis()));
+        configParams.getLongExtra(TEST_DURATION, DEFAULT_TEST_DURATION));
     mNnApiDeviceName = configParams.getStringExtra(NNAPI_DEVICE_NAME);
-    mJustCompileModel = configParams.getBooleanExtra(JUST_COMPILE, false);
-    mClientFailureRatePercent = configParams.getIntExtra(CLIENT_FAILURE_RATE_PERCENT, 0);
+    mJustCompileModel = configParams.getBooleanExtra(JUST_COMPILE, DEFAULT_JUST_COMPILE);
+    mClientFailureRatePercent = configParams.getIntExtra(CLIENT_FAILURE_RATE_PERCENT,
+            DEFAULT_CLIENT_FAILURE_RATE_PERCENT);
   }
 
   private void deleteOrWarn(File fileToDelete) {
