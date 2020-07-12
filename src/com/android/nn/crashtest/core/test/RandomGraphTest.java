@@ -123,6 +123,24 @@ public class RandomGraphTest implements CrashTest {
         };
     }
 
+    static public CrashTestCoordinator.CrashTestIntentInitializer intentInitializer(
+            Intent copyFrom) {
+        return intentInitializer(
+                copyFrom.getIntExtra(RandomGraphTest.GRAPH_SIZE,
+                        RandomGraphTest.DEFAULT_GRAPH_SIZE),
+                copyFrom.getIntExtra(
+                        RandomGraphTest.DIMENSIONS_RANGE, RandomGraphTest.DEFAULT_DIMENSIONS_RANGE),
+                copyFrom.getIntExtra(RandomGraphTest.MODELS_COUNT,
+                        RandomGraphTest.DEFAULT_MODELS_COUNT),
+                copyFrom.getLongExtra(RandomGraphTest.PAUSE_BETWEEN_MODELS_MS,
+                        RandomGraphTest.DEFAULT_PAUSE_BETWEEN_MODELS_MILLIS),
+                copyFrom.getBooleanExtra(
+                        RandomGraphTest.COMPILATION_ONLY, RandomGraphTest.DEFAULT_COMPILATION_ONLY),
+                copyFrom.getStringExtra(RandomGraphTest.DEVICE_NAME),
+                copyFrom.getLongExtra(MAX_TEST_DURATION,
+                        DEFAULT_MAX_TEST_DURATION_MILLIS),
+                copyFrom.getStringExtra(RandomGraphTest.TEST_NAME));
+    }
 
     private Context mContext;
     private String mDeviceName;
