@@ -65,6 +65,12 @@ public class NNBenchmark extends Activity implements Processor.Callback {
         mProcessor.setCompleteInputSet(completeInputSet);
     }
 
+    public void enableCompilationCachingBenchmarks(
+            float warmupTimeSeconds, float runTimeSeconds, int maxIterations) {
+        mProcessor.enableCompilationCachingBenchmarks(
+                warmupTimeSeconds, runTimeSeconds, maxIterations);
+    }
+
     @SuppressLint("SetTextI18n")
     @Override
     protected void onCreate(Bundle savedInstanceState) {

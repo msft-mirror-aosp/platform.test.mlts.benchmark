@@ -59,7 +59,8 @@ public class NNTestBase implements AutoCloseable {
             boolean useNNApi,
             boolean enableIntermediateTensorsDump,
             String nnApiDeviceName,
-            boolean mmapModel) throws NnApiDelegationFailure;
+            boolean mmapModel,
+            String nnApiCacheDir) throws NnApiDelegationFailure;
 
     private synchronized native void destroyModel(long modelHandle);
 
@@ -71,6 +72,9 @@ public class NNTestBase implements AutoCloseable {
             int inferencesSeqMaxCount,
             float timeoutSec,
             int flags);
+
+    private synchronized native CompilationBenchmarkResult runCompilationBenchmark(
+            long modelHandle, int maxNumIterations, float warmupTimeoutSec, float runTimeoutSec);
 
     private synchronized native void dumpAllLayers(
             long modelHandle,
@@ -176,9 +180,10 @@ public class NNTestBase implements AutoCloseable {
             deleteOrWarn(mTemporaryModelFilePath);
         }
         mTemporaryModelFilePath = copyAssetToFile();
+        String nnApiCacheDir = mContext.getCodeCacheDir().toString();
         mModelHandle = initModel(
                 mTemporaryModelFilePath, mUseNNApi, mEnableIntermediateTensorsDump,
-                mNNApiDeviceName.orElse(null), mMmapModel);
+                mNNApiDeviceName.orElse(null), mMmapModel, nnApiCacheDir);
         if (mModelHandle == 0) {
             Log.e(TAG, "Failed to init the model");
             return false;
@@ -340,6 +345,19 @@ public class NNTestBase implements AutoCloseable {
         }
         return new Pair<List<InferenceInOutSequence>, List<InferenceResult>>(
                 inOutList, resultList);
+    }
+
+    public CompilationBenchmarkResult runCompilationBenchmark(float warmupTimeoutSec,
+            float runTimeoutSec, int maxIterations) throws IOException, BenchmarkException {
+        if (mModelHandle == 0) {
+            throw new UnsupportedModelException("Unsupported model");
+        }
+        CompilationBenchmarkResult result = runCompilationBenchmark(
+                mModelHandle, maxIterations, warmupTimeoutSec, runTimeoutSec);
+        if (result == null) {
+            throw new BenchmarkException("Failed to run compilation benchmark");
+        }
+        return result;
     }
 
     public void destroy() {

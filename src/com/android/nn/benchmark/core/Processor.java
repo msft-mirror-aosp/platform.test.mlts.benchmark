@@ -62,6 +62,11 @@ public class Processor implements Runnable {
     private boolean mIgnoreUnsupportedModels;
     private boolean mRunModelCompilationOnly;
 
+    private boolean mBenchmarkCompilationCaching;
+    private float mCompilationBenchmarkWarmupTimeSeconds;
+    private float mCompilationBenchmarkRunTimeSeconds;
+    private int mCompilationBenchmarkMaxIterations;
+
     public Processor(Context context, Processor.Callback callback, int[] testList) {
         mContext = context;
         mCallback = callback;
@@ -72,6 +77,7 @@ public class Processor implements Runnable {
         mAcceleratorName = null;
         mIgnoreUnsupportedModels = false;
         mRunModelCompilationOnly = false;
+        mBenchmarkCompilationCaching = false;
     }
 
     public void setUseNNApi(boolean useNNApi) {
@@ -104,6 +110,14 @@ public class Processor implements Runnable {
 
     public void setMmapModel(boolean value) {
         mMmapModel = value;
+    }
+
+    public void enableCompilationCachingBenchmarks(
+            float warmupTimeSeconds, float runTimeSeconds, int maxIterations) {
+        mBenchmarkCompilationCaching = true;
+        mCompilationBenchmarkWarmupTimeSeconds = warmupTimeSeconds;
+        mCompilationBenchmarkRunTimeSeconds = runTimeSeconds;
+        mCompilationBenchmarkMaxIterations = maxIterations;
     }
 
     // Method to retrieve benchmark results for instrumentation tests.
@@ -190,6 +204,19 @@ public class Processor implements Runnable {
         }
     }
 
+    // Run one loop of compilations for at least the specified minimum time.
+    // The function will set the compilation results into the provided benchmark result object.
+    private void runCompilationBenchmarkLoop(float warmupMinTime, float runMinTime,
+            int maxIterations, BenchmarkResult benchmarkResult) throws IOException {
+        try {
+            CompilationBenchmarkResult result =
+                    mTest.runCompilationBenchmark(warmupMinTime, runMinTime, maxIterations);
+            benchmarkResult.setCompilationBenchmarkResult(result);
+        } catch (BenchmarkException e) {
+            benchmarkResult.setBenchmarkError(e.getMessage());
+        }
+    }
+
     public BenchmarkResult[] getTestResults() {
         return mTestResults;
     }
@@ -225,6 +252,12 @@ public class Processor implements Runnable {
             r = runBenchmarkLoop(runTimeSeconds, mCompleteInputSet);
         } finally {
             Trace.endSection();
+        }
+
+        // Compilation benchmark
+        if (mUseNNApi && mBenchmarkCompilationCaching) {
+            runCompilationBenchmarkLoop(mCompilationBenchmarkWarmupTimeSeconds,
+                    mCompilationBenchmarkRunTimeSeconds, mCompilationBenchmarkMaxIterations, r);
         }
 
         return r;

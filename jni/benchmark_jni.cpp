@@ -40,16 +40,21 @@ Java_com_android_nn_benchmark_core_NNTestBase_initModel(
         jboolean _useNnApi,
         jboolean _enableIntermediateTensorsDump,
         jstring _nnApiDeviceName,
-        jboolean _mmapModel) {
+        jboolean _mmapModel,
+        jstring _nnApiCacheDir) {
     const char *modelFileName = env->GetStringUTFChars(_modelFileName, NULL);
     const char *nnApiDeviceName =
         _nnApiDeviceName == NULL
             ? NULL
             : env->GetStringUTFChars(_nnApiDeviceName, NULL);
+    const char *nnApiCacheDir =
+        _nnApiCacheDir == NULL
+            ? NULL
+            : env->GetStringUTFChars(_nnApiCacheDir, NULL);
     int nnapiErrno = 0;
     void *handle = BenchmarkModel::create(
         modelFileName, _useNnApi, _enableIntermediateTensorsDump, &nnapiErrno,
-        nnApiDeviceName, _mmapModel);
+        nnApiDeviceName, _mmapModel, nnApiCacheDir);
     env->ReleaseStringUTFChars(_modelFileName, modelFileName);
     if (_nnApiDeviceName != NULL) {
         env->ReleaseStringUTFChars(_nnApiDeviceName, nnApiDeviceName);
@@ -447,4 +452,58 @@ Java_com_android_nn_benchmark_core_NNTestBase_getAcceleratorNames(
       if (env->ExceptionCheck()) { return false; }
   }
   return true;
+}
+
+static jfloatArray convertToJfloatArray(JNIEnv* env, const std::vector<float>& from) {
+  jfloatArray to = env->NewFloatArray(from.size());
+  if (env->ExceptionCheck()) {
+    return nullptr;
+  }
+  jfloat* bytes = env->GetFloatArrayElements(to, nullptr);
+  memcpy(bytes, from.data(), from.size() * sizeof(float));
+  env->ReleaseFloatArrayElements(to, bytes, 0);
+  return to;
+}
+
+extern "C" JNIEXPORT jobject JNICALL
+Java_com_android_nn_benchmark_core_NNTestBase_runCompilationBenchmark(
+    JNIEnv* env,
+    jobject /* this */,
+    jlong _modelHandle,
+    jint maxNumIterations,
+    jfloat warmupTimeoutSec,
+    jfloat runTimeoutSec) {
+  BenchmarkModel* model = reinterpret_cast<BenchmarkModel*>(_modelHandle);
+
+  jclass result_class = env->FindClass("com/android/nn/benchmark/core/CompilationBenchmarkResult");
+  if (result_class == nullptr) return nullptr;
+  jmethodID result_ctor = env->GetMethodID(result_class, "<init>", "([F[F[FI)V");
+  if (result_ctor == nullptr) return nullptr;
+
+  CompilationBenchmarkResult result;
+  bool success =
+          model->benchmarkCompilation(maxNumIterations, warmupTimeoutSec, runTimeoutSec, &result);
+  if (!success) return nullptr;
+
+  // Convert cpp CompilationBenchmarkResult struct to java.
+  jfloatArray compileWithoutCacheArray =
+          convertToJfloatArray(env, result.compileWithoutCacheTimeSec);
+  if (compileWithoutCacheArray == nullptr) return nullptr;
+
+  // saveToCache and prepareFromCache results may not exist.
+  jfloatArray saveToCacheArray = nullptr;
+  if (result.saveToCacheTimeSec) {
+    saveToCacheArray = convertToJfloatArray(env, result.saveToCacheTimeSec.value());
+    if (saveToCacheArray == nullptr) return nullptr;
+  }
+  jfloatArray prepareFromCacheArray = nullptr;
+  if (result.prepareFromCacheTimeSec) {
+    prepareFromCacheArray = convertToJfloatArray(env, result.prepareFromCacheTimeSec.value());
+    if (prepareFromCacheArray == nullptr) return nullptr;
+  }
+
+  jobject object = env->NewObject(result_class, result_ctor, compileWithoutCacheArray,
+                                  saveToCacheArray, prepareFromCacheArray, result.cacheSizeBytes);
+  if (env->ExceptionCheck()) return nullptr;
+  return object;
 }

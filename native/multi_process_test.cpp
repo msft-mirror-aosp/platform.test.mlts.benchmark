@@ -116,7 +116,8 @@ bool runModel(const char* modelFileName,
           modelFileName, /*useNnApi=*/true,
           /*enableIntermediateTensorsDump=*/false,
           &nnapiErrno,
-          nnApiDeviceName.empty() ? nullptr : nnApiDeviceName.c_str(), mmapModel));
+          nnApiDeviceName.empty() ? nullptr : nnApiDeviceName.c_str(), mmapModel,
+          /*nnapi_cache_dir=*/nullptr));
 
       if (!model) {
         __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Error creating model");
@@ -137,7 +138,8 @@ bool runModel(const char* modelFileName,
         modelFileName, /*useNnApi=*/true,
         /*enableIntermediateTensorsDump=*/false,
         &nnapiErrno,
-        nnApiDeviceName.empty() ? nullptr : nnApiDeviceName.c_str(), mmapModel));
+        nnApiDeviceName.empty() ? nullptr : nnApiDeviceName.c_str(), mmapModel,
+        /*nnapi_cache_dir=*/nullptr));
 
     if (!model) {
       __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Error creating model");
