@@ -69,6 +69,7 @@ public class NNScoringTest extends BenchmarkTestBase {
 
         setUseNNApi(useNnapi);
         setCompleteInputSet(true);
+        enableCompilationCachingBenchmarks();
         TestAction ta = new TestAction(mModel, WARMUP_REPEATABLE_SECONDS,
             COMPLETE_SET_TIMEOUT_SECOND);
         runTest(ta, mModel.getTestName());

@@ -71,6 +71,11 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
     // For running a complete dataset, the run should complete under 5 minutes.
     protected static final float COMPLETE_SET_TIMEOUT_SECOND = 300.f;
 
+    // For running compilation benchmarks.
+    protected static final float COMPILATION_WARMUP_SECONDS = 2.f;
+    protected static final float COMPILATION_RUNTIME_SECONDS = 10.f;
+    protected static final int COMPILATION_MAX_ITERATIONS = 100;
+
     public BenchmarkTestBase(TestModelEntry model) {
         super(NNBenchmark.class);
         mModel = model;
@@ -82,6 +87,11 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
 
     protected void setCompleteInputSet(boolean completeInputSet) {
         mActivity.setCompleteInputSet(completeInputSet);
+    }
+
+    protected void enableCompilationCachingBenchmarks() {
+        mActivity.enableCompilationCachingBenchmarks(COMPILATION_WARMUP_SECONDS,
+                COMPILATION_RUNTIME_SECONDS, COMPILATION_MAX_ITERATIONS);
     }
 
     // Initialize the parameter for ImageProcessingActivityJB.
