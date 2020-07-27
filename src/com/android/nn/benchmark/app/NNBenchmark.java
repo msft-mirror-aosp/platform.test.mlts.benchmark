@@ -43,6 +43,7 @@ public class NNBenchmark extends Activity implements Processor.Callback {
     public static final String EXTRA_RESULTS_TESTS = "tests";
     public static final String EXTRA_RESULTS_RESULTS = "results";
     public static final long PROCESSOR_TERMINATION_TIMEOUT_MS = Duration.ofSeconds(20).toMillis();
+    public static final String EXTRA_MAX_ITERATIONS = "max_iterations";
 
     private int mTestList[];
 
@@ -124,6 +125,7 @@ public class NNBenchmark extends Activity implements Processor.Callback {
             mProcessor.setToggleLong(i.getBooleanExtra(EXTRA_ENABLE_LONG, false));
             mProcessor.setTogglePause(i.getBooleanExtra(EXTRA_ENABLE_PAUSE, false));
             mProcessor.setUseNNApi(!i.getBooleanExtra(EXTRA_DISABLE_NNAPI, false));
+            mProcessor.setMaxRunIterations(i.getIntExtra(EXTRA_MAX_ITERATIONS, 0));
             executorService.submit(mProcessor);
         } else {
             Log.v(TAG, "No test to run, doing nothing");

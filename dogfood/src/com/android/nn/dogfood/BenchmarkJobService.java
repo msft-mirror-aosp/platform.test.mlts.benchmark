@@ -79,6 +79,7 @@ public class BenchmarkJobService extends JobService implements Processor.Callbac
         mProcessor = new Processor(this, this, randomModelList());
         mProcessor.setUseNNApi(true);
         mProcessor.setToggleLong(true);
+        mProcessor.setMaxRunIterations(1);
         processorRunner.submit(mProcessor);
     }
 

@@ -108,6 +108,7 @@ public class NNControls extends Activity {
         intent.putExtra(NNBenchmark.EXTRA_ENABLE_LONG, mSettings[SETTING_LONG_RUN]);
         intent.putExtra(NNBenchmark.EXTRA_ENABLE_PAUSE, mSettings[SETTING_PAUSE]);
         intent.putExtra(NNBenchmark.EXTRA_DISABLE_NNAPI, mSettings[SETTING_DISABLE_NNAPI]);
+        intent.putExtra(NNBenchmark.EXTRA_MAX_ITERATIONS, 1);
         return intent;
     }
 
