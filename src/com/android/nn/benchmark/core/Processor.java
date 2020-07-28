@@ -61,6 +61,9 @@ public class Processor implements Runnable {
     private String mAcceleratorName;
     private boolean mIgnoreUnsupportedModels;
     private boolean mRunModelCompilationOnly;
+    // Max number of benchmark iterations to do in run method.
+    // Less or equal to 0 means unlimited
+    private int mMaxRunIterations;
 
     private boolean mBenchmarkCompilationCaching;
     private float mCompilationBenchmarkWarmupTimeSeconds;
@@ -77,6 +80,7 @@ public class Processor implements Runnable {
         mAcceleratorName = null;
         mIgnoreUnsupportedModels = false;
         mRunModelCompilationOnly = false;
+        mMaxRunIterations = 0;
         mBenchmarkCompilationCaching = false;
     }
 
@@ -112,6 +116,10 @@ public class Processor implements Runnable {
         mMmapModel = value;
     }
 
+    public void setMaxRunIterations(int value) {
+        mMaxRunIterations = value;
+    }
+
     public void enableCompilationCachingBenchmarks(
             float warmupTimeSeconds, float runTimeSeconds, int maxIterations) {
         mBenchmarkCompilationCaching = true;
@@ -137,7 +145,7 @@ public class Processor implements Runnable {
     public static boolean isTestModelSupportedByAccelerator(Context context,
             TestModels.TestModelEntry testModelEntry, String acceleratorName)
             throws NnApiDelegationFailure {
-        try(NNTestBase tb = testModelEntry.createNNTestBase(/*useNnnapi=*/ true,
+        try (NNTestBase tb = testModelEntry.createNNTestBase(/*useNnnapi=*/ true,
                 /*enableIntermediateTensorsDump=*/false,
                 /*mmapModel=*/ false)) {
             tb.setNNApiDeviceName(acceleratorName);
@@ -147,7 +155,7 @@ public class Processor implements Runnable {
                     String.format("Error trying to check support for model %s on accelerator %s",
                             testModelEntry.mModelName, acceleratorName), e);
             return false;
-        }  catch (NnApiDelegationFailure nnApiDelegationFailure) {
+        } catch (NnApiDelegationFailure nnApiDelegationFailure) {
             if (nnApiDelegationFailure.getNnApiErrno() == 4 /*ANEURALNETWORKS_BAD_DATA*/) {
                 // Compilation will fail with ANEURALNETWORKS_BAD_DATA if the device is not
                 // supporting all operation in the model
@@ -268,8 +276,13 @@ public class Processor implements Runnable {
         mHasBeenStarted = true;
         Log.d(TAG, "Processor starting");
         boolean success = true;
+        int benchmarkIterationsCount = 0;
         try {
             while (mRun.get()) {
+                if (mMaxRunIterations > 0 && benchmarkIterationsCount >= mMaxRunIterations) {
+                    break;
+                }
+                benchmarkIterationsCount++;
                 try {
                     benchmarkAllModels();
                 } catch (IOException | BenchmarkException e) {
