@@ -129,12 +129,14 @@ public class Processor implements Runnable {
     }
 
     // Method to retrieve benchmark results for instrumentation tests.
+    // Returns null if the processor is configured to run compilation only
     public BenchmarkResult getInstrumentationResult(
             TestModels.TestModelEntry t, float warmupTimeSeconds, float runTimeSeconds)
             throws IOException, BenchmarkException {
         mTest = changeTest(mTest, t);
         try {
-            BenchmarkResult result = getBenchmark(warmupTimeSeconds, runTimeSeconds);
+            BenchmarkResult result = mRunModelCompilationOnly ? null : getBenchmark(warmupTimeSeconds,
+                    runTimeSeconds);
             return result;
         } finally {
             mTest.destroy();

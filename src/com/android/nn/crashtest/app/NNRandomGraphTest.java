@@ -99,7 +99,7 @@ public abstract class NNRandomGraphTest
 
     protected Optional<TestModels.TestModelEntry> findModelForLivenessTest()
             throws NnApiDelegationFailure {
-        return findTestModelRunningOnAccelerator(
+        return AcceleratorSpecificTestSupport.findTestModelRunningOnAccelerator(
                 getInstrumentation().getTargetContext(), mAcceleratorName);
     }
 

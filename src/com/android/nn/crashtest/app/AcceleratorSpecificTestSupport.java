@@ -19,7 +19,7 @@ package com.android.nn.crashtest.app;
 import android.content.Context;
 import android.util.Log;
 
-import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.InstrumentationRegistry;
 
 import com.android.nn.benchmark.core.BenchmarkException;
 import com.android.nn.benchmark.core.BenchmarkResult;
@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
 public interface AcceleratorSpecificTestSupport {
     String TAG = "AcceleratorTest";
 
-    default Optional<TestModels.TestModelEntry> findTestModelRunningOnAccelerator(
+    static Optional<TestModels.TestModelEntry> findTestModelRunningOnAccelerator(
             Context context, String acceleratorName) throws NnApiDelegationFailure {
         for (TestModels.TestModelEntry model : TestModels.modelsList()) {
             if (Processor.isTestModelSupportedByAccelerator(context, model, acceleratorName)) {
@@ -48,6 +48,17 @@ public interface AcceleratorSpecificTestSupport {
             }
         }
         return Optional.empty();
+    }
+
+    static List<TestModels.TestModelEntry> findAllTestModelsRunningOnAccelerator(
+            Context context, String acceleratorName) throws NnApiDelegationFailure {
+        List<TestModels.TestModelEntry> result = new ArrayList<>();
+        for (TestModels.TestModelEntry model : TestModels.modelsList()) {
+            if (Processor.isTestModelSupportedByAccelerator(context, model, acceleratorName)) {
+                result.add(model);
+            }
+        }
+        return result;
     }
 
     default long ramdomInRange(long min, long max) {

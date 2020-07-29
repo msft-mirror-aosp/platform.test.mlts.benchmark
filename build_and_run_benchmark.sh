@@ -100,13 +100,17 @@ case "$MODE" in
     APP="$CRASH_TEST_APP"
     CLASS=com.android.nn.crashtest.app.NNRandomGraphExecutionTest
     ;;
+  performance-degradation-stress)
+    APP="$CRASH_TEST_APP"
+    CLASS=com.android.nn.crashtest.app.NNPerformanceDegradationTest
+    ;;
   *)
     echo "Unknown execution mode: $1"
     echo "Known modes: scoring (default), inference-stress, model-loading-stress, " \
       "parallel-inference-stress, parallel-inference-stress-in-process, " \
       "client-early-termination-stress, multi-process-inference-stress, " \
       "multi-process-model-load-stress memory-mapped-model-load-stress, " \
-      "model-load-random-stress  inference-random-stress"
+      "model-load-random-stress, inference-random-stress, performance-degradation-stress"
     exit 1
     ;;
 esac
