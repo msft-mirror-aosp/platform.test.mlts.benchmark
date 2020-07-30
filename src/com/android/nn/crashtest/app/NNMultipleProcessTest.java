@@ -81,7 +81,7 @@ public abstract class NNMultipleProcessTest
 
     protected Optional<TestModels.TestModelEntry> findModelForLivenessTest()
             throws NnApiDelegationFailure {
-        return findTestModelRunningOnAccelerator(
+        return AcceleratorSpecificTestSupport.findTestModelRunningOnAccelerator(
                 getInstrumentation().getTargetContext(), mAcceleratorName);
     }
 
