@@ -320,9 +320,11 @@ public class NNTestBase implements AutoCloseable {
                         flags);
         if (result.second.size() != extpectedResults) {
             // We reached a timeout or failed to evaluate whole set for other reason, abort.
-            final String errorMsg = "Failed to evaluate complete input set, expected: "
-                    + extpectedResults +
-                    ", received: " + result.second.size();
+            @SuppressLint("DefaultLocale")
+            final String errorMsg = String.format(
+                    "Failed to evaluate complete input set, in %d seconds expected: %d, received:"
+                            + " %d",
+                    timeoutSec, extpectedResults, result.second.size());
             Log.w(TAG, errorMsg);
             throw new IllegalStateException(errorMsg);
         }
@@ -416,7 +418,7 @@ public class NNTestBase implements AutoCloseable {
     }
 
     @Override
-    public void close()  {
+    public void close() {
         destroy();
     }
 }

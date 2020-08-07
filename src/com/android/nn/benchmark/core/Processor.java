@@ -185,18 +185,18 @@ public class Processor implements Runnable {
         return tb;
     }
 
-    // Run one loop of kernels for at least the specified minimum time.
+    // Run one loop of kernels for at most the specified minimum time.
     // The function returns the average time in ms for the test run
-    private BenchmarkResult runBenchmarkLoop(float minTime, boolean completeInputSet)
+    private BenchmarkResult runBenchmarkLoop(float maxTime, boolean completeInputSet)
             throws IOException {
         try {
             // Run the kernel
             Pair<List<InferenceInOutSequence>, List<InferenceResult>> results;
-            if (minTime > 0.f) {
+            if (maxTime > 0.f) {
                 if (completeInputSet) {
-                    results = mTest.runBenchmarkCompleteInputSet(1, minTime);
+                    results = mTest.runBenchmarkCompleteInputSet(1, maxTime);
                 } else {
-                    results = mTest.runBenchmark(minTime);
+                    results = mTest.runBenchmark(maxTime);
                 }
             } else {
                 results = mTest.runInferenceOnce();

@@ -173,28 +173,29 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
     class TestAction implements Joinable {
 
         private final TestModelEntry mTestModel;
-        private final float mWarmupTimeSeconds;
-        private final float mRunTimeSeconds;
+        private final float mMaxWarmupTimeSeconds;
+        private final float mMaxRunTimeSeconds;
         private final CountDownLatch actionComplete;
 
         BenchmarkResult mResult;
         Throwable mException;
 
-        public TestAction(TestModelEntry testName, float warmupTimeSeconds, float runTimeSeconds) {
+        public TestAction(TestModelEntry testName, float maxWarmupTimeSeconds,
+                float maxRunTimeSeconds) {
             mTestModel = testName;
-            mWarmupTimeSeconds = warmupTimeSeconds;
-            mRunTimeSeconds = runTimeSeconds;
+            mMaxWarmupTimeSeconds = maxWarmupTimeSeconds;
+            mMaxRunTimeSeconds = maxRunTimeSeconds;
             actionComplete = new CountDownLatch(1);
         }
 
         public void run() {
             Log.v(NNBenchmark.TAG, String.format(
-                    "Starting benchmark for test '%s' running for at least %f seconds",
+                    "Starting benchmark for test '%s' running for max %f seconds",
                     mTestModel.mTestName,
-                    mRunTimeSeconds));
+                    mMaxRunTimeSeconds));
             try {
                 mResult = mActivity.runSynchronously(
-                        mTestModel, mWarmupTimeSeconds, mRunTimeSeconds);
+                        mTestModel, mMaxWarmupTimeSeconds, mMaxRunTimeSeconds);
             } catch (BenchmarkException | IOException e) {
                 mException = e;
                 Log.e(NNBenchmark.TAG,
