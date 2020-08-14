@@ -6,16 +6,25 @@
 # parallel-inference-stress tests produce no output except for the success or failure notification,
 # which is not logged.
 
-
-OPTS="$(getopt -o f:rb -l filter-driver:,include-nnapi-reference,nnapi-reference-only,skip-build -- "$@")"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  OPTS="$(getopt f:rb -- "$*")"
+else
+  OPTS="$(getopt -o f:rb -l filter-driver:,include-nnapi-reference,nnapi-reference-only,skip-build -- "$@")"
+fi
 
 if [ $? -ne 0 ]; then
-    echo "Invalid arguments, accepted options are"
+  echo "Invalid arguments, accepted options are"
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo " -f <regex> : to run crash tests only on the drivers (ignoring nnapi-reference) matching the specified regular expression"
+    echo " -r : to include nnapi-reference in target drivers"
+    echo " -b : skip build and installation of tests"
+  else
     echo " -f <regex> | --filter-driver <regex> : to run crash tests only on the drivers (ignoring nnapi-reference) matching the specified regular expression"
     echo " -r | --include-nnapi-reference : to include nnapi-reference in target drivers"
     echo " --nnapi-reference-only : to run tests only vs nnapi-reference"
     echo " -b | --skip-build : skip build and installation of tests"
-    exit
+  fi
+  exit
 fi
 
 eval set -- "$OPTS"
