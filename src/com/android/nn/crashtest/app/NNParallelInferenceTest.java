@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.nn.benchmark.app;
+package com.android.nn.crashtest.app;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -26,6 +26,8 @@ import android.util.Log;
 
 import androidx.test.InstrumentationRegistry;
 
+import com.android.nn.benchmark.app.BenchmarkTestBase;
+import com.android.nn.benchmark.core.NnApiDelegationFailure;
 import com.android.nn.benchmark.core.TestModels;
 
 import org.junit.After;
@@ -39,9 +41,9 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.stream.IntStream;
 
-abstract class NNParallelInferenceTest extends
-        ActivityInstrumentationTestCase2<NNParallelTestActivity> {
-
+abstract class NNParallelInferenceTest
+        extends ActivityInstrumentationTestCase2<NNParallelTestActivity>
+        implements AcceleratorSpecificTestSupport {
     static final String TAG = "NNParallelInferenceTest";
 
     @Rule
@@ -66,8 +68,16 @@ abstract class NNParallelInferenceTest extends
     public void setUp() {
         injectInstrumentation(InstrumentationRegistry.getInstrumentation());
         BenchmarkTestBase.waitUntilCharged(getInstrumentation().getTargetContext(), 90);
-        setActivityIntent(runAllModelsOnNThreadsForOnAccelerator(mThreadCount, mTestDuration,
-                mAcceleratorName));
+        try {
+            setActivityIntent(
+                    runAllModelsOnNThreadsForOnAccelerator(mThreadCount, mTestDuration,
+                            mAcceleratorName));
+        } catch (NnApiDelegationFailure nnApiDelegationFailure) {
+            throw new RuntimeException(
+                    "Cannot initialize test, failure looking for supported models, please check "
+                            + "the driver status",
+                    nnApiDelegationFailure);
+        }
     }
 
     @Test
@@ -103,7 +113,7 @@ abstract class NNParallelInferenceTest extends
     }
 
     private Intent runAllModelsOnNThreadsForOnAccelerator(int threadCount, Duration testDuration,
-            String acceleratorName) {
+            String acceleratorName) throws NnApiDelegationFailure {
         Intent intent = new Intent();
 
         int modelsCount = TestModels.modelsList().size();

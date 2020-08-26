@@ -14,33 +14,43 @@
  * limitations under the License.
  */
 
-package com.android.nn.benchmark.crashtest.test;
+package com.android.nn.crashtest.core.test;
 
 import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
-import com.android.nn.benchmark.crashtest.CrashTest;
-import com.android.nn.benchmark.crashtest.CrashTestCoordinator;
+import com.android.nn.crashtest.core.CrashTest;
+import com.android.nn.crashtest.core.CrashTestCoordinator;
 
 import java.util.Optional;
 
-public class NoOpCrashTest implements CrashTest {
-    private static final String SLEEP_TIME = "sleep-time";
+public class CrashingCrashTest implements CrashTest {
 
-    static public CrashTestCoordinator.CrashTestIntentInitializer intentInitializer(
-            long sleepTime) {
+    // Used to load the 'native-lib' library on application startup.
+    static {
+        System.loadLibrary("nnbenchmark_jni");
+    }
+
+    private static final String SLEEP_TIME = "sleep-time";
+    private static final String SEGV = "cause-segv";
+
+    static public CrashTestCoordinator.CrashTestIntentInitializer intentInitializer(long sleepTime,
+            boolean causeSegv) {
         return intent -> {
             intent.putExtra(SLEEP_TIME, sleepTime);
+            intent.putExtra(SEGV, causeSegv);
         };
     }
 
-    private long sleepTime = 0;
+    long sleepTime = 0;
+    boolean segv = false;
 
     @Override
     public void init(Context context, Intent configParams,
             Optional<ProgressListener> progressListener) {
         sleepTime = configParams.getLongExtra(SLEEP_TIME, 100);
+        segv = configParams.getBooleanExtra(SEGV, false);
     }
 
     @Override
@@ -51,8 +61,17 @@ public class NoOpCrashTest implements CrashTest {
             Thread.currentThread().interrupt();
         }
 
-        Log.i(CrashTest.TAG, "Completing test");
+        if (segv) {
+            Log.i(CrashTest.TAG, "Causing NATIVE crash of test");
+            nativeSegViolation();
+        } else {
+            Log.i(CrashTest.TAG, "Causing crash of test");
+            System.exit(-1);
+        }
 
-        return success();
+        Log.e(CrashTest.TAG, "Test was supposed to crash but run until the end");
+        return failure("Test was supposed to crash but run until the end");
     }
+
+    native void nativeSegViolation();
 }

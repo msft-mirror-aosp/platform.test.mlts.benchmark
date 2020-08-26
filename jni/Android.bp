@@ -38,6 +38,9 @@ cc_defaults {
         "-Wno-unused-parameter",
     ],
     stl: "libc++_static",
+    strip: {
+        keep_symbols: true,
+    },
 }
 
 cc_library_shared {
@@ -48,10 +51,40 @@ cc_library_shared {
 cc_library_static {
     name: "libnnbenchmark_jni_static",
     defaults: ["libnnbenchmark_jni_defaults"],
+    export_include_dirs: ["."],
 }
 
-cc_library_headers {
-    name: "libnnbenchmark_jni_headers",
+cc_library {
+    name: "librandom_graph_test_jni",
+    defaults: ["neuralnetworks_float16"],
+    srcs: [
+        "random_graph_test_jni.cpp",
+    ],
+    header_libs: [
+        "jni_headers",
+        "libneuralnetworks_headers_ndk",
+        "libneuralnetworks_generated_test_harness_headers_for_cts",
+    ],
+    shared_libs: [
+        "libandroid",
+        "liblog",
+        "libneuralnetworks",
+    ],
+    whole_static_libs: [
+        "NeuralNetworksTest_random_graph",
+    ],
+    static_libs: [
+        "libbase_ndk",
+        "libgmock_ndk",
+        "libgtest_ndk_c++",
+    ],
+    cflags: [
+        "-Wno-sign-compare",
+        "-Wno-unused-parameter",
+    ],
     sdk_version: "current",
-    export_include_dirs: ["."],
+    stl: "libc++_static",
+    strip: {
+        keep_symbols: true,
+    },
 }

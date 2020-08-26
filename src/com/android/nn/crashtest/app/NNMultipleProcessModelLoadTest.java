@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-package com.android.nn.benchmark.app;
+package com.android.nn.crashtest.app;
 
 import android.content.Intent;
 
-import com.android.nn.benchmark.crashtest.test.RunModelsInMultipleProcesses;
+import com.android.nn.benchmark.core.NnApiDelegationFailure;
+import com.android.nn.crashtest.core.test.RunModelsInMultipleProcesses;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -46,13 +47,20 @@ public class NNMultipleProcessModelLoadTest extends NNMultipleProcessTest {
 
     @Override
     protected Intent getRunModelsInMultipleProcessesConfigIntent() {
-        Intent result = new Intent();
-        RunModelsInMultipleProcesses
-                .intentInitializer(mTestName.getMethodName(),
-                        mModelForLivenessTest.get().mModelName,
-                        mProcessCount, mThreadCount, mDuration, mAcceleratorName,
-                        /*justCompileModel=*/true, mFailureRatePercent)
-                .addIntentParams(result);
-        return result;
+        try {
+            Intent result = new Intent();
+            RunModelsInMultipleProcesses
+                    .intentInitializer(mTestName.getMethodName(),
+                            findModelForLivenessTest().get().mModelName,
+                            mProcessCount, mThreadCount, mDuration, mAcceleratorName,
+                            /*justCompileModel=*/true, mFailureRatePercent)
+                    .addIntentParams(result);
+            return result;
+        } catch (NnApiDelegationFailure nnApiDelegationFailure) {
+            throw new RuntimeException(
+                    "Cannot initialize test, failure looking for supported models, please check "
+                            + "the driver status",
+                    nnApiDelegationFailure);
+        }
     }
 }

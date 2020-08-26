@@ -14,7 +14,22 @@
  * limitations under the License.
  */
 
-package com.android.nn.benchmark.crashtest;
+package com.android.nn.crashtest.app;
 
-public class InProcessCrashTestService extends CrashTestService {
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+
+import java.time.Duration;
+
+@RunWith(Parameterized.class)
+public class NNParallelInProcessInferenceTest extends NNParallelInferenceTest {
+    public NNParallelInProcessInferenceTest(int threadCount, Duration testDuration,
+            String acceleratorName) {
+        super(threadCount, testDuration, acceleratorName);
+    }
+
+    @Override
+    protected boolean runTestsInSeparateProcess() {
+        return false;
+    }
 }

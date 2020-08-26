@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package com.android.nn.benchmark.app;
+package com.android.nn.crashtest.app;
 
 
-import static com.android.nn.benchmark.app.CrashTestStatus.TestResult.HANG;
+import static com.android.nn.crashtest.app.CrashTestStatus.TestResult.HANG;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -32,8 +32,9 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
 
-import com.android.nn.benchmark.crashtest.CrashTestCoordinator;
-import com.android.nn.benchmark.crashtest.test.RunModelsInParallel;
+import com.android.nn.benchmark.app.R;
+import com.android.nn.crashtest.core.CrashTestCoordinator;
+import com.android.nn.crashtest.core.test.RunModelsInParallel;
 
 import java.time.Duration;
 
@@ -51,6 +52,7 @@ public class NNParallelTestActivity extends Activity {
     public static final String EXTRA_ACCELERATOR_NAME = "accelerator_name";
     public static final String EXTRA_IGNORE_UNSUPPORTED_MODELS = "ignore_unsupported_models";
     public static final String EXTRA_RUN_MODEL_COMPILATION_ONLY = "run_model_compilation_only";
+    public static final String EXTRA_MEMORY_MAP_MODEL = "memory_map_model";
 
     // Not using AtomicBoolean to have the concept of unset status
     private CrashTestCoordinator mCoordinator;
@@ -102,15 +104,16 @@ public class NNParallelTestActivity extends Activity {
         String acceleratorName = intent.getStringExtra(EXTRA_ACCELERATOR_NAME);
         boolean ignoreUnsupportedModels = intent.getBooleanExtra(EXTRA_IGNORE_UNSUPPORTED_MODELS,
                 false);
+        boolean mmapModel = intent.getBooleanExtra(EXTRA_MEMORY_MAP_MODEL, false);
 
         final boolean runModelCompilationOnly = intent.getBooleanExtra(
                 EXTRA_RUN_MODEL_COMPILATION_ONLY, false);
 
         mCoordinator.startTest(RunModelsInParallel.class,
-                RunModelsInParallel.intentInitializer(testList, threadCount,
-                        Duration.ofMillis(testDurationMillis), mTestName, acceleratorName,
-                        ignoreUnsupportedModels, runModelCompilationOnly),
-                mTestStatus, runInSeparateProcess, mTestName);
+            RunModelsInParallel.intentInitializer(testList, threadCount,
+                Duration.ofMillis(testDurationMillis), mTestName, acceleratorName,
+                ignoreUnsupportedModels, runModelCompilationOnly, mmapModel),
+            mTestStatus, runInSeparateProcess, mTestName);
 
         mStopTestButton.setEnabled(true);
     }

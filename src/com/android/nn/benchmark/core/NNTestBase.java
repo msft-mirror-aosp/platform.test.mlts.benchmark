@@ -35,7 +35,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.stream.Collectors;
 
-public class NNTestBase {
+public class NNTestBase implements AutoCloseable {
     protected static final String TAG = "NN_TESTBASE";
 
     // Used to load the 'native-lib' library on application startup.
@@ -54,6 +54,33 @@ public class NNTestBase {
      */
     private static native boolean getAcceleratorNames(List<String> resultList);
 
+    private synchronized native long initModel(
+            String modelFileName,
+            boolean useNNApi,
+            boolean enableIntermediateTensorsDump,
+            String nnApiDeviceName,
+            boolean mmapModel,
+            String nnApiCacheDir) throws NnApiDelegationFailure;
+
+    private synchronized native void destroyModel(long modelHandle);
+
+    private synchronized native boolean resizeInputTensors(long modelHandle, int[] inputShape);
+
+    private synchronized native boolean runBenchmark(long modelHandle,
+            List<InferenceInOutSequence> inOutList,
+            List<InferenceResult> resultList,
+            int inferencesSeqMaxCount,
+            float timeoutSec,
+            int flags);
+
+    private synchronized native CompilationBenchmarkResult runCompilationBenchmark(
+            long modelHandle, int maxNumIterations, float warmupTimeoutSec, float runTimeoutSec);
+
+    private synchronized native void dumpAllLayers(
+            long modelHandle,
+            String dumpPath,
+            List<InferenceInOutSequence> inOutList);
+
     public static List<String> availableAcceleratorNames() {
         List<String> availableAccelerators = new ArrayList<>();
         if (NNTestBase.getAcceleratorNames(availableAccelerators)) {
@@ -66,16 +93,6 @@ public class NNTestBase {
         }
     }
 
-    private synchronized native long initModel(
-            String modelFileName,
-            boolean useNNApi,
-            boolean enableIntermediateTensorsDump,
-            String nnApiDeviceName);
-
-    private synchronized native void destroyModel(long modelHandle);
-
-    private synchronized native boolean resizeInputTensors(long modelHandle, int[] inputShape);
-
     /** Discard inference output in inference results. */
     public static final int FLAG_DISCARD_INFERENCE_OUTPUT = 1 << 0;
     /**
@@ -87,33 +104,25 @@ public class NNTestBase {
      */
     public static final int FLAG_IGNORE_GOLDEN_OUTPUT = 1 << 1;
 
-    private synchronized native boolean runBenchmark(long modelHandle,
-            List<InferenceInOutSequence> inOutList,
-            List<InferenceResult> resultList,
-            int inferencesSeqMaxCount,
-            float timeoutSec,
-            int flags);
-
-    private synchronized native void dumpAllLayers(
-            long modelHandle,
-            String dumpPath,
-            List<InferenceInOutSequence> inOutList);
 
     protected Context mContext;
     protected TextView mText;
-    private String mModelName;
-    private String mModelFile;
+    private final String mModelName;
+    private final String mModelFile;
     private long mModelHandle;
-    private int[] mInputShape;
-    private InferenceInOutSequence.FromAssets[] mInputOutputAssets;
-    private InferenceInOutSequence.FromDataset[] mInputOutputDatasets;
-    private EvaluatorConfig mEvaluatorConfig;
+    private final int[] mInputShape;
+    private final InferenceInOutSequence.FromAssets[] mInputOutputAssets;
+    private final InferenceInOutSequence.FromDataset[] mInputOutputDatasets;
+    private final EvaluatorConfig mEvaluatorConfig;
     private EvaluatorInterface mEvaluator;
     private boolean mHasGoldenOutputs;
     private boolean mUseNNApi = false;
     private boolean mEnableIntermediateTensorsDump = false;
-    private int mMinSdkVersion;
+    private final int mMinSdkVersion;
     private Optional<String> mNNApiDeviceName = Optional.empty();
+    private boolean mMmapModel = false;
+    // Path where the current model has been stored for execution
+    private String mTemporaryModelFilePath;
 
     public NNTestBase(String modelName, String modelFile, int[] inputShape,
             InferenceInOutSequence.FromAssets[] inputOutputAssets,
@@ -161,19 +170,26 @@ public class NNTestBase {
         mNNApiDeviceName = Optional.ofNullable(value);
     }
 
-    public final boolean setupModel(Context ipcxt) {
+    public void setMmapModel(boolean value) {
+        mMmapModel = value;
+    }
+
+    public final boolean setupModel(Context ipcxt) throws IOException, NnApiDelegationFailure {
         mContext = ipcxt;
-        String modelFileName = copyAssetToFile();
-        if (modelFileName != null) {
-            mModelHandle = initModel(
-                    modelFileName, mUseNNApi, mEnableIntermediateTensorsDump,
-                    mNNApiDeviceName.orElse(null));
-            if (mModelHandle == 0) {
-                Log.e(TAG, "Failed to init the model");
-                return false;
-            }
-            resizeInputTensors(mModelHandle, mInputShape);
+        if (mTemporaryModelFilePath != null) {
+            deleteOrWarn(mTemporaryModelFilePath);
         }
+        mTemporaryModelFilePath = copyAssetToFile();
+        String nnApiCacheDir = mContext.getCodeCacheDir().toString();
+        mModelHandle = initModel(
+                mTemporaryModelFilePath, mUseNNApi, mEnableIntermediateTensorsDump,
+                mNNApiDeviceName.orElse(null), mMmapModel, nnApiCacheDir);
+        if (mModelHandle == 0) {
+            Log.e(TAG, "Failed to init the model");
+            return false;
+        }
+        resizeInputTensors(mModelHandle, mInputShape);
+
         if (mEvaluatorConfig != null) {
             mEvaluator = mEvaluatorConfig.createEvaluator(mContext.getAssets());
         }
@@ -194,6 +210,15 @@ public class NNTestBase {
                     mMinSdkVersion + ", current version: " + Build.VERSION.SDK_INT);
         }
     }
+
+    private void deleteOrWarn(String path) {
+        if (!new File(path).delete()) {
+            Log.w(TAG, String.format(
+                    "Unable to delete file '%s'. This might cause device to run out of space.",
+                    path));
+        }
+    }
+
 
     private List<InferenceInOutSequence> getInputOutputAssets() throws IOException {
         // TODO: Caching, don't read inputs for every inference
@@ -295,9 +320,11 @@ public class NNTestBase {
                         flags);
         if (result.second.size() != extpectedResults) {
             // We reached a timeout or failed to evaluate whole set for other reason, abort.
-            final String errorMsg = "Failed to evaluate complete input set, expected: "
-                    + extpectedResults +
-                    ", received: " + result.second.size();
+            @SuppressLint("DefaultLocale")
+            final String errorMsg = String.format(
+                    "Failed to evaluate complete input set, in %d seconds expected: %d, received:"
+                            + " %d",
+                    timeoutSec, extpectedResults, result.second.size());
             Log.w(TAG, errorMsg);
             throw new IllegalStateException(errorMsg);
         }
@@ -322,24 +349,42 @@ public class NNTestBase {
                 inOutList, resultList);
     }
 
+    public CompilationBenchmarkResult runCompilationBenchmark(float warmupTimeoutSec,
+            float runTimeoutSec, int maxIterations) throws IOException, BenchmarkException {
+        if (mModelHandle == 0) {
+            throw new UnsupportedModelException("Unsupported model");
+        }
+        CompilationBenchmarkResult result = runCompilationBenchmark(
+                mModelHandle, maxIterations, warmupTimeoutSec, runTimeoutSec);
+        if (result == null) {
+            throw new BenchmarkException("Failed to run compilation benchmark");
+        }
+        return result;
+    }
+
     public void destroy() {
         if (mModelHandle != 0) {
             destroyModel(mModelHandle);
             mModelHandle = 0;
+        }
+        if (mTemporaryModelFilePath != null) {
+            deleteOrWarn(mTemporaryModelFilePath);
+            mTemporaryModelFilePath = null;
         }
     }
 
     private final Random mRandom = new Random(System.currentTimeMillis());
 
     // We need to copy it to cache dir, so that TFlite can load it directly.
-    private String copyAssetToFile() {
+    private String copyAssetToFile() throws IOException {
         @SuppressLint("DefaultLocale")
         String outFileName =
                 String.format("%s/%s-%d-%d.tflite", mContext.getCacheDir().getAbsolutePath(),
                         mModelFile,
                         Thread.currentThread().getId(), mRandom.nextInt(10000));
 
-        return copyAssetToFile(mContext, mModelFile + ".tflite", outFileName) ? outFileName : null;
+        copyAssetToFile(mContext, mModelFile + ".tflite", outFileName);
+        return outFileName;
     }
 
     public static boolean copyModelToFile(Context context, String modelFileName, File targetFile)
@@ -348,11 +393,12 @@ public class NNTestBase {
             Log.w(TAG, String.format("Unable to create file %s", targetFile.getAbsolutePath()));
             return false;
         }
-        return NNTestBase.copyAssetToFile(context, modelFileName, targetFile.getAbsolutePath());
+        NNTestBase.copyAssetToFile(context, modelFileName, targetFile.getAbsolutePath());
+        return true;
     }
 
-    public static boolean copyAssetToFile(
-            Context context, String modelAssetName, String targetPath) {
+    public static void copyAssetToFile(Context context, String modelAssetName, String targetPath)
+            throws IOException {
         AssetManager assetManager = context.getAssets();
         try {
             File outFile = new File(targetPath);
@@ -367,8 +413,12 @@ public class NNTestBase {
             }
         } catch (IOException e) {
             Log.e(TAG, "Failed to copy asset file: " + modelAssetName, e);
-            return false;
+            throw e;
         }
-        return true;
+    }
+
+    @Override
+    public void close() {
+        destroy();
     }
 }

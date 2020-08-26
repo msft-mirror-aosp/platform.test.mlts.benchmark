@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.nn.benchmark.crashtest;
+package com.android.nn.crashtest.core;
 
 import android.content.Context;
 import android.content.Intent;
@@ -35,4 +35,5 @@ public interface CrashTest extends Callable<Optional<String>> {
 
     default Optional<String> success() { return Optional.empty(); }
     default Optional<String> failure(String reason) { return Optional.of(reason); }
+    default boolean isFailure(Optional<String> result) { return result.isPresent(); }
 }

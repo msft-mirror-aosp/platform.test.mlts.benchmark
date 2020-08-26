@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 The Android Open Source Project
+ * Copyright (C) 2020 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,24 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-cc_binary {
-    name: "nn_stress_test",
-    srcs: ["multi_process_test.cpp"],
-    header_libs: [
-        "flatbuffer_headers",
-        "jni_headers",
-        "tensorflow_headers",
-    ],
-    shared_libs: [
-        "liblog",
-    ],
-    static_libs: [
-        "libnnbenchmark_jni_static",
-        "libtflite_static",
-    ],
-    sdk_version: "current",
-    stl: "libc++_static",
-    strip: {
-        keep_symbols: true,
-    },
+
+package com.android.nn.benchmark.core;
+
+import android.annotation.SuppressLint;
+
+public class NnApiDelegationFailure extends BenchmarkException {
+    private final int mNnApiErrno;
+
+    @SuppressLint("DefaultLocale")
+    public NnApiDelegationFailure(int nnApiErrno) {
+        super(String.format("Nnapi call failed with error code %d", nnApiErrno));
+        mNnApiErrno = nnApiErrno;
+    }
+
+    public int getNnApiErrno() {
+        return mNnApiErrno;
+    }
 }

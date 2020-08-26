@@ -37,8 +37,13 @@ The MLTS suite contains a series of tests to validate the behaviour of the drive
 in corner case conditions.
 
 To run the tests use the specific targets available in the build_and_run_benchmark.sh script.
-All tests are run targeting in isolation each available accelerator and also without specified
-target accelerator to let NNAPI partition the model and assign the best available one(s).
+By default, every test gets run on each available accelerator in isolation. It is possible to filter the
+accelerators to test against by invoking the build_and_run_benchmark.sh script with the option
+-f (--filter-driver) and specifying a regular expression to filter the acccelerator names with.
+It is also possible to run additional tests without specified target accelerator to let NNAPI
+partition the model and assign the best available  one(s) by using the
+-r (--include-nnapi-reference) option.
+
 Currently available tests are:
 
 * parallel-inference-stress: to test the behaviour of drivers with different amount of inference
@@ -60,3 +65,13 @@ early termination
 * multi-process-model-load-stress: this extends the `parallel-inference-stress` running inference
 on a single model in multiple processes and threads with different probabilities in client process
 early termination
+
+* memory-mapped-model-load-stress: runs a series of parallel model compilation with memory mapped
+TFLite models
+
+* model-load-random-stress: test compiling a large set of randomly generated models
+
+* inference-random-stress: test running a large set of randomly generated models
+
+* performance-degradation-stress: verifies that accelerator inference speed is not degrading over
+a certain threshold when running concurrent workload
