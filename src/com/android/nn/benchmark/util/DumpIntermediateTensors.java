@@ -91,13 +91,14 @@ public class DumpIntermediateTensors extends Activity {
                     String useNNAPIDir = useNNAPI? NNAPI_DIR: CPU_DIR;
                     Log.i(TAG, "Running " + modelName + " in " + useNNAPIDir);
                     TestModelEntry modelEntry = TestModels.getModelByName(modelName);
-                    NNTestBase testBase = modelEntry.createNNTestBase(
-                        useNNAPI, true/*enableIntermediateTensorsDump*/);
-                    testBase.setupModel(this);
-                    File outputDir = new File(getFilesDir() + "/" + DUMP_DIR +
-                        "/" + modelName, useNNAPIDir);
-                    safeMkdir(outputDir);
-                    testBase.dumpAllLayers(outputDir, inputAssetIndex, inputAssetSize);
+                    try (NNTestBase testBase = modelEntry.createNNTestBase(
+                            useNNAPI, true/*enableIntermediateTensorsDump*/)) {
+                        testBase.setupModel(this);
+                        File outputDir = new File(getFilesDir() + "/" + DUMP_DIR +
+                            "/" + modelName, useNNAPIDir);
+                        safeMkdir(outputDir);
+                        testBase.dumpAllLayers(outputDir, inputAssetIndex, inputAssetSize);
+                    }
                 }
             }
 
