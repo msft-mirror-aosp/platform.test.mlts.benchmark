@@ -277,6 +277,7 @@ bool BenchmarkModel::benchmark(
 
     const int inputOutputSequenceIndex = seqInferenceIndex % inOutData.size();
     const InferenceInOutSequence& seq = inOutData[inputOutputSequenceIndex];
+    const bool sampleResults = (flags & FLAG_SAMPLE_BENCHMARK_RESULTS) != 0;
     for (int i = 0; i < seq.size(); ++i) {
       const InferenceInOut& data = seq[i];
 
@@ -333,7 +334,10 @@ bool BenchmarkModel::benchmark(
           saveInferenceOutput(&result, j);
         }
       }
-      results->push_back(result);
+
+      if (!sampleResults || (seqInferenceIndex % INFERENCE_OUT_SAMPLE_RATE) == 0) {
+        results->push_back(result);
+      }
       inferenceTotal += inferenceTime;
     }
 

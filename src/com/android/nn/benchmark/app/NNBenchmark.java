@@ -138,7 +138,7 @@ public class NNBenchmark extends Activity implements Processor.Callback {
     }
 
     public BenchmarkResult runSynchronously(TestModelEntry testModel,
-        float warmupTimeSeconds, float runTimeSeconds) throws IOException, BenchmarkException {
-        return mProcessor.getInstrumentationResult(testModel, warmupTimeSeconds, runTimeSeconds);
+        float warmupTimeSeconds, float runTimeSeconds, boolean sampleResults) throws IOException, BenchmarkException {
+        return mProcessor.getInstrumentationResult(testModel, warmupTimeSeconds, runTimeSeconds, sampleResults);
     }
 }
