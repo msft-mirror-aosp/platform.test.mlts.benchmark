@@ -176,15 +176,22 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
         private final float mMaxWarmupTimeSeconds;
         private final float mMaxRunTimeSeconds;
         private final CountDownLatch actionComplete;
+        private final boolean mSampleResults;
 
         BenchmarkResult mResult;
         Throwable mException;
 
         public TestAction(TestModelEntry testName, float maxWarmupTimeSeconds,
                 float maxRunTimeSeconds) {
+            this(testName, maxWarmupTimeSeconds, maxRunTimeSeconds, false);
+        }
+
+        public TestAction(TestModelEntry testName, float maxWarmupTimeSeconds,
+                float maxRunTimeSeconds, boolean sampleResults) {
             mTestModel = testName;
             mMaxWarmupTimeSeconds = maxWarmupTimeSeconds;
             mMaxRunTimeSeconds = maxRunTimeSeconds;
+            mSampleResults = sampleResults;
             actionComplete = new CountDownLatch(1);
         }
 
@@ -195,7 +202,7 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
                     mMaxRunTimeSeconds));
             try {
                 mResult = mActivity.runSynchronously(
-                        mTestModel, mMaxWarmupTimeSeconds, mMaxRunTimeSeconds);
+                        mTestModel, mMaxWarmupTimeSeconds, mMaxRunTimeSeconds, mSampleResults);
             } catch (BenchmarkException | IOException e) {
                 mException = e;
                 Log.e(NNBenchmark.TAG,
@@ -242,7 +249,9 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
         final String traceName = "[NN_LA_PO]" + testName;
         try {
             Trace.beginSection(traceName);
+            Log.i(NNBenchmark.TAG, "Starting test " + testName);
             runOnUiThread(ta);
+            Log.i(NNBenchmark.TAG, "Test " + testName + " completed");
         } finally {
             Trace.endSection();
         }
