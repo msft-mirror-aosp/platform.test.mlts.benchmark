@@ -128,14 +128,23 @@ public class Processor implements Runnable {
         mCompilationBenchmarkMaxIterations = maxIterations;
     }
 
-    // Method to retrieve benchmark results for instrumentation tests.
-    // Returns null if the processor is configured to run compilation only
     public BenchmarkResult getInstrumentationResult(
             TestModels.TestModelEntry t, float warmupTimeSeconds, float runTimeSeconds)
             throws IOException, BenchmarkException {
+        return getInstrumentationResult(t, warmupTimeSeconds, runTimeSeconds, false);
+    }
+
+    // Method to retrieve benchmark results for instrumentation tests.
+    // Returns null if the processor is configured to run compilation only
+    public BenchmarkResult getInstrumentationResult(
+            TestModels.TestModelEntry t, float warmupTimeSeconds, float runTimeSeconds,
+            boolean sampleResults)
+            throws IOException, BenchmarkException {
         mTest = changeTest(mTest, t);
+        mTest.setSampleResult(sampleResults);
         try {
-            BenchmarkResult result = mRunModelCompilationOnly ? null : getBenchmark(warmupTimeSeconds,
+            BenchmarkResult result = mRunModelCompilationOnly ? null : getBenchmark(
+                    warmupTimeSeconds,
                     runTimeSeconds);
             return result;
         } finally {
