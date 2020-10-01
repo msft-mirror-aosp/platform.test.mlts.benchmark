@@ -71,6 +71,11 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
     // For running a complete dataset, the run should complete under 5 minutes.
     protected static final float COMPLETE_SET_TIMEOUT_SECOND = 300.f;
 
+    // For running compilation benchmarks.
+    protected static final float COMPILATION_WARMUP_SECONDS = 2.f;
+    protected static final float COMPILATION_RUNTIME_SECONDS = 10.f;
+    protected static final int COMPILATION_MAX_ITERATIONS = 100;
+
     public BenchmarkTestBase(TestModelEntry model) {
         super(NNBenchmark.class);
         mModel = model;
@@ -82,6 +87,11 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
 
     protected void setCompleteInputSet(boolean completeInputSet) {
         mActivity.setCompleteInputSet(completeInputSet);
+    }
+
+    protected void enableCompilationCachingBenchmarks() {
+        mActivity.enableCompilationCachingBenchmarks(COMPILATION_WARMUP_SECONDS,
+                COMPILATION_RUNTIME_SECONDS, COMPILATION_MAX_ITERATIONS);
     }
 
     // Initialize the parameter for ImageProcessingActivityJB.
@@ -163,28 +173,36 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
     class TestAction implements Joinable {
 
         private final TestModelEntry mTestModel;
-        private final float mWarmupTimeSeconds;
-        private final float mRunTimeSeconds;
+        private final float mMaxWarmupTimeSeconds;
+        private final float mMaxRunTimeSeconds;
         private final CountDownLatch actionComplete;
+        private final boolean mSampleResults;
 
         BenchmarkResult mResult;
         Throwable mException;
 
-        public TestAction(TestModelEntry testName, float warmupTimeSeconds, float runTimeSeconds) {
+        public TestAction(TestModelEntry testName, float maxWarmupTimeSeconds,
+                float maxRunTimeSeconds) {
+            this(testName, maxWarmupTimeSeconds, maxRunTimeSeconds, false);
+        }
+
+        public TestAction(TestModelEntry testName, float maxWarmupTimeSeconds,
+                float maxRunTimeSeconds, boolean sampleResults) {
             mTestModel = testName;
-            mWarmupTimeSeconds = warmupTimeSeconds;
-            mRunTimeSeconds = runTimeSeconds;
+            mMaxWarmupTimeSeconds = maxWarmupTimeSeconds;
+            mMaxRunTimeSeconds = maxRunTimeSeconds;
+            mSampleResults = sampleResults;
             actionComplete = new CountDownLatch(1);
         }
 
         public void run() {
             Log.v(NNBenchmark.TAG, String.format(
-                    "Starting benchmark for test '%s' running for at least %f seconds",
+                    "Starting benchmark for test '%s' running for max %f seconds",
                     mTestModel.mTestName,
-                    mRunTimeSeconds));
+                    mMaxRunTimeSeconds));
             try {
                 mResult = mActivity.runSynchronously(
-                        mTestModel, mWarmupTimeSeconds, mRunTimeSeconds);
+                        mTestModel, mMaxWarmupTimeSeconds, mMaxRunTimeSeconds, mSampleResults);
             } catch (BenchmarkException | IOException e) {
                 mException = e;
                 Log.e(NNBenchmark.TAG,
@@ -231,7 +249,9 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
         final String traceName = "[NN_LA_PO]" + testName;
         try {
             Trace.beginSection(traceName);
+            Log.i(NNBenchmark.TAG, "Starting test " + testName);
             runOnUiThread(ta);
+            Log.i(NNBenchmark.TAG, "Test " + testName + " completed");
         } finally {
             Trace.endSection();
         }

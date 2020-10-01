@@ -72,3 +72,6 @@ TFLite models
 * model-load-random-stress: test compiling a large set of randomly generated models
 
 * inference-random-stress: test running a large set of randomly generated models
+
+* performance-degradation-stress: verifies that accelerator inference speed is not degrading over
+a certain threshold when running concurrent workload

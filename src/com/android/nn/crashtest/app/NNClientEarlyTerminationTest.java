@@ -94,7 +94,7 @@ public class NNClientEarlyTerminationTest extends
         final NNParallelTestActivity activity = getActivity();
 
         Optional<TestModels.TestModelEntry> modelForLivenessTest =
-                findTestModelRunningOnAccelerator(activity, mAcceleratorName);
+                AcceleratorSpecificTestSupport.findTestModelRunningOnAccelerator(activity, mAcceleratorName);
         assertTrue("No model available to be run on accelerator " + mAcceleratorName,
                 modelForLivenessTest.isPresent());
 

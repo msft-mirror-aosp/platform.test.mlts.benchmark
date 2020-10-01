@@ -56,10 +56,32 @@ struct InferenceResult {
   int inputOutputIndex;
 };
 
+struct CompilationBenchmarkResult {
+  std::vector<float> compileWithoutCacheTimeSec;
+  // The following optional fields have no value if compilation caching is not supported.
+  std::optional<std::vector<float>> saveToCacheTimeSec;
+  std::optional<std::vector<float>> prepareFromCacheTimeSec;
+  // The total size of cache files. It is zero if compilation caching is not supported.
+  int cacheSizeBytes = 0;
+};
+
 /** Discard inference output in inference results. */
 const int FLAG_DISCARD_INFERENCE_OUTPUT = 1 << 0;
 /** Do not expect golden output for inference inputs. */
 const int FLAG_IGNORE_GOLDEN_OUTPUT = 1 << 1;
+/** Collect only 1 benchmark result every INFERENCE_OUT_SAMPLE_RATE **/
+const int FLAG_SAMPLE_BENCHMARK_RESULTS = 1 << 2;
+
+const int INFERENCE_OUT_SAMPLE_RATE = 10;
+
+enum class CompilationBenchmarkType {
+  // Benchmark without cache
+  WITHOUT_CACHE,
+  // Benchmark cache miss
+  SAVE_TO_CACHE,
+  // Benchmark cache hit
+  PREPARE_FROM_CACHE,
+};
 
 class BenchmarkModel {
  public:
@@ -68,7 +90,7 @@ class BenchmarkModel {
   static BenchmarkModel* create(const char* modelfile, bool use_nnapi,
                                 bool enable_intermediate_tensors_dump,
                                 int* nnapiErrno, const char* nnapi_device_name,
-                                bool mmapModel);
+                                bool mmapModel, const char* nnapi_cache_dir);
 
   bool resizeInputTensors(std::vector<int> shape);
   bool setInput(const uint8_t* dataPtr, size_t length);
@@ -80,6 +102,9 @@ class BenchmarkModel {
                  int seqInferencesMaxCount, float timeout, int flags,
                  std::vector<InferenceResult>* result);
 
+  bool benchmarkCompilation(int maxNumIterations, float warmupTimeout, float runTimeout,
+                            CompilationBenchmarkResult* result);
+
   bool dumpAllLayers(const char* path,
                      const std::vector<InferenceInOutSequence>& inOutData);
 
@@ -90,11 +115,20 @@ class BenchmarkModel {
             int* nnapiErrno, const char* nnapi_device_name,
             /* flag to choose between memory mapping the model and initializing
                 the model from programs memory*/
-            bool mmapModel);
+            bool mmapModel,
+            const char* nnapi_cache_dir);
 
   void getOutputError(const uint8_t* dataPtr, size_t length,
                       InferenceResult* result, int output_index);
   void saveInferenceOutput(InferenceResult* result, int output_index);
+
+  bool runCompilation(const char* cacheDir);
+  bool benchmarkSingleTypeOfCompilation(CompilationBenchmarkType type, int maxNumIterations,
+                                        float timeout, std::vector<float>* results);
+  bool benchmarkSingleTypeOfCompilationWithWarmup(CompilationBenchmarkType type,
+                                                  int maxNumIterations, float warmupTimeout,
+                                                  float runTimeout, std::vector<float>* results);
+  bool getCompilationCacheSize(int* cacheSizeBytes);
 
   std::string mModelBuffer;
   std::unique_ptr<tflite::FlatBufferModel> mTfliteModel;
@@ -102,6 +136,12 @@ class BenchmarkModel {
   std::unique_ptr<tflite::StatefulNnApiDelegate> mTfliteNnapiDelegate;
   // Store indices of output tensors, used to dump intermediate tensors
   std::vector<int> outputs;
+
+  // Parameters for compilation
+  std::string mModelFile;
+  bool mUseNnApi;
+  std::optional<std::string> mCacheDir;
+  std::string mNnApiDeviceName;
 };
 
 #endif  // COM_EXAMPLE_ANDROID_NN_BENCHMARK_RUN_TFLITE_H

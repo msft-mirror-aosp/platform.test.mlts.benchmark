@@ -29,7 +29,8 @@ LOCAL_SRC_FILES := $(call all-java-files-under, src) \
     $(call all-java-files-under, ../src/com/android/nn/benchmark/evaluators) \
     $(call all-java-files-under, ../src/com/android/nn/benchmark/imageprocessors) \
     $(call all-java-files-under, ../src/com/android/nn/benchmark/util) \
-    $(call all-java-files-under, ../src/com/android/nn/crashtest/core)
+    $(call all-java-files-under, ../src/com/android/nn/crashtest/core) \
+    ../src/com/android/nn/crashtest/app/AcceleratorSpecificTestSupport.java
 
 LOCAL_JNI_SHARED_LIBRARIES := libnnbenchmark_jni
 

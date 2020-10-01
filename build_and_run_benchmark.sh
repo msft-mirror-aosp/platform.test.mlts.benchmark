@@ -6,16 +6,25 @@
 # parallel-inference-stress tests produce no output except for the success or failure notification,
 # which is not logged.
 
-
-OPTS="$(getopt -o f:rb -l filter-driver:,include-nnapi-reference,nnapi-reference-only,skip-build -- "$@")"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  OPTS="$(getopt f:rb -- "$*")"
+else
+  OPTS="$(getopt -o f:rb -l filter-driver:,include-nnapi-reference,nnapi-reference-only,skip-build -- "$@")"
+fi
 
 if [ $? -ne 0 ]; then
-    echo "Invalid arguments, accepted options are"
+  echo "Invalid arguments, accepted options are"
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo " -f <regex> : to run crash tests only on the drivers (ignoring nnapi-reference) matching the specified regular expression"
+    echo " -r : to include nnapi-reference in target drivers"
+    echo " -b : skip build and installation of tests"
+  else
     echo " -f <regex> | --filter-driver <regex> : to run crash tests only on the drivers (ignoring nnapi-reference) matching the specified regular expression"
     echo " -r | --include-nnapi-reference : to include nnapi-reference in target drivers"
     echo " --nnapi-reference-only : to run tests only vs nnapi-reference"
     echo " -b | --skip-build : skip build and installation of tests"
-    exit
+  fi
+  exit
 fi
 
 eval set -- "$OPTS"
@@ -100,13 +109,17 @@ case "$MODE" in
     APP="$CRASH_TEST_APP"
     CLASS=com.android.nn.crashtest.app.NNRandomGraphExecutionTest
     ;;
+  performance-degradation-stress)
+    APP="$CRASH_TEST_APP"
+    CLASS=com.android.nn.crashtest.app.NNPerformanceDegradationTest
+    ;;
   *)
     echo "Unknown execution mode: $1"
     echo "Known modes: scoring (default), inference-stress, model-loading-stress, " \
       "parallel-inference-stress, parallel-inference-stress-in-process, " \
       "client-early-termination-stress, multi-process-inference-stress, " \
       "multi-process-model-load-stress memory-mapped-model-load-stress, " \
-      "model-load-random-stress  inference-random-stress"
+      "model-load-random-stress, inference-random-stress, performance-degradation-stress"
     exit 1
     ;;
 esac

@@ -23,7 +23,8 @@
     <uses-sdk android:minSdkVersion="27" />
     <application android:label="NeuralNetworksBenchmark"
                  android:name=".BenchmarkApplication"
-                 android:hardwareAccelerated="true">
+                 android:hardwareAccelerated="true"
+                 android:largeHeap="true">
         <uses-library android:name="android.test.runner" android:required="false"/>
         <uses-library android:name="android.test.base" android:required="false"/>
         <activity android:name=".NNBenchmark">
@@ -52,6 +53,11 @@
             </intent-filter>
         </activity>
         <activity android:name="com.android.nn.crashtest.app.NNRandomGraphTestActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+            </intent-filter>
+        </activity>
+        <activity android:name="com.android.nn.crashtest.app.NNPerformanceDegradationTestActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
             </intent-filter>

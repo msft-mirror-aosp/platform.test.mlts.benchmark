@@ -35,4 +35,5 @@ public interface CrashTest extends Callable<Optional<String>> {
 
     default Optional<String> success() { return Optional.empty(); }
     default Optional<String> failure(String reason) { return Optional.of(reason); }
+    default boolean isFailure(Optional<String> result) { return result.isPresent(); }
 }

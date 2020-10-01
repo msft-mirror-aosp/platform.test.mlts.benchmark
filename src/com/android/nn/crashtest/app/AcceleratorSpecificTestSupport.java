@@ -19,7 +19,7 @@ package com.android.nn.crashtest.app;
 import android.content.Context;
 import android.util.Log;
 
-import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.InstrumentationRegistry;
 
 import com.android.nn.benchmark.core.BenchmarkException;
 import com.android.nn.benchmark.core.BenchmarkResult;
@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
 public interface AcceleratorSpecificTestSupport {
     String TAG = "AcceleratorTest";
 
-    default Optional<TestModels.TestModelEntry> findTestModelRunningOnAccelerator(
+    static Optional<TestModels.TestModelEntry> findTestModelRunningOnAccelerator(
             Context context, String acceleratorName) throws NnApiDelegationFailure {
         for (TestModels.TestModelEntry model : TestModels.modelsList()) {
             if (Processor.isTestModelSupportedByAccelerator(context, model, acceleratorName)) {
@@ -48,6 +48,17 @@ public interface AcceleratorSpecificTestSupport {
             }
         }
         return Optional.empty();
+    }
+
+    static List<TestModels.TestModelEntry> findAllTestModelsRunningOnAccelerator(
+            Context context, String acceleratorName) throws NnApiDelegationFailure {
+        List<TestModels.TestModelEntry> result = new ArrayList<>();
+        for (TestModels.TestModelEntry model : TestModels.modelsList()) {
+            if (Processor.isTestModelSupportedByAccelerator(context, model, acceleratorName)) {
+                result.add(model);
+            }
+        }
+        return result;
     }
 
     default long ramdomInRange(long min, long max) {
@@ -59,12 +70,15 @@ public interface AcceleratorSpecificTestSupport {
     }
 
     static boolean getBooleanTestParameter(String key, boolean defaultValue) {
-        return InstrumentationRegistry.getArguments().getBoolean(key, defaultValue);
+        // All instrumentation arguments are passed as String so I have to convert the value here.
+        return Boolean.parseBoolean(
+                InstrumentationRegistry.getArguments().getString(key, "" + defaultValue));
     }
 
     static final String ACCELERATOR_FILTER_PROPERTY = "nnCrashtestDeviceFilter";
     static final String INCLUDE_NNAPI_SELECTED_ACCELERATOR_PROPERTY =
-            "nnCrashtestDeviceFilter";
+            "nnCrashtestIncludeNnapiReference";
+
     static List<String> getTargetAcceleratorNames() {
         List<String> accelerators = new ArrayList<>();
         String acceleratorFilter = getTestParameter(ACCELERATOR_FILTER_PROPERTY, ".+");
@@ -80,13 +94,14 @@ public interface AcceleratorSpecificTestSupport {
 
     static List<Object[]> perAcceleratorTestConfig(List<Object[]> testConfig) {
         return testConfig.stream()
-                .flatMap(currConfigurationParams -> getTargetAcceleratorNames().stream().map(accelerator -> {
-                    Object[] result =
-                            Arrays.copyOf(currConfigurationParams,
-                                    currConfigurationParams.length + 1);
-                    result[currConfigurationParams.length] = accelerator;
-                    return result;
-                }))
+                .flatMap(currConfigurationParams -> getTargetAcceleratorNames().stream().map(
+                        accelerator -> {
+                            Object[] result =
+                                    Arrays.copyOf(currConfigurationParams,
+                                            currConfigurationParams.length + 1);
+                            result[currConfigurationParams.length] = accelerator;
+                            return result;
+                        }))
                 .collect(Collectors.toList());
     }
 
