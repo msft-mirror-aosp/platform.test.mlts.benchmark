@@ -331,7 +331,7 @@ public class NNTestBase implements AutoCloseable {
             // We reached a timeout or failed to evaluate whole set for other reason, abort.
             @SuppressLint("DefaultLocale")
             final String errorMsg = String.format(
-                    "Failed to evaluate complete input set, in %d seconds expected: %d, received:"
+                    "Failed to evaluate complete input set, in %f seconds expected: %d, received:"
                             + " %d",
                     timeoutSec, extpectedResults, result.second.size());
             Log.w(TAG, errorMsg);
