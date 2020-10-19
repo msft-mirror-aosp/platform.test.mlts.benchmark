@@ -76,14 +76,20 @@ public class TestModels {
                     mEvaluator, mMinSdkVersion);
         }
 
-        public NNTestBase createNNTestBase(boolean useNNApi, boolean enableIntermediateTensorsDump) {
-            return createNNTestBase(useNNApi, enableIntermediateTensorsDump, /*mmapModel=*/false);
+        public NNTestBase createNNTestBase(TfLiteBackend tfLiteBackend, boolean enableIntermediateTensorsDump) {
+            return createNNTestBase(tfLiteBackend, enableIntermediateTensorsDump, /*mmapModel=*/false);
         }
 
-        public NNTestBase createNNTestBase(boolean useNNApi, boolean enableIntermediateTensorsDump,
+        // Used by CTS tests.
+        public NNTestBase createNNTestBase(boolean useNNAPI, boolean enableIntermediateTensorsDump) {
+            TfLiteBackend tfLiteBackend = useNNAPI ? TfLiteBackend.NNAPI : TfLiteBackend.CPU;
+            return createNNTestBase(tfLiteBackend, enableIntermediateTensorsDump, /*mmapModel=*/false);
+        }
+
+        public NNTestBase createNNTestBase(TfLiteBackend tfLiteBackend, boolean enableIntermediateTensorsDump,
                 boolean mmapModel) {
             NNTestBase test = createNNTestBase();
-            test.useNNApi(useNNApi);
+            test.setTfLiteBackend(tfLiteBackend);
             test.enableIntermediateTensorsDump(enableIntermediateTensorsDump);
             test.setMmapModel(mmapModel);
             return test;

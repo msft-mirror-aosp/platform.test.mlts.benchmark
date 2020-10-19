@@ -27,6 +27,7 @@ import com.android.nn.benchmark.core.NNTestBase;
 import com.android.nn.benchmark.core.NnApiDelegationFailure;
 import com.android.nn.benchmark.core.Processor;
 import com.android.nn.benchmark.core.TestModels;
+import com.android.nn.benchmark.core.TfLiteBackend;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -122,7 +123,7 @@ public interface AcceleratorSpecificTestSupport {
                         public void onStatusUpdate(int testNumber, int numTests, String modelName) {
                         }
                     }, new int[0]);
-            mProcessor.setUseNNApi(true);
+            mProcessor.setTfLiteBackend(TfLiteBackend.NNAPI);
             mProcessor.setCompleteInputSet(false);
             mProcessor.setNnApiAcceleratorName(acceleratorName);
             mTestModelEntry = testModelEntry;

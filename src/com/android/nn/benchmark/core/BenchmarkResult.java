@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class BenchmarkResult implements Parcelable {
+    // Used by CTS tests.
     public final static String BACKEND_TFLITE_NNAPI = "TFLite_NNAPI";
     public final static String BACKEND_TFLITE_CPU = "TFLite_CPU";
 

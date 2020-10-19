@@ -28,7 +28,35 @@
 #include <android/log.h>
 #include <android/sharedmem.h>
 #include <sys/mman.h>
+#include "tensorflow/lite/nnapi/nnapi_implementation.h"
 
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_android_nn_benchmark_core_NNTestBase_hasNnApiDevice(
+    JNIEnv *env, jobject /* this */, jstring _nnApiDeviceName) {
+  bool foundDevice = false;
+  const char *nnApiDeviceName =
+      _nnApiDeviceName == NULL ? NULL
+                               : env->GetStringUTFChars(_nnApiDeviceName, NULL);
+  if (nnApiDeviceName != NULL) {
+    std::string device_name(nnApiDeviceName);
+    uint32_t numDevices = 0;
+    NnApiImplementation()->ANeuralNetworks_getDeviceCount(&numDevices);
+
+    for (uint32_t i = 0; i < numDevices; i++) {
+      ANeuralNetworksDevice *device = nullptr;
+      const char *buffer = nullptr;
+      NnApiImplementation()->ANeuralNetworks_getDevice(i, &device);
+      NnApiImplementation()->ANeuralNetworksDevice_getName(device, &buffer);
+      if (device_name == buffer) {
+        foundDevice = true;
+        break;
+      }
+    }
+    env->ReleaseStringUTFChars(_nnApiDeviceName, nnApiDeviceName);
+  }
+
+  return foundDevice;
+}
 
 extern "C"
 JNIEXPORT jlong
@@ -37,7 +65,7 @@ Java_com_android_nn_benchmark_core_NNTestBase_initModel(
         JNIEnv *env,
         jobject /* this */,
         jstring _modelFileName,
-        jboolean _useNnApi,
+        jint _tfliteBackend,
         jboolean _enableIntermediateTensorsDump,
         jstring _nnApiDeviceName,
         jboolean _mmapModel,
@@ -53,14 +81,14 @@ Java_com_android_nn_benchmark_core_NNTestBase_initModel(
             : env->GetStringUTFChars(_nnApiCacheDir, NULL);
     int nnapiErrno = 0;
     void *handle = BenchmarkModel::create(
-        modelFileName, _useNnApi, _enableIntermediateTensorsDump, &nnapiErrno,
+        modelFileName, _tfliteBackend, _enableIntermediateTensorsDump, &nnapiErrno,
         nnApiDeviceName, _mmapModel, nnApiCacheDir);
     env->ReleaseStringUTFChars(_modelFileName, modelFileName);
     if (_nnApiDeviceName != NULL) {
         env->ReleaseStringUTFChars(_nnApiDeviceName, nnApiDeviceName);
     }
 
-    if (_useNnApi && nnapiErrno != 0) {
+    if (_tfliteBackend == TFLITE_NNAPI && nnapiErrno != 0) {
       jclass nnapiFailureClass = env->FindClass(
           "com/android/nn/benchmark/core/NnApiDelegationFailure");
       jmethodID constructor =
@@ -197,7 +225,6 @@ InferenceInOutSequenceList::InferenceInOutSequenceList(JNIEnv *env,
                     jobject creator = env->GetObjectField(inout, inout_inputCreator);
                     if (creator == nullptr) { return false; }
                     env->CallVoidMethod(creator, createInput_method, byteBuffer);
-                    env->DeleteLocalRef(byteBuffer);
                     if (env->ExceptionCheck()) { return false; }
                     return true;
                 };

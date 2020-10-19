@@ -27,6 +27,7 @@ import com.android.nn.benchmark.core.BenchmarkException;
 import com.android.nn.benchmark.core.BenchmarkResult;
 import com.android.nn.benchmark.core.Processor;
 import com.android.nn.benchmark.core.TestModels.TestModelEntry;
+import com.android.nn.benchmark.core.TfLiteBackend;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.concurrent.ExecutorService;
@@ -59,7 +60,7 @@ public class NNBenchmark extends Activity implements Processor.Callback {
     }
 
     public void setUseNNApi(boolean useNNApi) {
-        mProcessor.setUseNNApi(useNNApi);
+        mProcessor.setTfLiteBackend(useNNApi ? TfLiteBackend.NNAPI : TfLiteBackend.CPU);
     }
 
     public void setCompleteInputSet(boolean completeInputSet) {
@@ -124,7 +125,7 @@ public class NNBenchmark extends Activity implements Processor.Callback {
             mProcessor = new Processor(this, this, mTestList);
             mProcessor.setToggleLong(i.getBooleanExtra(EXTRA_ENABLE_LONG, false));
             mProcessor.setTogglePause(i.getBooleanExtra(EXTRA_ENABLE_PAUSE, false));
-            mProcessor.setUseNNApi(!i.getBooleanExtra(EXTRA_DISABLE_NNAPI, false));
+            mProcessor.setTfLiteBackend(!i.getBooleanExtra(EXTRA_DISABLE_NNAPI, false) ? TfLiteBackend.NNAPI : TfLiteBackend.CPU);
             mProcessor.setMaxRunIterations(i.getIntExtra(EXTRA_MAX_ITERATIONS, 0));
             executorService.submit(mProcessor);
         } else {

@@ -28,8 +28,9 @@
 #include <fstream>
 
 #include "tensorflow/lite/delegates/nnapi/nnapi_delegate.h"
-#include "tensorflow/lite/kernels/register.h"
 #include "tensorflow/lite/nnapi/NeuralNetworksTypes.h"
+
+#include "tensorflow/lite/kernels/register.h"
 
 #define LOG_TAG "NN_BENCHMARK"
 
@@ -69,12 +70,12 @@ static TraceFunc kTraceFunc{setupTraceFunc()};
 
 }  // namespace
 
-BenchmarkModel* BenchmarkModel::create(const char* modelfile, bool use_nnapi,
+BenchmarkModel* BenchmarkModel::create(const char* modelfile, int tfliteBackend,
                                        bool enable_intermediate_tensors_dump, int* nnapiErrno,
                                        const char* nnapi_device_name, bool mmapModel,
                                        const char* nnapi_cache_dir) {
   BenchmarkModel* model = new BenchmarkModel();
-  if (!model->init(modelfile, use_nnapi, enable_intermediate_tensors_dump, nnapiErrno,
+  if (!model->init(modelfile, tfliteBackend, enable_intermediate_tensors_dump, nnapiErrno,
                    nnapi_device_name, mmapModel, nnapi_cache_dir)) {
     __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Failed to init model %s", modelfile);
     delete model;
@@ -83,12 +84,13 @@ BenchmarkModel* BenchmarkModel::create(const char* modelfile, bool use_nnapi,
   return model;
 }
 
-bool BenchmarkModel::init(const char* modelfile, bool use_nnapi,
+bool BenchmarkModel::init(const char* modelfile, int tfliteBackend,
                           bool enable_intermediate_tensors_dump, int* nnapiErrno,
                           const char* nnapi_device_name, bool mmapModel,
                           const char* nnapi_cache_dir) {
+  __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "BenchmarkModel %s",
+                      modelfile);
   mModelFile = modelfile;
-  mUseNnApi = use_nnapi;
   if (nnapi_cache_dir) {
     mCacheDir = nnapi_cache_dir;
   }
@@ -135,26 +137,56 @@ bool BenchmarkModel::init(const char* modelfile, bool use_nnapi,
   // Allow Fp16 precision for all models
   mTfliteInterpreter->SetAllowFp16PrecisionForFp32(true);
 
-  if (use_nnapi) {
-    tflite::StatefulNnApiDelegate::Options nnapi_options;
-    nnapi_options.accelerator_name = nnapi_device_name;
-    mTfliteNnapiDelegate = std::make_unique<tflite::StatefulNnApiDelegate>(nnapi_options);
-    int delegationStatus = mTfliteInterpreter->ModifyGraphWithDelegate(mTfliteNnapiDelegate.get());
-    *nnapiErrno = mTfliteNnapiDelegate->GetNnApiErrno();
-    if (delegationStatus != kTfLiteOk ||
-        *nnapiErrno != ANEURALNETWORKS_NO_ERROR) {
-      __android_log_print(
-          ANDROID_LOG_ERROR, LOG_TAG,
-          "Failed to initialize NNAPI Delegate for model %s, nnapi_errno is %d",
-          modelfile, *nnapiErrno);
-      return false;
-    }
+  mTfliteBackend = tfliteBackend;
+  switch (mTfliteBackend) {
+    case TFLITE_NNAPI: {
+      tflite::StatefulNnApiDelegate::Options nnapi_options;
+      nnapi_options.accelerator_name = nnapi_device_name;
+      mTfliteNnapiDelegate = std::make_unique<tflite::StatefulNnApiDelegate>(nnapi_options);
+      int delegationStatus = mTfliteInterpreter->ModifyGraphWithDelegate(mTfliteNnapiDelegate.get());
+      *nnapiErrno = mTfliteNnapiDelegate->GetNnApiErrno();
+      if (delegationStatus != kTfLiteOk ||
+          *nnapiErrno != ANEURALNETWORKS_NO_ERROR) {
+        __android_log_print(
+            ANDROID_LOG_ERROR, LOG_TAG,
+            "Failed to initialize NNAPI Delegate for model %s, nnapi_errno is %d",
+            modelfile, *nnapiErrno);
+        return false;
+      }
+    } break;
+    case TFLITE_GPU: {
+#if defined(NN_BENCHMARK_ENABLE_GPU)
+      mGpuDelegate = TfLiteGpuDelegateV2Create(/*default options=*/nullptr);
+      if (mTfliteInterpreter->ModifyGraphWithDelegate(mGpuDelegate) !=
+          kTfLiteOk) {
+        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG,
+                            "Failed to initialize GPU Delegate");
+        return false;
+      }
+#else  // !defined(NN_BENCHMARK_ENABLE_GPU)
+        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG,
+                            "GPU delegate requested but not enabled with "
+                            "NN_BENCHMARK_ENABLE_GPU");
+        return false;
+#endif  // defined(NN_BENCHMARK_ENABLE_GPU)
+    } break;
+    default:
+      break;
   }
   return true;
 }
 
-BenchmarkModel::BenchmarkModel() {}
-BenchmarkModel::~BenchmarkModel() {}
+BenchmarkModel::~BenchmarkModel() {
+  switch (mTfliteBackend) {
+    case TFLITE_GPU: {
+#if defined(NN_BENCHMARK_ENABLE_GPU)  // !defined(NN_BENCHMARK_ENABLE_GPU)
+      TfLiteGpuDelegateV2Delete(mGpuDelegate);
+#endif  // !defined(NN_BENCHMARK_ENABLE_GPU)
+    } break;
+    default:
+      break;
+  }
+}
 
 bool BenchmarkModel::setInput(const uint8_t* dataPtr, size_t length) {
   int input = mTfliteInterpreter->inputs()[0];
@@ -362,7 +394,7 @@ bool BenchmarkModel::runCompilation(const char* cacheDir) {
   // Allow Fp16 precision for all models
   interpreter->SetAllowFp16PrecisionForFp32(true);
 
-  if (mUseNnApi) {
+  if (mTfliteBackend == TFLITE_NNAPI) {
     tflite::StatefulNnApiDelegate::Options nnapi_options;
     nnapi_options.accelerator_name = mNnApiDeviceName.empty() ? nullptr : mNnApiDeviceName.c_str();
     if (cacheDir) {
