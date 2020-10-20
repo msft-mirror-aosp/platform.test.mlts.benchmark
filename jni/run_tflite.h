@@ -17,9 +17,12 @@
 #ifndef COM_EXAMPLE_ANDROID_NN_BENCHMARK_RUN_TFLITE_H
 #define COM_EXAMPLE_ANDROID_NN_BENCHMARK_RUN_TFLITE_H
 
+#include "tensorflow/lite/delegates/gpu/delegate.h"
+#include "tensorflow/lite/delegates/nnapi/nnapi_delegate.h"
 #include "tensorflow/lite/interpreter.h"
 #include "tensorflow/lite/model.h"
 
+#include <memory>
 #include <unistd.h>
 #include <vector>
 
@@ -83,11 +86,16 @@ enum class CompilationBenchmarkType {
   PREPARE_FROM_CACHE,
 };
 
+/** TFLite backend. */
+constexpr int TFLITE_CPU = 0;
+constexpr int TFLITE_NNAPI = 1;
+constexpr int TFLITE_GPU = 2;
+
 class BenchmarkModel {
  public:
   ~BenchmarkModel();
 
-  static BenchmarkModel* create(const char* modelfile, bool use_nnapi,
+  static BenchmarkModel* create(const char* modelfile, int tfliteBackend,
                                 bool enable_intermediate_tensors_dump,
                                 int* nnapiErrno, const char* nnapi_device_name,
                                 bool mmapModel, const char* nnapi_cache_dir);
@@ -109,8 +117,8 @@ class BenchmarkModel {
                      const std::vector<InferenceInOutSequence>& inOutData);
 
  private:
-  BenchmarkModel();
-  bool init(const char* modelfile, bool use_nnapi,
+  BenchmarkModel() = default;
+  bool init(const char* modelfile, int tfliteBackend,
             bool enable_intermediate_tensors_dump,
             int* nnapiErrno, const char* nnapi_device_name,
             /* flag to choose between memory mapping the model and initializing
@@ -139,9 +147,12 @@ class BenchmarkModel {
 
   // Parameters for compilation
   std::string mModelFile;
-  bool mUseNnApi;
   std::optional<std::string> mCacheDir;
   std::string mNnApiDeviceName;
+#if defined(NN_BENCHMARK_ENABLE_GPU)
+  TfLiteDelegate* mGpuDelegate;
+#endif  // defined(NN_BENCHMARK_ENABLE_GPU)
+  int mTfliteBackend;
 };
 
 #endif  // COM_EXAMPLE_ANDROID_NN_BENCHMARK_RUN_TFLITE_H
