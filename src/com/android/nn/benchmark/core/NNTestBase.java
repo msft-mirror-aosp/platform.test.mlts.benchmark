@@ -32,7 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public class NNTestBase {
+public class NNTestBase implements AutoCloseable {
     protected static final String TAG = "NN_TESTBASE";
 
     // Used to load the 'native-lib' library on application startup.
@@ -321,5 +321,10 @@ public class NNTestBase {
             return null;
         }
         return outFileName;
+    }
+
+    @Override
+    public void close()  {
+        destroy();
     }
 }
