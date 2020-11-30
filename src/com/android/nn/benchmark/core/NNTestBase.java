@@ -53,10 +53,11 @@ public class NNTestBase implements AutoCloseable {
      * @return False if any error occurred, true otherwise
      */
     private static native boolean getAcceleratorNames(List<String> resultList);
+    public static native boolean hasNnApiDevice(String nnApiDeviceName);
 
     private synchronized native long initModel(
             String modelFileName,
-            boolean useNNApi,
+            int tfliteBackend,
             boolean enableIntermediateTensorsDump,
             String nnApiDeviceName,
             boolean mmapModel,
@@ -119,7 +120,7 @@ public class NNTestBase implements AutoCloseable {
     private final EvaluatorConfig mEvaluatorConfig;
     private EvaluatorInterface mEvaluator;
     private boolean mHasGoldenOutputs;
-    private boolean mUseNNApi = false;
+    private TfLiteBackend mTfLiteBackend;
     private boolean mEnableIntermediateTensorsDump = false;
     private final int mMinSdkVersion;
     private Optional<String> mNNApiDeviceName = Optional.empty();
@@ -152,12 +153,8 @@ public class NNTestBase implements AutoCloseable {
         mSampleResults = false;
     }
 
-    public void useNNApi() {
-        useNNApi(true);
-    }
-
-    public void useNNApi(boolean value) {
-        mUseNNApi = value;
+    public void setTfLiteBackend(TfLiteBackend tfLiteBackend) {
+        mTfLiteBackend = tfLiteBackend;
     }
 
     public void enableIntermediateTensorsDump() {
@@ -168,8 +165,12 @@ public class NNTestBase implements AutoCloseable {
         mEnableIntermediateTensorsDump = value;
     }
 
+    public void useNNApi() {
+      setTfLiteBackend(TfLiteBackend.NNAPI);
+    }
+
     public void setNNApiDeviceName(String value) {
-        if (!mUseNNApi) {
+        if (mTfLiteBackend != TfLiteBackend.NNAPI) {
             Log.e(TAG, "Setting device name has no effect when not using NNAPI");
         }
         mNNApiDeviceName = Optional.ofNullable(value);
@@ -187,13 +188,15 @@ public class NNTestBase implements AutoCloseable {
         mTemporaryModelFilePath = copyAssetToFile();
         String nnApiCacheDir = mContext.getCodeCacheDir().toString();
         mModelHandle = initModel(
-                mTemporaryModelFilePath, mUseNNApi, mEnableIntermediateTensorsDump,
+                mTemporaryModelFilePath, mTfLiteBackend.ordinal(), mEnableIntermediateTensorsDump,
                 mNNApiDeviceName.orElse(null), mMmapModel, nnApiCacheDir);
         if (mModelHandle == 0) {
             Log.e(TAG, "Failed to init the model");
             return false;
         }
-        resizeInputTensors(mModelHandle, mInputShape);
+        if (!resizeInputTensors(mModelHandle, mInputShape)) {
+            return false;
+        }
 
         if (mEvaluatorConfig != null) {
             mEvaluator = mEvaluatorConfig.createEvaluator(mContext.getAssets());
@@ -310,30 +313,31 @@ public class NNTestBase implements AutoCloseable {
         return runBenchmark(getInputOutputAssets(), 0xFFFFFFF, timeoutSec, flags);
     }
 
-    /** Run through whole input set (once or mutliple times). */
+    /** Run through whole input set (once or multiple times). */
     public Pair<List<InferenceInOutSequence>, List<InferenceResult>> runBenchmarkCompleteInputSet(
-            int setRepeat,
+            int minInferences,
             float timeoutSec)
             throws IOException, BenchmarkException {
         int flags = getDefaultFlags();
         List<InferenceInOutSequence> ios = getInputOutputAssets();
-        int totalSequenceInferencesCount = ios.size() * setRepeat;
-        int extpectedResults = 0;
+        int setInferences = 0;
         for (InferenceInOutSequence iosSeq : ios) {
-            extpectedResults += iosSeq.size();
+            setInferences += iosSeq.size();
         }
-        extpectedResults *= setRepeat;
+        int setRepeat = (minInferences + setInferences - 1) / setInferences; // ceil.
+        int totalSequenceInferencesCount = ios.size() * setRepeat;
+        int expectedResults = setInferences * setRepeat;
 
         Pair<List<InferenceInOutSequence>, List<InferenceResult>> result =
                 runBenchmark(ios, totalSequenceInferencesCount, timeoutSec,
                         flags);
-        if (result.second.size() != extpectedResults) {
+        if (result.second.size() != expectedResults) {
             // We reached a timeout or failed to evaluate whole set for other reason, abort.
             @SuppressLint("DefaultLocale")
             final String errorMsg = String.format(
-                    "Failed to evaluate complete input set, in %d seconds expected: %d, received:"
+                    "Failed to evaluate complete input set, in %f seconds expected: %d, received:"
                             + " %d",
-                    timeoutSec, extpectedResults, result.second.size());
+                    timeoutSec, expectedResults, result.second.size());
             Log.w(TAG, errorMsg);
             throw new IllegalStateException(errorMsg);
         }

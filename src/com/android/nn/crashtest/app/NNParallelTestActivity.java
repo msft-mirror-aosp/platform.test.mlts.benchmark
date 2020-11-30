@@ -86,6 +86,10 @@ public class NNParallelTestActivity extends Activity {
             // test was completed before resuming
             return;
         }
+        if (mCoordinator != null) {
+            // test is already running.
+            return;
+        }
 
         final Intent intent = getIntent();
 
@@ -118,17 +122,9 @@ public class NNParallelTestActivity extends Activity {
         mStopTestButton.setEnabled(true);
     }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        if (mCoordinator != null) {
-            mCoordinator.shutdown();
-            mCoordinator = null;
-        }
-    }
-
     private void endTests() {
         mCoordinator.shutdown();
+        mCoordinator = null;
     }
 
     // This method blocks until the tests complete and returns true if all tests completed

@@ -23,6 +23,7 @@ import android.util.Log;
 import com.android.nn.benchmark.core.NNTestBase;
 import com.android.nn.benchmark.core.TestModels;
 import com.android.nn.benchmark.core.TestModels.TestModelEntry;
+import com.android.nn.benchmark.core.TfLiteBackend;
 
 import java.io.File;
 
@@ -44,6 +45,7 @@ public class DumpIntermediateTensors extends Activity {
     public static final String EXTRA_MODEL_NAME = "modelName";
     public static final String EXTRA_INPUT_ASSET_INDEX = "inputAssetIndex";
     public static final String EXTRA_INPUT_ASSET_SIZE = "inputAssetSize";
+    public static final String EXTRA_TFLITE_BACKEND = "tfLiteBackend";
     public static final String DUMP_DIR = "intermediate";
     public static final String CPU_DIR = "cpu";
     public static final String NNAPI_DIR = "nnapi";
@@ -89,9 +91,10 @@ public class DumpIntermediateTensors extends Activity {
                 // Run in CPU and NNAPI mode
                 for (final boolean useNNAPI : new boolean[]{false, true}) {
                     String useNNAPIDir = useNNAPI ? NNAPI_DIR : CPU_DIR;
+                    TfLiteBackend backend = useNNAPI ? TfLiteBackend.NNAPI : TfLiteBackend.CPU;
                     TestModelEntry modelEntry = TestModels.getModelByName(modelName);
                     try (NNTestBase testBase = modelEntry.createNNTestBase(
-                            useNNAPI, /*enableIntermediateTensorsDump*/true, /*mmapModel*/false)) {
+                            backend, /*enableIntermediateTensorsDump*/true, /*mmapModel*/false)) {
                         testBase.setupModel(this);
                         File outputDir = new File(getFilesDir() + "/" + DUMP_DIR +
                                 "/" + modelName, useNNAPIDir);

@@ -25,6 +25,7 @@ import com.android.nn.benchmark.core.BenchmarkException;
 import com.android.nn.benchmark.core.BenchmarkResult;
 import com.android.nn.benchmark.core.Processor;
 import com.android.nn.benchmark.core.TestModels;
+import com.android.nn.benchmark.core.TfLiteBackend;
 import com.android.nn.crashtest.app.AcceleratorSpecificTestSupport;
 import com.android.nn.crashtest.core.CrashTest;
 import com.android.nn.crashtest.core.CrashTestCoordinator;
@@ -226,7 +227,7 @@ public class PerformanceDegradationTest implements CrashTest {
             final TestModels.TestModelEntry inferenceModelEntry, final CountDownLatch start) {
         return () -> {
             Processor benchmarkProcessor = new Processor(mContext, mNoOpCallback, new int[0]);
-            benchmarkProcessor.setUseNNApi(true);
+            benchmarkProcessor.setTfLiteBackend(TfLiteBackend.NNAPI);
             benchmarkProcessor.setNnApiAcceleratorName(mAcceleratorName);
             if (start != null) {
                 start.countDown();
@@ -252,7 +253,7 @@ public class PerformanceDegradationTest implements CrashTest {
             mStart = start;
             mTestModelEntry = testModelEntry;
             mProcessor = new Processor(context, mNoOpCallback, new int[0]);
-            mProcessor.setUseNNApi(true);
+            mProcessor.setTfLiteBackend(TfLiteBackend.NNAPI);
             mProcessor.setNnApiAcceleratorName(acceleratorName);
             mProcessor.setRunModelCompilationOnly(true);
             mRun = true;

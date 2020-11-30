@@ -53,7 +53,7 @@ public class Processor implements Runnable {
 
     private Processor.Callback mCallback;
 
-    private boolean mUseNNApi;
+    private TfLiteBackend mBackend;
     private boolean mMmapModel;
     private boolean mCompleteInputSet;
     private boolean mToggleLong;
@@ -82,10 +82,15 @@ public class Processor implements Runnable {
         mRunModelCompilationOnly = false;
         mMaxRunIterations = 0;
         mBenchmarkCompilationCaching = false;
+        mBackend = TfLiteBackend.CPU;
     }
 
     public void setUseNNApi(boolean useNNApi) {
-        mUseNNApi = useNNApi;
+        setTfLiteBackend(useNNApi ? TfLiteBackend.NNAPI : TfLiteBackend.CPU);
+    }
+
+    public void setTfLiteBackend(TfLiteBackend backend) {
+        mBackend = backend;
     }
 
     public void setCompleteInputSet(boolean completeInputSet) {
@@ -156,7 +161,7 @@ public class Processor implements Runnable {
     public static boolean isTestModelSupportedByAccelerator(Context context,
             TestModels.TestModelEntry testModelEntry, String acceleratorName)
             throws NnApiDelegationFailure {
-        try (NNTestBase tb = testModelEntry.createNNTestBase(/*useNnnapi=*/ true,
+        try (NNTestBase tb = testModelEntry.createNNTestBase(TfLiteBackend.NNAPI,
                 /*enableIntermediateTensorsDump=*/false,
                 /*mmapModel=*/ false)) {
             tb.setNNApiDeviceName(acceleratorName);
@@ -183,9 +188,9 @@ public class Processor implements Runnable {
             // Make sure we don't leak memory.
             oldTestBase.destroy();
         }
-        NNTestBase tb = t.createNNTestBase(mUseNNApi, /*enableIntermediateTensorsDump=*/false,
+        NNTestBase tb = t.createNNTestBase(mBackend, /*enableIntermediateTensorsDump=*/false,
                 mMmapModel);
-        if (mUseNNApi) {
+        if (mBackend == TfLiteBackend.NNAPI) {
             tb.setNNApiDeviceName(mAcceleratorName);
         }
         if (!tb.setupModel(mContext)) {
@@ -212,9 +217,7 @@ public class Processor implements Runnable {
             }
             return BenchmarkResult.fromInferenceResults(
                     mTest.getTestInfo(),
-                    mUseNNApi
-                            ? BenchmarkResult.BACKEND_TFLITE_NNAPI
-                            : BenchmarkResult.BACKEND_TFLITE_CPU,
+                    mBackend.toString(),
                     results.first,
                     results.second,
                     mTest.getEvaluator());
@@ -274,7 +277,7 @@ public class Processor implements Runnable {
         }
 
         // Compilation benchmark
-        if (mUseNNApi && mBenchmarkCompilationCaching) {
+        if (mBenchmarkCompilationCaching) {
             runCompilationBenchmarkLoop(mCompilationBenchmarkWarmupTimeSeconds,
                     mCompilationBenchmarkRunTimeSeconds, mCompilationBenchmarkMaxIterations, r);
         }
@@ -371,9 +374,8 @@ public class Processor implements Runnable {
 
             if (mRunModelCompilationOnly) {
                 mTestResults[ct] = BenchmarkResult.fromInferenceResults(testModel.mTestName,
-                        mUseNNApi
-                                ? BenchmarkResult.BACKEND_TFLITE_NNAPI
-                                : BenchmarkResult.BACKEND_TFLITE_CPU, Collections.emptyList(),
+                        mBackend.toString(),
+                        Collections.emptyList(),
                         Collections.emptyList(), null);
             } else {
                 // Run the test

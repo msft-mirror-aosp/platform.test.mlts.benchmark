@@ -26,6 +26,7 @@ import android.util.Log;
 import com.android.nn.benchmark.core.Processor;
 import com.android.nn.crashtest.core.CrashTest;
 import com.android.nn.crashtest.core.CrashTestCoordinator.CrashTestIntentInitializer;
+import com.android.nn.benchmark.core.TfLiteBackend;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -131,7 +132,7 @@ public class RunModelsInParallel implements CrashTest {
             public void onStatusUpdate(int testNumber, int numTests, String modelName) {
             }
         }, testList);
-        result.setUseNNApi(true);
+        result.setTfLiteBackend(TfLiteBackend.NNAPI);
         result.setCompleteInputSet(false);
         result.setNnApiAcceleratorName(mAcceleratorName);
         result.setIgnoreUnsupportedModels(mIgnoreUnsupportedModels);
