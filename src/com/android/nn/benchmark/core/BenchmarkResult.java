@@ -176,6 +176,19 @@ public class BenchmarkResult implements Parcelable {
         return mLatencyInference.getMeanTimeSec();
     }
 
+    public float getCompileWithoutCacheMeanTimeSec() {
+        return mLatencyCompileWithoutCache == null ? 0.0f
+            : mLatencyCompileWithoutCache.getMeanTimeSec();
+    }
+
+    public float getSaveToCacheMeanTimeSec() {
+        return mLatencySaveToCache == null ? 0.0f : mLatencySaveToCache.getMeanTimeSec();
+    }
+
+    public float getPrepareFromCacheMeanTimeSec() {
+        return mLatencyPrepareFromCache == null ? 0.0f : mLatencyPrepareFromCache.getMeanTimeSec();
+    }
+
     public List<Pair<String, Float>> getEvaluatorResults() {
         List<Pair<String, Float>> results = new ArrayList<>();
         for (int i = 0; i < mEvaluatorKeys.length; ++i) {
