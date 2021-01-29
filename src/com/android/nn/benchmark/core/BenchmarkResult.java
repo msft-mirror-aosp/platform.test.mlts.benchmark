@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class BenchmarkResult implements Parcelable {
+    // Used by CTS tests.
     public final static String BACKEND_TFLITE_NNAPI = "TFLite_NNAPI";
     public final static String BACKEND_TFLITE_CPU = "TFLite_CPU";
 
@@ -173,6 +174,19 @@ public class BenchmarkResult implements Parcelable {
 
     public float getMeanTimeSec() {
         return mLatencyInference.getMeanTimeSec();
+    }
+
+    public float getCompileWithoutCacheMeanTimeSec() {
+        return mLatencyCompileWithoutCache == null ? 0.0f
+            : mLatencyCompileWithoutCache.getMeanTimeSec();
+    }
+
+    public float getSaveToCacheMeanTimeSec() {
+        return mLatencySaveToCache == null ? 0.0f : mLatencySaveToCache.getMeanTimeSec();
+    }
+
+    public float getPrepareFromCacheMeanTimeSec() {
+        return mLatencyPrepareFromCache == null ? 0.0f : mLatencyPrepareFromCache.getMeanTimeSec();
     }
 
     public List<Pair<String, Float>> getEvaluatorResults() {

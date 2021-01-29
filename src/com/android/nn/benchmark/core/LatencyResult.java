@@ -98,6 +98,17 @@ public class LatencyResult implements Parcelable {
         dest.writeFloatArray(mTimeFreqSec);
     }
 
+    public static final Parcelable.Creator<LatencyResult> CREATOR =
+        new Parcelable.Creator<LatencyResult>() {
+          public LatencyResult createFromParcel(Parcel in) {
+            return new LatencyResult(in);
+          }
+
+          public LatencyResult[] newArray(int size) {
+            return new LatencyResult[size];
+          }
+        };
+
     public void putToBundle(Bundle results, String prefix) {
         // Reported in ms
         results.putFloat(prefix + "_avg", getMeanTimeSec() * 1000.0f);

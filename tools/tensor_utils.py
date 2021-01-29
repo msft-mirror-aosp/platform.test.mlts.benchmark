@@ -251,7 +251,7 @@ class TensorDict(dict):
       return diff
     diff = diff.astype(float)
     cpu_tensor = cpu_tensor.astype(float)
-    # Divide by max so the relative error range is conveniently [-1, 1]
+    # Devide by max so the relative error range is conveniently [-1, 1]
     max_cpu_nnapi_tensor = np.maximum(np.abs(cpu_tensor), np.abs(nnapi_tensor))
     relative_diff = np.divide(diff, max_cpu_nnapi_tensor, out=np.zeros_like(diff),
                               where=max_cpu_nnapi_tensor>0)
