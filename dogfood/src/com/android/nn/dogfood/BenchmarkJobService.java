@@ -123,7 +123,7 @@ public class BenchmarkJobService extends JobService implements Processor.Callbac
         mNotificationManager = NotificationManagerCompat.from(this);
         NotificationChannel channel =
                 new NotificationChannel(CHANNEL_ID, "Default", NotificationManager.IMPORTANCE_LOW);
-        // mNotificationManager.createNotificationChannel(channel);
+        mNotificationManager.createNotificationChannel(channel);
         mNotificationManager = NotificationManagerCompat.from(this);
         String title = "NN API Dogfood";
         String msg = String.format("Background test %d of %d is running", getNumRuns(), NUM_RUNS);
