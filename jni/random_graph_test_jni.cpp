@@ -238,14 +238,16 @@ class RandomGraphGenerator {
         // If model is not fully supported we allow NNAPI to use reference
         // implementation. This is to avoid having this test constantly
         // nullified by the inability of finding a fully supported model.
-        LOG(VERBOSE) << "Allowing model to be partially executed on NNAPI reference device";
+        LOG(VERBOSE) << "Allowing model to be partially executed on NNAPI "
+                        "reference device";
         devices.push_back(mNnApiReference);
       }
     }
 
     auto [compilationResult, compilation] = CreateCompilation(model, devices);
     if (compilationResult != Result::NO_ERROR) {
-      LOG(WARNING) << mTestName << ": Compilation preparation failed with result "
+      LOG(WARNING) << mTestName
+                   << ": Compilation preparation failed with result "
                    << static_cast<int>(compilationResult);
 
       dumpModel(*testModel);
@@ -476,7 +478,7 @@ class RandomGraphGenerator {
 };
 
 extern "C" JNIEXPORT jint JNICALL
-Java_com_android_nn_crashtest_core_RandomGraphTest_runRandomModel(
+Java_com_android_nn_crashtest_core_test_RandomGraphTest_runRandomModel(
     JNIEnv* env, jclass /* static method */, jlong _generatorHandle,
     jboolean _compilationOnly, jlong _maxModelSearchTimeSeconds) {
   RandomGraphGenerator* graphGenerator =
@@ -513,7 +515,7 @@ Java_com_android_nn_crashtest_core_RandomGraphTest_runRandomModel(
 }
 
 extern "C" JNIEXPORT jlong JNICALL
-com_android_nn_crashtest_core_RandomGraphTest_RandomGraphTest_createRandomGraphGenerator(
+Java_com_android_nn_crashtest_core_test_RandomGraphTest_createRandomGraphGenerator(
     JNIEnv* env, jclass /* static method */, jstring _nnApiDeviceName,
     jint _numOperations, jint _dimensionRange, jstring _testName,
     jstring _nnapiLogPath, jstring _failedModelDumpPath) {
@@ -572,7 +574,7 @@ com_android_nn_crashtest_core_RandomGraphTest_RandomGraphTest_createRandomGraphG
 }
 
 extern "C" JNIEXPORT void JNICALL
-com_android_nn_crashtest_core_RandomGraphTest_RandomGraphTest_destroyRandomGraphGenerator(
+Java_com_android_nn_crashtest_core_test_RandomGraphTest_destroyRandomGraphGenerator(
     JNIEnv* env, jclass /* static method */, jlong generatorHandle) {
   RandomGraphGenerator* graphGenerator =
       reinterpret_cast<RandomGraphGenerator*>(generatorHandle);
