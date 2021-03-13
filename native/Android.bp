@@ -41,4 +41,7 @@ cc_binary {
     strip: {
         keep_symbols: true,
     },
+    cflags: [
+        "-Wno-unused-parameter",
+    ],
 }
