@@ -85,6 +85,10 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
         mActivity.setUseNNApi(useNNApi);
     }
 
+    protected void setNnApiAcceleratorName(String acceleratorName) {
+        mActivity.setNnApiAcceleratorName(acceleratorName);
+    }
+
     protected void setCompleteInputSet(boolean completeInputSet) {
         mActivity.setCompleteInputSet(completeInputSet);
     }
