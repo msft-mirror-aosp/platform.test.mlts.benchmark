@@ -63,6 +63,10 @@ public class NNBenchmark extends Activity implements Processor.Callback {
         mProcessor.setTfLiteBackend(useNNApi ? TfLiteBackend.NNAPI : TfLiteBackend.CPU);
     }
 
+    public void setNnApiAcceleratorName(String acceleratorName) {
+        mProcessor.setNnApiAcceleratorName(acceleratorName);
+    }
+
     public void setCompleteInputSet(boolean completeInputSet) {
         mProcessor.setCompleteInputSet(completeInputSet);
     }
