@@ -36,6 +36,9 @@ LOCAL_ASSET_DIR += $(GOOGLE_TEST_MODELS_DIR)
 endif
 
 LOCAL_PACKAGE_NAME := NeuralNetworksApiBenchmark
+LOCAL_LICENSE_KINDS := SPDX-license-identifier-Apache-2.0 SPDX-license-identifier-MIT
+LOCAL_LICENSE_CONDITIONS := notice
+LOCAL_NOTICE_FILE := $(LOCAL_PATH)/LICENSE
 include $(BUILD_PACKAGE)
 
 include $(CLEAR_VARS)
@@ -59,6 +62,9 @@ LOCAL_ASSET_DIR += $(GOOGLE_TEST_MODELS_DIR)
 endif
 
 LOCAL_PACKAGE_NAME := NeuralNetworksApiCrashTest
+LOCAL_LICENSE_KINDS := SPDX-license-identifier-Apache-2.0 SPDX-license-identifier-MIT
+LOCAL_LICENSE_CONDITIONS := notice
+LOCAL_NOTICE_FILE := $(LOCAL_PATH)/LICENSE
 include $(BUILD_PACKAGE)
 
 include $(CLEAR_VARS)
