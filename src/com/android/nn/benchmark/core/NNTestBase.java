@@ -52,7 +52,7 @@ public class NNTestBase implements AutoCloseable {
      *
      * @return False if any error occurred, true otherwise
      */
-    private static native boolean getAcceleratorNames(List<String> resultList);
+    public static native boolean getAcceleratorNames(List<String> resultList);
     public static native boolean hasNnApiDevice(String nnApiDeviceName);
 
     private synchronized native long initModel(
