@@ -87,6 +87,8 @@ public class NNScoringTest extends BenchmarkTestBase {
     @Test
     @LargeTest
     public void testNNAPI() throws IOException {
+        // To use a specific accelerator, call:
+        // setNnApiAcceleratorName(acceleratorName);
         test(true, true);
     }
 
