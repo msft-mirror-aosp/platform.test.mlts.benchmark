@@ -67,17 +67,4 @@ LOCAL_LICENSE_CONDITIONS := notice
 LOCAL_NOTICE_FILE := $(LOCAL_PATH)/LICENSE
 include $(BUILD_PACKAGE)
 
-include $(CLEAR_VARS)
-LOCAL_SDK_VERSION := 28
-LOCAL_SRC_FILES := $(call all-java-files-under, src/com/android/nn/benchmark/core) \
-    $(call all-java-files-under, src/com/android/nn/benchmark/evaluators) \
-    $(call all-java-files-under, src/com/android/nn/benchmark/imageprocessors) \
-    $(call all-java-files-under, src/com/android/nn/benchmark/util)
-LOCAL_JNI_SHARED_LIBRARIES := libnnbenchmark_jni
-LOCAL_MODULE := NeuralNetworksApiBenchmark_Lib
-LOCAL_LICENSE_KINDS := SPDX-license-identifier-Apache-2.0
-LOCAL_LICENSE_CONDITIONS := notice
-LOCAL_NOTICE_FILE := $(LOCAL_PATH)/LICENSE
-include $(BUILD_JAVA_LIBRARY)
-
 include $(call all-makefiles-under,$(LOCAL_PATH))
