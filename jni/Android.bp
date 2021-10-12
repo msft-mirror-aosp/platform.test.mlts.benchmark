@@ -25,6 +25,7 @@ package {
 cc_defaults {
     name: "libnnbenchmark_jni_defaults",
     sdk_version: "current",
+    min_sdk_version: "29",
     srcs: [
         "benchmark_jni.cpp",
         "crashtest_jni.cpp",
