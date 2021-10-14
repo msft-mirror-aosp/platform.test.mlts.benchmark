@@ -23,6 +23,12 @@
         android:process=":CrashTest" />
     <service android:name="com.android.nn.crashtest.core.InProcessCrashTestService"
         android:process=".CrashTest" />
+    <!--provider entry is a workaround for b/195309961-->
+    <provider
+            xmlns:tools="http://schemas.android.com/tools"
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="com.google.android.storagemanager.androidx-startup"
+            tools:replace="android:authorities" />
   </application>
 
   <uses-sdk android:minSdkVersion="27" />
