@@ -44,6 +44,13 @@ public class NNTestBase implements AutoCloseable {
     // We only consider a real device, not 'nnapi-reference'.
     public static native boolean hasAccelerator();
 
+    /**
+     * Fills resultList with the name of the available NNAPI accelerators
+     *
+     * @return False if any error occurred, true otherwise
+     */
+    public static native boolean getAcceleratorNames(List<String> resultList);
+
     private synchronized native long initModel(
             String modelFileName,
             boolean useNNApi,
