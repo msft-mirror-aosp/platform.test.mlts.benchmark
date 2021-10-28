@@ -16,6 +16,12 @@
 
 package com.android.nn.benchmark.app;
 
+import static org.junit.Assume.assumeTrue;
+
+import com.android.nn.benchmark.core.NNTestBase;
+import com.android.nn.benchmark.core.NnApiDelegationFailure;
+import com.android.nn.benchmark.core.Processor;
+
 import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -33,6 +39,7 @@ import com.android.nn.benchmark.core.BenchmarkResult;
 import com.android.nn.benchmark.core.TestModels;
 import com.android.nn.benchmark.core.TestModels.TestModelEntry;
 
+import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.runner.RunWith;
@@ -55,6 +62,7 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
     // One iteration means running the tests continuous for 1s.
     private NNBenchmark mActivity;
     protected final TestModelEntry mModel;
+    protected final String mAcceleratorName;
 
     // The default 0.3s warmup and 1.0s runtime give reasonably repeatable results (run-to-run
     // variability of ~20%) when run under performance settings (fixed CPU cores enabled and at
@@ -79,10 +87,16 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
     public BenchmarkTestBase(TestModelEntry model) {
         super(NNBenchmark.class);
         mModel = model;
+        mAcceleratorName = null;
     }
 
     protected void setUseNNApi(boolean useNNApi) {
         mActivity.setUseNNApi(useNNApi);
+        if (useNNApi) {
+            final boolean useNnApiSupportLibrary = NNTestBase.shouldUseNnApiSupportLibrary();
+            Log.i(NNBenchmark.TAG, "Configuring usage of NNAPI SL to " + useNnApiSupportLibrary);
+            mActivity.setUseNnApiSupportLibrary(useNnApiSupportLibrary);
+        }
     }
 
     protected void setNnApiAcceleratorName(String acceleratorName) {
@@ -98,11 +112,25 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
                 COMPILATION_RUNTIME_SECONDS, COMPILATION_MAX_ITERATIONS);
     }
 
+    private boolean isModelSupported() {
+        try {
+            return Processor.isTestModelSupportedByAccelerator(mActivity, mModel, mAcceleratorName);
+        } catch (NnApiDelegationFailure delegationFailure) {
+            throw new Error(
+                String.format("Failure checking if model %s is supported on accelerator %s ",
+                    mModel.mModelName, mAcceleratorName), delegationFailure);
+        }
+    }
+
     // Initialize the parameter for ImageProcessingActivityJB.
     protected void prepareTest() {
         injectInstrumentation(InstrumentationRegistry.getInstrumentation());
         mActivity = getActivity();
         mActivity.prepareInstrumentationTest();
+        if (mAcceleratorName != null) {
+            assumeTrue(isModelSupported());
+            mActivity.setNnApiAcceleratorName(mAcceleratorName);
+        }
         setUseNNApi(true);
     }
 

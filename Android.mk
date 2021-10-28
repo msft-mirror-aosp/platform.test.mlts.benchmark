@@ -35,6 +35,12 @@ ifneq ($(wildcard $(GOOGLE_TEST_MODELS_DIR)),)
 LOCAL_ASSET_DIR += $(GOOGLE_TEST_MODELS_DIR)
 endif
 
+# If there is any NNAPI SL binary under sl_prebuilt, add them as assets.
+SL_PREBUILT_DIR := $(LOCAL_PATH)/sl_prebuilt
+ifneq ($(wildcard $(SL_PREBUILT_DIR)),)
+LOCAL_ASSET_DIR += $(SL_PREBUILT_DIR)
+endif
+
 LOCAL_PACKAGE_NAME := NeuralNetworksApiBenchmark
 LOCAL_LICENSE_KINDS := SPDX-license-identifier-Apache-2.0 SPDX-license-identifier-MIT
 LOCAL_LICENSE_CONDITIONS := notice
@@ -59,6 +65,12 @@ LOCAL_ASSET_DIR := $(LOCAL_PATH)/../models/assets
 GOOGLE_TEST_MODELS_DIR := vendor/google/tests/mlts/models/assets
 ifneq ($(wildcard $(GOOGLE_TEST_MODELS_DIR)),)
 LOCAL_ASSET_DIR += $(GOOGLE_TEST_MODELS_DIR)
+endif
+
+# If there is any NNAPI SL binary under sl_prebuilt, add them as assets.
+SL_PREBUILT_DIR := $(LOCAL_PATH)/sl_prebuilt
+ifneq ($(wildcard $(SL_PREBUILT_DIR)),)
+LOCAL_ASSET_DIR += $(SL_PREBUILT_DIR)
 endif
 
 LOCAL_PACKAGE_NAME := NeuralNetworksApiCrashTest
