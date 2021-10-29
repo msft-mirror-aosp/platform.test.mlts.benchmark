@@ -75,3 +75,9 @@ TFLite models
 
 * performance-degradation-stress: verifies that accelerator inference speed is not degrading over
 a certain threshold when running concurrent workload
+
+# Testing a NNAPI Support Library implementation
+
+All tests documented above can be run using a NNAPI Support Library implementation.
+To do so you need to copy all the shared objects part of the libraries under the `sl_prebuilt`
+folder and use the `-s` or `--use-nnapi-sl` option when running `build_and_run_benchmark.sh`.

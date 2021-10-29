@@ -70,6 +70,8 @@ public class Processor implements Runnable {
     private float mCompilationBenchmarkRunTimeSeconds;
     private int mCompilationBenchmarkMaxIterations;
 
+    private boolean mUseNnApiSupportLibrary;
+
     public Processor(Context context, Processor.Callback callback, int[] testList) {
         mContext = context;
         mCallback = callback;
@@ -83,6 +85,7 @@ public class Processor implements Runnable {
         mMaxRunIterations = 0;
         mBenchmarkCompilationCaching = false;
         mBackend = TfLiteBackend.CPU;
+        mUseNnApiSupportLibrary = false;
     }
 
     public void setUseNNApi(boolean useNNApi) {
@@ -125,6 +128,8 @@ public class Processor implements Runnable {
         mMaxRunIterations = value;
     }
 
+    public void setUseNnApiSupportLibrary(boolean value) { mUseNnApiSupportLibrary = value; }
+
     public void enableCompilationCachingBenchmarks(
             float warmupTimeSeconds, float runTimeSeconds, int maxIterations) {
         mBenchmarkCompilationCaching = true;
@@ -163,7 +168,7 @@ public class Processor implements Runnable {
             throws NnApiDelegationFailure {
         try (NNTestBase tb = testModelEntry.createNNTestBase(TfLiteBackend.NNAPI,
                 /*enableIntermediateTensorsDump=*/false,
-                /*mmapModel=*/ false)) {
+                /*mmapModel=*/ false, NNTestBase.shouldUseNnApiSupportLibrary())) {
             tb.setNNApiDeviceName(acceleratorName);
             return tb.setupModel(context);
         } catch (IOException e) {
@@ -189,7 +194,7 @@ public class Processor implements Runnable {
             oldTestBase.destroy();
         }
         NNTestBase tb = t.createNNTestBase(mBackend, /*enableIntermediateTensorsDump=*/false,
-                mMmapModel);
+                mMmapModel, mUseNnApiSupportLibrary);
         if (mBackend == TfLiteBackend.NNAPI) {
             tb.setNNApiDeviceName(mAcceleratorName);
         }
