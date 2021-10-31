@@ -48,6 +48,8 @@ public class NNBenchmark extends Activity implements Processor.Callback {
 
     private int mTestList[];
 
+    private boolean mUseNnApiSupportLibrary = false;
+
     private Processor mProcessor;
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
@@ -75,6 +77,11 @@ public class NNBenchmark extends Activity implements Processor.Callback {
             float warmupTimeSeconds, float runTimeSeconds, int maxIterations) {
         mProcessor.enableCompilationCachingBenchmarks(
                 warmupTimeSeconds, runTimeSeconds, maxIterations);
+    }
+
+    public void setUseNnApiSupportLibrary(boolean value) {
+        mUseNnApiSupportLibrary = value;
+        mProcessor.setUseNnApiSupportLibrary(mUseNnApiSupportLibrary);
     }
 
     @SuppressLint("SetTextI18n")
@@ -131,6 +138,7 @@ public class NNBenchmark extends Activity implements Processor.Callback {
             mProcessor.setTogglePause(i.getBooleanExtra(EXTRA_ENABLE_PAUSE, false));
             mProcessor.setTfLiteBackend(!i.getBooleanExtra(EXTRA_DISABLE_NNAPI, false) ? TfLiteBackend.NNAPI : TfLiteBackend.CPU);
             mProcessor.setMaxRunIterations(i.getIntExtra(EXTRA_MAX_ITERATIONS, 0));
+            mProcessor.setUseNnApiSupportLibrary(mUseNnApiSupportLibrary);
             executorService.submit(mProcessor);
         } else {
             Log.v(TAG, "No test to run, doing nothing");

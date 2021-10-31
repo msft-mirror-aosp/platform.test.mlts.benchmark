@@ -31,6 +31,7 @@
 #include "tensorflow/lite/nnapi/NeuralNetworksTypes.h"
 
 #include "tensorflow/lite/kernels/register.h"
+#include "tensorflow/lite/nnapi/sl/include/SupportLibrary.h"
 
 #define LOG_TAG "NN_BENCHMARK"
 
@@ -73,10 +74,11 @@ static TraceFunc kTraceFunc{setupTraceFunc()};
 BenchmarkModel* BenchmarkModel::create(const char* modelfile, int tfliteBackend,
                                        bool enable_intermediate_tensors_dump, int* nnapiErrno,
                                        const char* nnapi_device_name, bool mmapModel,
-                                       const char* nnapi_cache_dir) {
+                                       const char* nnapi_cache_dir,
+                                       const tflite::nnapi::NnApiSupportLibrary* nnApiSl) {
   BenchmarkModel* model = new BenchmarkModel();
   if (!model->init(modelfile, tfliteBackend, enable_intermediate_tensors_dump, nnapiErrno,
-                   nnapi_device_name, mmapModel, nnapi_cache_dir)) {
+                   nnapi_device_name, mmapModel, nnapi_cache_dir, nnApiSl)) {
     __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Failed to init model %s", modelfile);
     delete model;
     return nullptr;
@@ -87,7 +89,8 @@ BenchmarkModel* BenchmarkModel::create(const char* modelfile, int tfliteBackend,
 bool BenchmarkModel::init(const char* modelfile, int tfliteBackend,
                           bool enable_intermediate_tensors_dump, int* nnapiErrno,
                           const char* nnapi_device_name, bool mmapModel,
-                          const char* nnapi_cache_dir) {
+                          const char* nnapi_cache_dir,
+                          const tflite::nnapi::NnApiSupportLibrary* nnApiSl) {
   __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "BenchmarkModel %s",
                       modelfile);
   mModelFile = modelfile;
@@ -142,7 +145,15 @@ bool BenchmarkModel::init(const char* modelfile, int tfliteBackend,
     case TFLITE_NNAPI: {
       tflite::StatefulNnApiDelegate::Options nnapi_options;
       nnapi_options.accelerator_name = nnapi_device_name;
-      mTfliteNnapiDelegate = std::make_unique<tflite::StatefulNnApiDelegate>(nnapi_options);
+      __android_log_print(ANDROID_LOG_INFO, LOG_TAG,
+          "Delegating to NNAPI device '%s'", nnapi_device_name);
+      if (nnApiSl) {
+        __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Using NNAPI SL");
+      }
+      mTfliteNnapiDelegate =
+          nnApiSl
+              ? std::make_unique<tflite::StatefulNnApiDelegate>(nnApiSl, nnapi_options)
+              : std::make_unique<tflite::StatefulNnApiDelegate>(nnapi_options);
       int delegationStatus = mTfliteInterpreter->ModifyGraphWithDelegate(mTfliteNnapiDelegate.get());
       *nnapiErrno = mTfliteNnapiDelegate->GetNnApiErrno();
       if (delegationStatus != kTfLiteOk ||

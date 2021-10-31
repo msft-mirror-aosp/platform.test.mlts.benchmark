@@ -40,4 +40,9 @@ java_library {
         "src/com/android/nn/benchmark/imageprocessors/**/*.java",
         "src/com/android/nn/benchmark/util/**/*.java",
     ],
+    static_libs: [
+      "androidx.test.rules",
+      "android.test.runner.stubs",
+      "android.test.base.stubs",
+    ]
 }
