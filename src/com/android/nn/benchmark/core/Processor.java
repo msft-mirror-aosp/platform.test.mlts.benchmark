@@ -23,6 +23,7 @@ import android.os.Trace;
 import android.util.Log;
 import android.util.Pair;
 
+import com.android.nn.benchmark.core.TestModels.TestModelEntry;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -70,6 +71,10 @@ public class Processor implements Runnable {
     private float mCompilationBenchmarkRunTimeSeconds;
     private int mCompilationBenchmarkMaxIterations;
 
+    // Used to avoid accessing the Instrumentation Arguments when the crash tests are spawning
+    // a separate process.
+    private String mModelFilterRegex;
+
     private boolean mUseNnApiSupportLibrary;
 
     public Processor(Context context, Processor.Callback callback, int[] testList) {
@@ -85,6 +90,7 @@ public class Processor implements Runnable {
         mMaxRunIterations = 0;
         mBenchmarkCompilationCaching = false;
         mBackend = TfLiteBackend.CPU;
+        mModelFilterRegex = null;
         mUseNnApiSupportLibrary = false;
     }
 
@@ -126,6 +132,10 @@ public class Processor implements Runnable {
 
     public void setMaxRunIterations(int value) {
         mMaxRunIterations = value;
+    }
+
+    public void setModelFilterRegex(String value) {
+        this.mModelFilterRegex = value;
     }
 
     public void setUseNnApiSupportLibrary(boolean value) { mUseNnApiSupportLibrary = value; }
@@ -326,6 +336,7 @@ public class Processor implements Runnable {
     }
 
     private void benchmarkAllModels() throws IOException, BenchmarkException {
+        final List<TestModelEntry> modelsList = TestModels.modelsList(mModelFilterRegex);
         // Loop over the tests we want to benchmark
         for (int ct = 0; ct < mTestList.length; ct++) {
             if (!mRun.get()) {
@@ -343,7 +354,7 @@ public class Processor implements Runnable {
             }
 
             TestModels.TestModelEntry testModel =
-                    TestModels.modelsList().get(mTestList[ct]);
+                    modelsList.get(mTestList[ct]);
 
             int testNumber = ct + 1;
             mCallback.onStatusUpdate(testNumber, mTestList.length,
