@@ -84,10 +84,10 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
     protected static final float COMPILATION_RUNTIME_SECONDS = 10.f;
     protected static final int COMPILATION_MAX_ITERATIONS = 100;
 
-    public BenchmarkTestBase(TestModelEntry model) {
+    public BenchmarkTestBase(TestModelEntry model, String acceleratorName) {
         super(NNBenchmark.class);
         mModel = model;
-        mAcceleratorName = null;
+        mAcceleratorName = acceleratorName;
     }
 
     protected void setUseNNApi(boolean useNNApi) {
@@ -293,8 +293,13 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
         getInstrumentation().sendStatus(Activity.RESULT_OK, bmValue.toBundle(testName));
     }
 
-    @Parameters(name = "{0}")
-    public static List<TestModelEntry> modelsList() {
-        return TestModels.modelsList();
+    @Parameters(name = "{0} model on accelerator {1}")
+    public static List<Object[]> modelsOnAccelerators() {
+        Log.d(NNBenchmark.TAG, "Calculating list of models");
+        List<Object[]> result = AcceleratorSpecificTestSupport.maybeAddAcceleratorsToTestConfig(
+            TestModels.modelsList().stream().map(model -> new Object[] {model}).collect(Collectors.toList())
+        );
+        Log.d(NNBenchmark.TAG, "Returning list of models of size " + result.size());
+        return result;
     }
 }

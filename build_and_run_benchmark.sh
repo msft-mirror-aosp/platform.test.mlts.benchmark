@@ -7,9 +7,9 @@
 # which is not logged.
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  OPTS="$(getopt f:rbs -- "$*")"
+  OPTS="$(getopt f:rbsm: -- "$*")"
 else
-  OPTS="$(getopt -o f:rbs -l filter-driver:,include-nnapi-reference,nnapi-reference-only,skip-build,use-nnapi-sl -- "$@")"
+  OPTS="$(getopt -o f:rbsm: -l filter-driver:,include-nnapi-reference,nnapi-reference-only,skip-build,use-nnapi-sl,filter-model -- "$@")"
 fi
 
 if [ $? -ne 0 ]; then
@@ -19,12 +19,14 @@ if [ $? -ne 0 ]; then
     echo " -r : to include nnapi-reference in target drivers"
     echo " -b : skip build and installation of tests"
     echo " -s : use NNAPI Support Library drivers embedded in the benchmark APK"
+    echo " -m <regex> : to filter the models used in the tests"
   else
     echo " -f <regex> | --filter-driver <regex> : to run crash tests only on the drivers (ignoring nnapi-reference) matching the specified regular expression"
     echo " -r | --include-nnapi-reference : to include nnapi-reference in target drivers"
     echo " --nnapi-reference-only : to run tests only vs nnapi-reference"
     echo " -b | --skip-build : skip build and installation of tests"
     echo " -s | --use-nnapi-sl : use NNAPI Support Library drivers embedded in the benchmark APK"
+    echo " -m <regex> : to filter the models used in the tests"
   fi
   exit
 fi
@@ -35,6 +37,7 @@ DRIVER_FILTER_OPT=""
 INCLUDE_NNAPI_REF_OPT=""
 BUILD_AND_INSTALL=true
 NNAPI_SL_FILTER_OPT=""
+MODEL_FILTER_OPT=""
 while [ $# -gt 0 ] ; do
   case "$1" in
     -f|--filter-driver)
@@ -49,6 +52,10 @@ while [ $# -gt 0 ] ; do
       DRIVER_FILTER_OPT="-e nnCrashtestDeviceFilter no-device"
       INCLUDE_NNAPI_REF_OPT="-e nnCrashtestIncludeNnapiReference true"
       shift
+      ;;
+    -m|--filter-model)
+      MODEL_FILTER_OPT="-e nnBenchmarkModelFilter $2"
+      shift 2
       ;;
     -b|--skip-build)
       BUILD_AND_INSTALL=false
@@ -179,7 +186,7 @@ fi
 
 # Pass --no-isolated-storage to am instrument?
 BUILD_VERSION_RELEASE=`adb shell getprop ro.build.version.release`
-AM_INSTRUMENT_FLAGS="$DRIVER_FILTER_OPT $INCLUDE_NNAPI_REF_OPT $NNAPI_SL_FILTER_OPT"
+AM_INSTRUMENT_FLAGS="$DRIVER_FILTER_OPT $INCLUDE_NNAPI_REF_OPT $NNAPI_SL_FILTER_OPT $MODEL_FILTER_OPT"
 if [[ $BUILD_VERSION_RELEASE == "Q" ]]; then
   AM_INSTRUMENT_FLAGS+=" --no-isolated-storage"
 fi
