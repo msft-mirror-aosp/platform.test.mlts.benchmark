@@ -16,8 +16,6 @@
 
 #include "run_tflite.h"
 
-#include "tensorflow/lite/nnapi/nnapi_implementation.h"
-
 #include <jni.h>
 #include <string>
 #include <iomanip>
@@ -29,6 +27,8 @@
 #include <android/sharedmem.h>
 #include <sys/mman.h>
 #include "tensorflow/lite/nnapi/nnapi_implementation.h"
+
+#define LOG_TAG "NN_BENCHMARK"
 
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_android_nn_benchmark_core_NNTestBase_hasNnApiDevice(
@@ -69,7 +69,8 @@ Java_com_android_nn_benchmark_core_NNTestBase_initModel(
         jboolean _enableIntermediateTensorsDump,
         jstring _nnApiDeviceName,
         jboolean _mmapModel,
-        jstring _nnApiCacheDir) {
+        jstring _nnApiCacheDir,
+        jlong _nnApiSlHandle) {
     const char *modelFileName = env->GetStringUTFChars(_modelFileName, NULL);
     const char *nnApiDeviceName =
         _nnApiDeviceName == NULL
@@ -79,10 +80,12 @@ Java_com_android_nn_benchmark_core_NNTestBase_initModel(
         _nnApiCacheDir == NULL
             ? NULL
             : env->GetStringUTFChars(_nnApiCacheDir, NULL);
+     const tflite::nnapi::NnApiSupportLibrary *nnApiSlHandle =
+          (const tflite::nnapi::NnApiSupportLibrary *)_nnApiSlHandle;
     int nnapiErrno = 0;
     void *handle = BenchmarkModel::create(
         modelFileName, _tfliteBackend, _enableIntermediateTensorsDump, &nnapiErrno,
-        nnApiDeviceName, _mmapModel, nnApiCacheDir);
+        nnApiDeviceName, _mmapModel, nnApiCacheDir, nnApiSlHandle);
     env->ReleaseStringUTFChars(_modelFileName, modelFileName);
     if (_nnApiDeviceName != NULL) {
         env->ReleaseStringUTFChars(_nnApiDeviceName, nnApiDeviceName);
@@ -99,6 +102,31 @@ Java_com_android_nn_benchmark_core_NNTestBase_initModel(
     }
 
     return (jlong)(uintptr_t)handle;
+}
+
+// This method loads the NNAPI SL from the given path.
+// Is called by a synchronized method in NNTestBase that will cache the
+// result. We expect this to be called only once per JVM and the handle
+// to be released when the JVM is shut down.
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_android_nn_benchmark_core_NNTestBase_loadNnApiSlHandle(
+    JNIEnv *env, jobject /* clazz */, jstring _nnapiSlDriverPath) {
+  if (_nnapiSlDriverPath != NULL) {
+    const char *nnapiSlDriverPath =
+        env->GetStringUTFChars(_nnapiSlDriverPath, NULL);
+    std::unique_ptr<const tflite::nnapi::NnApiSupportLibrary> tmp =
+        tflite::nnapi::loadNnApiSupportLibrary(nnapiSlDriverPath);
+    if (!tmp) {
+      __android_log_print(ANDROID_LOG_ERROR, LOG_TAG,
+                          "Failed to load NNAPI SL driver from '%s'",
+                          nnapiSlDriverPath);
+      return false;
+    }
+    __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Loaded NNAPI SL");
+    return (jlong)(uintptr_t)tmp.release();
+  }
+
+  return 0l;
 }
 
 extern "C"

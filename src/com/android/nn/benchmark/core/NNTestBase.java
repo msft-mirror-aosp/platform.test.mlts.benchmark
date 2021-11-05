@@ -23,20 +23,33 @@ import android.os.Build;
 import android.util.Log;
 import android.util.Pair;
 import android.widget.TextView;
-
+import androidx.test.InstrumentationRegistry;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import dalvik.system.BaseDexClassLoader;
+import android.content.res.AssetFileDescriptor;
+import android.os.ParcelFileDescriptor;
+import android.os.ParcelFileDescriptor.AutoCloseInputStream;
+import java.util.jar.JarFile;
+import java.util.jar.JarEntry;
 
 public class NNTestBase implements AutoCloseable {
     protected static final String TAG = "NN_TESTBASE";
+
+    private static final String NNAPI_SL_LIBRARIES_LIST_ASSET_PATH = "sl_prebuilt_filelist.txt";
 
     // Used to load the 'native-lib' library on application startup.
     static {
@@ -55,13 +68,111 @@ public class NNTestBase implements AutoCloseable {
     public static native boolean getAcceleratorNames(List<String> resultList);
     public static native boolean hasNnApiDevice(String nnApiDeviceName);
 
+    private static native long loadNnApiSlHandle(String nnApiSlPath);
+
+    private static long nnapiSlHandle = 0;
+    public static synchronized long getOrLoadNnApiSlHandle(Context context, boolean extractNnApiSupportLibrary)
+        throws IOException {
+      if (nnapiSlHandle == 0) {
+        Log.i(TAG, "Initializing NNAPI SL.");
+
+        String nnSupportLibFilePath = null;
+        Log.i(TAG, "Preparing NNAPI SL");
+        if (extractNnApiSupportLibrary) {
+            nnSupportLibFilePath = extractAllAndGetNnApiSlPath(context, NNAPI_SL_LIB_NAME);
+        } else {
+            nnSupportLibFilePath = getNnApiSlPathFromApkLibraries(context, NNAPI_SL_LIB_NAME);
+        }
+
+        if (nnSupportLibFilePath != null) {
+          nnapiSlHandle = loadNnApiSlHandle(nnSupportLibFilePath);
+          if (nnapiSlHandle == 0) {
+            Log.e(TAG, String
+                .format("Unable load NNAPI SL from '%s'.", nnSupportLibFilePath));
+          } else {
+              Log.i(TAG, String
+                  .format("Successfully loaded NNAPI SL from '%s'.", nnSupportLibFilePath));
+          }
+        } else {
+          Log.e(TAG, String
+              .format("Unable to find NNAPI SL entry point '%s' in embedded libraries path.",
+                  NNAPI_SL_LIB_NAME));
+        }
+      }
+      return nnapiSlHandle;
+    }
+
+    private static InputStream getInputStreamFromApk(String apkPath, String filePath) throws IOException {
+        Log.i(TAG, String.format("Getting input stream from APK '%s' and file '%s'.", apkPath, filePath));
+
+        JarFile jarFile = new JarFile(apkPath);
+        JarEntry jarEntry = jarFile.getJarEntry(filePath);
+        return jarFile.getInputStream(jarEntry);
+    }
+
+    private static String extractAllAndGetNnApiSlPath(Context context, String entryPointName)
+        throws IOException {
+        try {
+            BufferedReader slLibraryListReader
+                = new BufferedReader(
+                    new InputStreamReader(
+                        context.getAssets().open(NNAPI_SL_LIBRARIES_LIST_ASSET_PATH)));
+            String result = null;
+            final String nnLibTargetFolder = context.getCodeCacheDir().toString();
+            for (final String libraryFile : slLibraryListReader.lines().collect(Collectors.toList())) {
+                String sourcePath = getNnApiSlPathFromApkLibraries(context, libraryFile);
+                if (sourcePath == null) {
+                    Log.w(TAG, String.format("Unable to find SL library '%s' to extract assuming is not part of this chipset distribution.", libraryFile));
+                    continue;
+                }
+
+                String[] apkAndLibraryPaths = sourcePath.split("!");
+                if (apkAndLibraryPaths.length != 2) {
+                    Log.e(TAG, String.format("Unable to extract %s.", sourcePath));
+                    return null;
+                }
+
+                File targetPath = new File(nnLibTargetFolder, libraryFile);
+                try(InputStream in = getInputStreamFromApk(apkAndLibraryPaths[0],
+                    // Removing leading '/'
+                    apkAndLibraryPaths[1].substring(1));
+                    OutputStream out = new FileOutputStream(targetPath)
+                ) {
+                    copyFull(in, out);
+                }
+
+                Log.i(TAG, String.format("Copied '%s' to '%s'.", sourcePath, targetPath));
+
+                if (libraryFile.equals(entryPointName)) {
+                    result = targetPath.getAbsolutePath();
+                }
+            }
+            return result;
+        } catch (IOException e) {
+            Log.e(TAG, "Unable to find list of SL libraries under assets.", e);
+            throw e;
+        }
+    }
+
+    private static String getNnApiSlPathFromApkLibraries(Context context, String resourceName) {
+        BaseDexClassLoader dexClassLoader = (BaseDexClassLoader) context.getClassLoader();
+        // Removing the "lib" prefix and ".so" suffix.
+        String libShortName = resourceName.substring(3, resourceName.length() - 3);
+        String result = dexClassLoader.findLibrary(libShortName);
+        if (result != null) {
+            return result;
+        }
+        return dexClassLoader.findLibrary(resourceName);
+    }
+
     private synchronized native long initModel(
             String modelFileName,
             int tfliteBackend,
             boolean enableIntermediateTensorsDump,
             String nnApiDeviceName,
             boolean mmapModel,
-            String nnApiCacheDir) throws NnApiDelegationFailure;
+            String nnApiCacheDir,
+            long nnApiLibHandle) throws NnApiDelegationFailure;
 
     private synchronized native void destroyModel(long modelHandle);
 
@@ -109,6 +220,8 @@ public class NNTestBase implements AutoCloseable {
     /** Collect only 1 benchmark result every 10 **/
     public static final int FLAG_SAMPLE_BENCHMARK_RESULTS = 1 << 2;
 
+    private static final String NNAPI_SL_LIB_NAME = "libnnapi_sl_driver.so";
+
     protected Context mContext;
     protected TextView mText;
     private final String mModelName;
@@ -128,6 +241,29 @@ public class NNTestBase implements AutoCloseable {
     // Path where the current model has been stored for execution
     private String mTemporaryModelFilePath;
     private boolean mSampleResults;
+
+    // If set to true the test will look for the NNAPI SL binaries in the app resources,
+    // copy them into the app cache dir and configure the TfLite test to load NNAPI
+    // from the library.
+    private boolean mUseNnApiSupportLibrary = false;
+    private boolean mExtractNnApiSupportLibrary = false;
+
+    static final String USE_NNAPI_SL_PROPERTY = "useNnApiSupportLibrary";
+    static final String EXTRACT_NNAPI_SL_PROPERTY = "extractNnApiSupportLibrary";
+
+    private static boolean getBooleanTestParameter(String key, boolean defaultValue) {
+      // All instrumentation arguments are passed as String so I have to convert the value here.
+      return Boolean.parseBoolean(
+          InstrumentationRegistry.getArguments().getString(key, "" + defaultValue));
+    }
+
+    public static boolean shouldUseNnApiSupportLibrary() {
+      return getBooleanTestParameter(USE_NNAPI_SL_PROPERTY, false);
+    }
+
+    public static boolean shouldExtractNnApiSupportLibrary() {
+        return getBooleanTestParameter(EXTRACT_NNAPI_SL_PROPERTY, false);
+    }
 
     public NNTestBase(String modelName, String modelFile, int[] inputShape,
             InferenceInOutSequence.FromAssets[] inputOutputAssets,
@@ -169,6 +305,9 @@ public class NNTestBase implements AutoCloseable {
       setTfLiteBackend(TfLiteBackend.NNAPI);
     }
 
+    public  void setUseNnApiSupportLibrary(boolean value) {mUseNnApiSupportLibrary = value;}
+    public  void setExtractNnApiSupportLibrary(boolean value) {mExtractNnApiSupportLibrary = value;}
+
     public void setNNApiDeviceName(String value) {
         if (mTfLiteBackend != TfLiteBackend.NNAPI) {
             Log.e(TAG, "Setting device name has no effect when not using NNAPI");
@@ -182,6 +321,18 @@ public class NNTestBase implements AutoCloseable {
 
     public final boolean setupModel(Context ipcxt) throws IOException, NnApiDelegationFailure {
         mContext = ipcxt;
+        long nnApiLibHandle = 0;
+        if (mUseNnApiSupportLibrary) {
+          nnApiLibHandle = getOrLoadNnApiSlHandle(mContext, mExtractNnApiSupportLibrary);
+          if (nnApiLibHandle == 0) {
+            Log.e(TAG, String
+                .format("Unable to find NNAPI SL entry point '%s' in embedded libraries path.",
+                    NNAPI_SL_LIB_NAME));
+            throw new NnApiDelegationFailure(String
+                .format("Unable to find NNAPI SL entry point '%s' in embedded libraries path.",
+                    NNAPI_SL_LIB_NAME));
+          }
+        }
         if (mTemporaryModelFilePath != null) {
             deleteOrWarn(mTemporaryModelFilePath);
         }
@@ -189,7 +340,7 @@ public class NNTestBase implements AutoCloseable {
         String nnApiCacheDir = mContext.getCodeCacheDir().toString();
         mModelHandle = initModel(
                 mTemporaryModelFilePath, mTfLiteBackend.ordinal(), mEnableIntermediateTensorsDump,
-                mNNApiDeviceName.orElse(null), mMmapModel, nnApiCacheDir);
+                mNNApiDeviceName.orElse(null), mMmapModel, nnApiCacheDir, nnApiLibHandle);
         if (mModelHandle == 0) {
             Log.e(TAG, "Failed to init the model");
             return false;
@@ -418,15 +569,19 @@ public class NNTestBase implements AutoCloseable {
 
             try (InputStream in = assetManager.open(modelAssetName);
                  FileOutputStream out = new FileOutputStream(outFile)) {
-                byte[] byteBuffer = new byte[1024];
-                int readBytes = -1;
-                while ((readBytes = in.read(byteBuffer)) != -1) {
-                    out.write(byteBuffer, 0, readBytes);
-                }
+                copyFull(in, out);
             }
         } catch (IOException e) {
             Log.e(TAG, "Failed to copy asset file: " + modelAssetName, e);
             throw e;
+        }
+    }
+
+    private static void copyFull(InputStream in, OutputStream out) throws IOException {
+        byte[] byteBuffer = new byte[1024];
+        int readBytes = -1;
+        while ((readBytes = in.read(byteBuffer)) != -1) {
+            out.write(byteBuffer, 0, readBytes);
         }
     }
 
