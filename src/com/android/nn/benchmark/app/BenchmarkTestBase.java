@@ -94,8 +94,10 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
         mActivity.setUseNNApi(useNNApi);
         if (useNNApi) {
             final boolean useNnApiSupportLibrary = NNTestBase.shouldUseNnApiSupportLibrary();
+            final boolean extractNnApiSupportLibrary = NNTestBase.shouldExtractNnApiSupportLibrary();
             Log.i(NNBenchmark.TAG, "Configuring usage of NNAPI SL to " + useNnApiSupportLibrary);
             mActivity.setUseNnApiSupportLibrary(useNnApiSupportLibrary);
+            mActivity.setExtractNnApiSupportLibrary(extractNnApiSupportLibrary);
         }
     }
 

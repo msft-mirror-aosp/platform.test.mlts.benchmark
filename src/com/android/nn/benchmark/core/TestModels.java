@@ -81,22 +81,25 @@ public class TestModels {
         }
 
         public NNTestBase createNNTestBase(TfLiteBackend tfLiteBackend, boolean enableIntermediateTensorsDump) {
-            return createNNTestBase(tfLiteBackend, enableIntermediateTensorsDump, /*mmapModel=*/false, /*useNnApiSl=*/false);
+            return createNNTestBase(tfLiteBackend, enableIntermediateTensorsDump, /*mmapModel=*/false,
+                /*useNnApiSl=*/false, /*extractNnApiSl=*/false);
         }
 
         // Used by CTS tests.
         public NNTestBase createNNTestBase(boolean useNNAPI, boolean enableIntermediateTensorsDump) {
             TfLiteBackend tfLiteBackend = useNNAPI ? TfLiteBackend.NNAPI : TfLiteBackend.CPU;
-            return createNNTestBase(tfLiteBackend, enableIntermediateTensorsDump, /*mmapModel=*/false, /*useNnApiSl=*/false);
+            return createNNTestBase(tfLiteBackend, enableIntermediateTensorsDump,
+                /*mmapModel=*/false, /*useNnApiSl=*/false, /*extractNnApiSl=*/false);
         }
 
         public NNTestBase createNNTestBase(TfLiteBackend tfLiteBackend, boolean enableIntermediateTensorsDump,
-                boolean mmapModel, boolean useNnApiSl) {
+                boolean mmapModel, boolean useNnApiSl, boolean extractNnApiSl) {
             NNTestBase test = createNNTestBase();
             test.setTfLiteBackend(tfLiteBackend);
             test.enableIntermediateTensorsDump(enableIntermediateTensorsDump);
             test.setMmapModel(mmapModel);
             test.setUseNnApiSupportLibrary(useNnApiSl);
+            test.setExtractNnApiSupportLibrary(extractNnApiSl);
             return test;
         }
 

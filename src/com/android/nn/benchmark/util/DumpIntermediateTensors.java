@@ -95,7 +95,8 @@ public class DumpIntermediateTensors extends Activity {
                     TestModelEntry modelEntry = TestModels.getModelByName(modelName);
                     try (NNTestBase testBase = modelEntry.createNNTestBase(
                             backend, /*enableIntermediateTensorsDump*/true, /*mmapModel*/false,
-                        NNTestBase.shouldUseNnApiSupportLibrary())) {
+                        NNTestBase.shouldUseNnApiSupportLibrary(),
+                        NNTestBase.shouldExtractNnApiSupportLibrary())) {
                         testBase.setupModel(this);
                         File outputDir = new File(getFilesDir() + "/" + DUMP_DIR +
                                 "/" + modelName, useNNAPIDir);
