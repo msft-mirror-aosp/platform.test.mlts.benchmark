@@ -102,7 +102,7 @@ elif [ ${#DRIVER_LOG_TAGS[@]} -ne 0 ]; then
 fi
 
 # Fatal message for everything else to show crash dumps
-LOG_TAG_FILTER="${LOG_TAG_FILTER} QCSL:V *:F"
+LOG_TAG_FILTER="${LOG_TAG_FILTER} QCSL:V tflite:E *:F"
 
 export ANDROID_LOG_TAGS="${LOG_TAG_FILTER}"
 
