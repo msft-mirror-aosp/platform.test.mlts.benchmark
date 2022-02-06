@@ -36,7 +36,7 @@ ifeq ($(strip $(SL_LIBS)),)
 endif
 
 LOCAL_SRC_FILES := $(call all-java-files-under, src/com/android/nn/benchmark)
-LOCAL_JNI_SHARED_LIBRARIES := libnnbenchmark_jni $(SL_LIBS)
+LOCAL_JNI_SHARED_LIBRARIES := libnnbenchmark_jni libsupport_library_jni $(SL_LIBS)
 
 # need fread_unlocked in version 28
 LOCAL_SDK_VERSION := 28
@@ -71,7 +71,7 @@ LOCAL_MODULE_TAGS := tests
 LOCAL_COMPATIBILITY_SUITE += device-tests
 
 LOCAL_SRC_FILES := $(call all-java-files-under, src)
-LOCAL_JNI_SHARED_LIBRARIES := libnnbenchmark_jni librandom_graph_test_jni $(SL_LIBS)
+LOCAL_JNI_SHARED_LIBRARIES := libnnbenchmark_jni libsupport_library_jni librandom_graph_test_jni $(SL_LIBS)
 
 # need fread_unlocked in version 28
 LOCAL_SDK_VERSION := 28
