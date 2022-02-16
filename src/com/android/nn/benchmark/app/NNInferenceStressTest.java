@@ -41,15 +41,19 @@ public class NNInferenceStressTest extends BenchmarkTestBase {
 
     private static final float WARMUP_SECONDS = 0; // No warmup.
     private static final float RUNTIME_SECONDS = Duration.ofHours(1).getSeconds();
-    private static final long LONG_STRESS_TEST_DURATION_SECONDS = Duration.ofSeconds(60).getSeconds();
+    private static final long LONG_STRESS_TEST_DURATION_SECONDS = Duration.ofHours(4).getSeconds();
 
-    public NNInferenceStressTest(TestModels.TestModelEntry model, String acceleratorName) {
-        super(model, acceleratorName);
+    public NNInferenceStressTest(TestModels.TestModelEntry model) {
+        super(model);
     }
 
-    @Parameters(name = "{0} model on accelerator {1}")
-    public static List<Object[]> modelsList() {
-        return NNModelLoadingStressTest.modelsList();
+    @Parameters(name = "{0}")
+    public static List<TestModels.TestModelEntry> modelsList() {
+        return TestModels.modelsList().stream()
+                .map(TestModels.TestModelEntry::withDisabledEvaluation)
+                .collect(Collectors.collectingAndThen(
+                        Collectors.toList(),
+                        Collections::unmodifiableList));
     }
 
     @Test
