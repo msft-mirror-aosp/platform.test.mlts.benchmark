@@ -42,21 +42,17 @@ public class NNModelLoadingStressTest extends BenchmarkTestBase {
 
     @Rule public Stopwatch stopwatch = new Stopwatch() {};
 
-    public NNModelLoadingStressTest(TestModels.TestModelEntry model, String acceleratorName) {
-        super(model, acceleratorName);
+    public NNModelLoadingStressTest(TestModels.TestModelEntry model) {
+        super(model);
     }
 
-    @Parameters(name = "{0} model on accelerator {1}")
-    public static List<Object[]> modelsList() {
-        return BenchmarkTestBase.modelsOnAccelerators().stream()
-            .map( modelAndAccelerator -> {
-                TestModels.TestModelEntry modelEntry =
-                    (TestModels.TestModelEntry)modelAndAccelerator[0];
-                return new Object[] { modelEntry.withDisabledEvaluation(), modelAndAccelerator[1] };
-            })
-            .collect(Collectors.collectingAndThen(
-                Collectors.toList(),
-                Collections::unmodifiableList));
+    @Parameters(name = "{0}")
+    public static List<TestModels.TestModelEntry> modelsList() {
+        return TestModels.modelsList().stream()
+                .map(TestModels.TestModelEntry::withDisabledEvaluation)
+                .collect(Collectors.collectingAndThen(
+                        Collectors.toList(),
+                        Collections::unmodifiableList));
     }
 
     @Test
