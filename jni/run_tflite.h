@@ -21,7 +21,6 @@
 #include "tensorflow/lite/delegates/nnapi/nnapi_delegate.h"
 #include "tensorflow/lite/interpreter.h"
 #include "tensorflow/lite/model.h"
-#include "tensorflow/lite/nnapi/sl/include/SupportLibrary.h"
 
 #include <memory>
 #include <unistd.h>
@@ -99,8 +98,7 @@ class BenchmarkModel {
   static BenchmarkModel* create(const char* modelfile, int tfliteBackend,
                                 bool enable_intermediate_tensors_dump,
                                 int* nnapiErrno, const char* nnapi_device_name,
-                                bool mmapModel, const char* nnapi_cache_dir,
-                                const tflite::nnapi::NnApiSupportLibrary* nnApiSl = nullptr);
+                                bool mmapModel, const char* nnapi_cache_dir);
 
   bool resizeInputTensors(std::vector<int> shape);
   bool setInput(const uint8_t* dataPtr, size_t length);
@@ -126,8 +124,7 @@ class BenchmarkModel {
             /* flag to choose between memory mapping the model and initializing
                 the model from programs memory*/
             bool mmapModel,
-            const char* nnapi_cache_dir,
-            const tflite::nnapi::NnApiSupportLibrary* nnApiSl = nullptr);
+            const char* nnapi_cache_dir);
 
   void getOutputError(const uint8_t* dataPtr, size_t length,
                       InferenceResult* result, int output_index);

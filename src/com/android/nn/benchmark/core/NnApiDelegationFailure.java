@@ -27,11 +27,6 @@ public class NnApiDelegationFailure extends BenchmarkException {
         mNnApiErrno = nnApiErrno;
     }
 
-    public NnApiDelegationFailure(String message) {
-        super(message);
-        mNnApiErrno = 0;
-    }
-
     public int getNnApiErrno() {
         return mNnApiErrno;
     }
