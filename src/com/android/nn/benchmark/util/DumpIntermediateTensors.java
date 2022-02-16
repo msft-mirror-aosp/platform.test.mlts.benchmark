@@ -94,9 +94,7 @@ public class DumpIntermediateTensors extends Activity {
                     TfLiteBackend backend = useNNAPI ? TfLiteBackend.NNAPI : TfLiteBackend.CPU;
                     TestModelEntry modelEntry = TestModels.getModelByName(modelName);
                     try (NNTestBase testBase = modelEntry.createNNTestBase(
-                            backend, /*enableIntermediateTensorsDump*/true, /*mmapModel*/false,
-                        NNTestBase.shouldUseNnApiSupportLibrary(),
-                        NNTestBase.shouldExtractNnApiSupportLibrary())) {
+                            backend, /*enableIntermediateTensorsDump*/true, /*mmapModel*/false)) {
                         testBase.setupModel(this);
                         File outputDir = new File(getFilesDir() + "/" + DUMP_DIR +
                                 "/" + modelName, useNNAPIDir);
