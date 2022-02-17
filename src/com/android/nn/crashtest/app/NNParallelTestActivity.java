@@ -33,6 +33,7 @@ import android.widget.Button;
 import android.widget.TextView;
 
 import com.android.nn.benchmark.app.R;
+import com.android.nn.benchmark.core.TestModels;
 import com.android.nn.crashtest.core.CrashTestCoordinator;
 import com.android.nn.crashtest.core.test.RunModelsInParallel;
 
@@ -116,7 +117,7 @@ public class NNParallelTestActivity extends Activity {
         mCoordinator.startTest(RunModelsInParallel.class,
             RunModelsInParallel.intentInitializer(testList, threadCount,
                 Duration.ofMillis(testDurationMillis), mTestName, acceleratorName,
-                ignoreUnsupportedModels, runModelCompilationOnly, mmapModel),
+                ignoreUnsupportedModels, runModelCompilationOnly, mmapModel, TestModels.getModelFilterRegex()),
             mTestStatus, runInSeparateProcess, mTestName);
 
         mStopTestButton.setEnabled(true);
