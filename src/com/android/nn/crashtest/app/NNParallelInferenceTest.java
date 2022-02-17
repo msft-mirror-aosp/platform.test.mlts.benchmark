@@ -26,6 +26,7 @@ import android.util.Log;
 
 import androidx.test.InstrumentationRegistry;
 
+import com.android.nn.benchmark.app.AcceleratorSpecificTestSupport;
 import com.android.nn.benchmark.app.BenchmarkTestBase;
 import com.android.nn.benchmark.core.NnApiDelegationFailure;
 import com.android.nn.benchmark.core.TestModels;
