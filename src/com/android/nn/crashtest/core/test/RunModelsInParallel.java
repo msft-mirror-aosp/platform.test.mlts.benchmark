@@ -51,6 +51,7 @@ public class RunModelsInParallel implements CrashTest {
     private static final String IGNORE_UNSUPPORTED_MODELS = "ignore_unsupported_models";
     private static final String RUN_MODEL_COMPILATION_ONLY = "run_model_compilation_only";
     private static final String MEMORY_MAP_MODEL = "memory_map_model";
+    private static final String MODEL_FILTER = "model_filter";
 
     private final Set<Processor> activeTests = new HashSet<>();
     private final List<Boolean> mTestCompletionResults = Collections.synchronizedList(
@@ -71,7 +72,7 @@ public class RunModelsInParallel implements CrashTest {
     static public CrashTestIntentInitializer intentInitializer(int[] models, int threadCount,
             Duration duration, String testName, String acceleratorName,
             boolean ignoreUnsupportedModels,
-            boolean runModelCompilationOnly, boolean mmapModel) {
+            boolean runModelCompilationOnly, boolean mmapModel, String modelFilter) {
         return intent -> {
             intent.putExtra(MODELS, models);
             intent.putExtra(DURATION, duration.toMillis());
@@ -81,6 +82,7 @@ public class RunModelsInParallel implements CrashTest {
             intent.putExtra(IGNORE_UNSUPPORTED_MODELS, ignoreUnsupportedModels);
             intent.putExtra(RUN_MODEL_COMPILATION_ONLY, runModelCompilationOnly);
             intent.putExtra(MEMORY_MAP_MODEL, mmapModel);
+            intent.putExtra(MODEL_FILTER, modelFilter);
         };
     }
 
