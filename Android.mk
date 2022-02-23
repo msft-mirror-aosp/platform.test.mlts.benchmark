@@ -80,6 +80,11 @@ ifneq ($(wildcard $(GOOGLE_TEST_MODELS_DIR)),)
 LOCAL_ASSET_DIR += $(GOOGLE_TEST_MODELS_DIR)
 endif
 
+SL_PREBUILT_METADATA_DIR := $(LOCAL_PATH)/sl_prebuilt/assets
+ifneq ($(wildcard $(SL_PREBUILT_METADATA_DIR)),)
+LOCAL_ASSET_DIR += $(SL_PREBUILT_METADATA_DIR)
+endif
+
 LOCAL_PACKAGE_NAME := NeuralNetworksApiCrashTest
 LOCAL_LICENSE_KINDS := SPDX-license-identifier-Apache-2.0 SPDX-license-identifier-MIT
 LOCAL_LICENSE_CONDITIONS := notice
