@@ -183,7 +183,7 @@ public interface AcceleratorSpecificTestSupport {
                         return false;
                     }
                 } catch (IOException | BenchmarkException e) {
-                    Log.e(TAG, String.format("Error running model %s", mTestModelEntry.mModelName));
+                    Log.e(TAG, String.format("Error running model %s", mTestModelEntry.mModelName), e);
                     return false;
                 }
             }
