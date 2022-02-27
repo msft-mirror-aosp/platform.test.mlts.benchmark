@@ -34,6 +34,72 @@ cc_prebuilt_library_shared {
 }
 
 cc_prebuilt_library_shared {
+    name:  "libQnnHtp",
+    check_elf_files: false,
+    target: {
+        android_arm64: {
+            srcs: [  "libQnnHtp.so" ],
+       },
+   },
+}
+
+cc_prebuilt_library_shared {
+    name:  "libQnnHtpPrepare",
+    check_elf_files: false,
+    target: {
+        android_arm64: {
+            srcs: [  "libQnnHtpPrepare.so" ],
+       },
+   },
+}
+
+cc_prebuilt_library_shared {
+    name:  "libQnnHtpV68Skel",
+    check_elf_files: false,
+    target: {
+        android_arm64: {
+            srcs: [  "libQnnHtpV68Skel.so" ],
+       },
+   },
+   strip: {
+     none: true
+   },
+}
+
+cc_prebuilt_library_shared {
+    name:  "libQnnHtpV68Stub",
+    check_elf_files: false,
+    target: {
+        android_arm64: {
+            srcs: [  "libQnnHtpV68Stub.so" ],
+       },
+   },
+}
+
+cc_prebuilt_library_shared {
+    name:  "libQnnHtpV69Skel",
+    check_elf_files: false,
+    target: {
+        android_arm64: {
+            srcs: [  "libQnnHtpV69Skel.so" ],
+       },
+   },
+   strip: {
+     none: true
+   },
+}
+
+cc_prebuilt_library_shared {
+    name:  "libQnnHtpV69Stub",
+    check_elf_files: false,
+    target: {
+        android_arm64: {
+            srcs: [  "libQnnHtpV69Stub.so" ],
+       },
+   },
+}
+
+cc_prebuilt_library_shared {
     name:  "libUnnhalAccGpu",
     check_elf_files: false,
     target: {
@@ -44,17 +110,6 @@ cc_prebuilt_library_shared {
 }
 
 cc_prebuilt_library_shared {
-    name:  "libUnnhalAccHta",
-    check_elf_files: false,
-    target: {
-        android_arm64: {
-            srcs: [  "libUnnhalAccHta.so"],
-       },
-   },
-}
-
-
-cc_prebuilt_library_shared {
     name:  "libUnnhalAccHtp",
     check_elf_files: false,
     target: {
@@ -62,78 +117,6 @@ cc_prebuilt_library_shared {
             srcs: [  "libUnnhalAccHtp.so" ],
         },
     },
-}
-
-
-cc_prebuilt_library_shared {
-    name:  "libUnnhalAccHvx",
-    check_elf_files: false,
-    target: {
-        android_arm64: {
-            srcs: [  "libUnnhalAccHvx.so" ],
-        },
-    },
-}
-
-// This library is used by the DSP so it shouldn't be processed
-// before including it in the APK.
-cc_prebuilt_library_shared {
-    name:  "libhexagon_nn_skel",
-    check_elf_files: false,
-    target: {
-        android_arm64: {
-            srcs: [  "libhexagon_nn_skel.so" ],
-       },
-   },
-   strip: {
-     none: true
-   },
-}
-
-
-cc_prebuilt_library_shared {
-    name:  "libhexagon_nn_stub",
-    check_elf_files: false,
-    target: {
-        android_arm64: {
-            srcs: [  "libhexagon_nn_stub.so" ],
-       },
-   },
-}
-
-cc_prebuilt_library_shared {
-    name:  "libhta_hexagon_runtime",
-    check_elf_files: false,
-    target: {
-        android_arm64: {
-            srcs: [  "libhta_hexagon_runtime.so" ],
-       },
-   },
-}
-
-// This library is used by the DSP so it shouldn't be processed
-// before including it in the APK.
-cc_prebuilt_library_shared {
-    name:  "libQnnHtpAltPrepSkel",
-    check_elf_files: false,
-    target: {
-        android_arm64: {
-            srcs: [  "libQnnHtpAltPrepSkel.so" ],
-       },
-   },
-   strip: {
-    none: true
-   },
-}
-
-cc_prebuilt_library_shared {
-    name:  "libQnnHtpAltPrepStub",
-    check_elf_files: false,
-    target: {
-        android_arm64: {
-            srcs: [  "libQnnHtpAltPrepStub.so" ],
-       },
-   },
 }
 
 
