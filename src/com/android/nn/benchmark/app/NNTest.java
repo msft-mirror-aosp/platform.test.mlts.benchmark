@@ -39,7 +39,7 @@ import org.junit.Test;
 public class NNTest extends BenchmarkTestBase {
 
     public NNTest(TestModels.TestModelEntry model) {
-        super(model, /*acceleratorName=*/null);
+        super(model);
     }
 
     @Test
