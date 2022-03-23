@@ -23,10 +23,8 @@ LOCAL_JAVA_LIBRARIES := android.test.runner.stubs android.test.base.stubs
 LOCAL_MODULE_TAGS := tests
 LOCAL_COMPATIBILITY_SUITE += device-tests
 
-# List of NNAPI SL libraries for the different QC chipsets.
-QC_SM8350_NNAPI_SL_LIBS := libnnapi_sl_driver libQnnHtpAltPrepSkel  libQnnHtpAltPrepStub  libUnnhalAccGpu  libUnnhalAccHtp
-QC_SM8250_NNAPI_SL_LIBS := libhta_hexagon_runtime  libhexagon_nn_skel  libhexagon_nn_stub  libnnapi_sl_driver  libUnnhalAccGpu  libUnnhalAccHta  libUnnhalAccHvx
-QC_SM7250_NNAPI_SL_LIBS := libhexagon_nn_skel  libhexagon_nn_stub  libnnapi_sl_driver  libUnnhalAccGpu  libUnnhalAccHvx
+# List of NNAPI SL libraries for different chipsets, which are determined by SL release notes.
+QC_SM8350_NNAPI_SL_LIBS := libnnapi_sl_driver libQnnHtp libQnnHtpPrepare libQnnHtpV68Skel libQnnHtpV68Stub libUnnhalAccGpu libUnnhalAccHtp
 
 # Set the set of SL libraries to use in this test. By default including all
 # chipsets, you can override this variable with a chipset specific one (see
@@ -36,7 +34,7 @@ ifeq ($(strip $(SL_LIBS)),)
 endif
 
 LOCAL_SRC_FILES := $(call all-java-files-under, src/com/android/nn/benchmark)
-LOCAL_JNI_SHARED_LIBRARIES := libnnbenchmark_jni $(SL_LIBS)
+LOCAL_JNI_SHARED_LIBRARIES := libnnbenchmark_jni libsupport_library_jni $(SL_LIBS)
 
 # need fread_unlocked in version 28
 LOCAL_SDK_VERSION := 28
@@ -71,7 +69,7 @@ LOCAL_MODULE_TAGS := tests
 LOCAL_COMPATIBILITY_SUITE += device-tests
 
 LOCAL_SRC_FILES := $(call all-java-files-under, src)
-LOCAL_JNI_SHARED_LIBRARIES := libnnbenchmark_jni librandom_graph_test_jni $(SL_LIBS)
+LOCAL_JNI_SHARED_LIBRARIES := libnnbenchmark_jni libsupport_library_jni librandom_graph_test_jni $(SL_LIBS)
 
 # need fread_unlocked in version 28
 LOCAL_SDK_VERSION := 28
@@ -80,6 +78,11 @@ LOCAL_ASSET_DIR := $(LOCAL_PATH)/../models/assets
 GOOGLE_TEST_MODELS_DIR := vendor/google/tests/mlts/models/assets
 ifneq ($(wildcard $(GOOGLE_TEST_MODELS_DIR)),)
 LOCAL_ASSET_DIR += $(GOOGLE_TEST_MODELS_DIR)
+endif
+
+SL_PREBUILT_METADATA_DIR := $(LOCAL_PATH)/sl_prebuilt/assets
+ifneq ($(wildcard $(SL_PREBUILT_METADATA_DIR)),)
+LOCAL_ASSET_DIR += $(SL_PREBUILT_METADATA_DIR)
 endif
 
 LOCAL_PACKAGE_NAME := NeuralNetworksApiCrashTest

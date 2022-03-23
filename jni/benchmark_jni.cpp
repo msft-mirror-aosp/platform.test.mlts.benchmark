@@ -26,9 +26,6 @@
 #include <android/log.h>
 #include <android/sharedmem.h>
 #include <sys/mman.h>
-#include "tensorflow/lite/nnapi/nnapi_implementation.h"
-
-#define LOG_TAG "NN_BENCHMARK"
 
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_android_nn_benchmark_core_NNTestBase_hasNnApiDevice(
@@ -104,30 +101,7 @@ Java_com_android_nn_benchmark_core_NNTestBase_initModel(
     return (jlong)(uintptr_t)handle;
 }
 
-// This method loads the NNAPI SL from the given path.
-// Is called by a synchronized method in NNTestBase that will cache the
-// result. We expect this to be called only once per JVM and the handle
-// to be released when the JVM is shut down.
-extern "C" JNIEXPORT jlong JNICALL
-Java_com_android_nn_benchmark_core_NNTestBase_loadNnApiSlHandle(
-    JNIEnv *env, jobject /* clazz */, jstring _nnapiSlDriverPath) {
-  if (_nnapiSlDriverPath != NULL) {
-    const char *nnapiSlDriverPath =
-        env->GetStringUTFChars(_nnapiSlDriverPath, NULL);
-    std::unique_ptr<const tflite::nnapi::NnApiSupportLibrary> tmp =
-        tflite::nnapi::loadNnApiSupportLibrary(nnapiSlDriverPath);
-    if (!tmp) {
-      __android_log_print(ANDROID_LOG_ERROR, LOG_TAG,
-                          "Failed to load NNAPI SL driver from '%s'",
-                          nnapiSlDriverPath);
-      return false;
-    }
-    __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Loaded NNAPI SL");
-    return (jlong)(uintptr_t)tmp.release();
-  }
 
-  return 0l;
-}
 
 extern "C"
 JNIEXPORT void
@@ -527,7 +501,8 @@ Java_com_android_nn_benchmark_core_NNTestBase_runCompilationBenchmark(
     jlong _modelHandle,
     jint maxNumIterations,
     jfloat warmupTimeoutSec,
-    jfloat runTimeoutSec) {
+    jfloat runTimeoutSec,
+    jboolean useNnapiSl) {
   BenchmarkModel* model = reinterpret_cast<BenchmarkModel*>(_modelHandle);
 
   jclass result_class = env->FindClass("com/android/nn/benchmark/core/CompilationBenchmarkResult");
@@ -537,7 +512,8 @@ Java_com_android_nn_benchmark_core_NNTestBase_runCompilationBenchmark(
 
   CompilationBenchmarkResult result;
   bool success =
-          model->benchmarkCompilation(maxNumIterations, warmupTimeoutSec, runTimeoutSec, &result);
+          model->benchmarkCompilation(maxNumIterations, warmupTimeoutSec,
+                                      runTimeoutSec, useNnapiSl, &result);
   if (!success) return nullptr;
 
   // Convert cpp CompilationBenchmarkResult struct to java.
