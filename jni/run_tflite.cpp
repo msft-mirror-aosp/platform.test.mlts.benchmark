@@ -31,7 +31,6 @@
 #include "tensorflow/lite/nnapi/NeuralNetworksTypes.h"
 
 #include "tensorflow/lite/kernels/register.h"
-#include "tensorflow/lite/nnapi/sl/include/SupportLibrary.h"
 
 #define LOG_TAG "NN_BENCHMARK"
 
@@ -69,43 +68,15 @@ TraceFunc setupTraceFunc() {
 }
 static TraceFunc kTraceFunc{setupTraceFunc()};
 
-// Returns the number of partitions associated, as result of a call to
-// ModifyGraphWithDelegate, to the given delegate.
-int CountPartitionsDelegatedTo(tflite::Subgraph* subgraph,
-                               const TfLiteDelegate* delegate) {
-  return std::count_if(
-      subgraph->nodes_and_registration().begin(),
-      subgraph->nodes_and_registration().end(),
-      [delegate](
-          std::pair<TfLiteNode, TfLiteRegistration> node_and_registration) {
-        return node_and_registration.first.delegate == delegate;
-      });
-}
-
-// Returns the number of partitions associated, as result of a call to
-// ModifyGraphWithDelegate, to the given delegate.
-int CountPartitionsDelegatedTo(tflite::Interpreter* interpreter,
-                               const TfLiteDelegate* delegate) {
-  int result = 0;
-  for (int i = 0; i < interpreter->subgraphs_size(); i++) {
-    tflite::Subgraph* subgraph = interpreter->subgraph(i);
-
-    result += CountPartitionsDelegatedTo(subgraph, delegate);
-  }
-
-  return result;
-}
-
 }  // namespace
 
 BenchmarkModel* BenchmarkModel::create(const char* modelfile, int tfliteBackend,
                                        bool enable_intermediate_tensors_dump, int* nnapiErrno,
                                        const char* nnapi_device_name, bool mmapModel,
-                                       const char* nnapi_cache_dir,
-                                       const tflite::nnapi::NnApiSupportLibrary* nnApiSl) {
+                                       const char* nnapi_cache_dir) {
   BenchmarkModel* model = new BenchmarkModel();
   if (!model->init(modelfile, tfliteBackend, enable_intermediate_tensors_dump, nnapiErrno,
-                   nnapi_device_name, mmapModel, nnapi_cache_dir, nnApiSl)) {
+                   nnapi_device_name, mmapModel, nnapi_cache_dir)) {
     __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Failed to init model %s", modelfile);
     delete model;
     return nullptr;
@@ -116,8 +87,7 @@ BenchmarkModel* BenchmarkModel::create(const char* modelfile, int tfliteBackend,
 bool BenchmarkModel::init(const char* modelfile, int tfliteBackend,
                           bool enable_intermediate_tensors_dump, int* nnapiErrno,
                           const char* nnapi_device_name, bool mmapModel,
-                          const char* nnapi_cache_dir,
-                          const tflite::nnapi::NnApiSupportLibrary* nnApiSl) {
+                          const char* nnapi_cache_dir) {
   __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "BenchmarkModel %s",
                       modelfile);
   mModelFile = modelfile;
@@ -171,43 +141,18 @@ bool BenchmarkModel::init(const char* modelfile, int tfliteBackend,
   switch (mTfliteBackend) {
     case TFLITE_NNAPI: {
       tflite::StatefulNnApiDelegate::Options nnapi_options;
-      nnapi_options.accelerator_name = mNnApiDeviceName.empty() ? nullptr : mNnApiDeviceName.c_str();
-      __android_log_print(ANDROID_LOG_INFO, LOG_TAG,
-          "Delegating to NNAPI device '%s'", mNnApiDeviceName.c_str());
-      if (nnApiSl) {
-        __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Using NNAPI SL");
-      }
-      mTfliteNnapiDelegate =
-          nnApiSl
-              ? std::make_unique<tflite::StatefulNnApiDelegate>(nnApiSl, nnapi_options)
-              : std::make_unique<tflite::StatefulNnApiDelegate>(nnapi_options);
+      nnapi_options.accelerator_name = nnapi_device_name;
+      mTfliteNnapiDelegate = std::make_unique<tflite::StatefulNnApiDelegate>(nnapi_options);
       int delegationStatus = mTfliteInterpreter->ModifyGraphWithDelegate(mTfliteNnapiDelegate.get());
       *nnapiErrno = mTfliteNnapiDelegate->GetNnApiErrno();
-      if ((delegationStatus == kTfLiteOk) &&
-          (*nnapiErrno == ANEURALNETWORKS_NO_ERROR)) {
-        int nnapiPartitions =
-          CountPartitionsDelegatedTo(mTfliteInterpreter.get(), mTfliteNnapiDelegate.get());
-        if (nnapiPartitions == 0) {
-          __android_log_print(
-              ANDROID_LOG_ERROR, LOG_TAG,
-              "NNAPI Delegate (%s) for model %s was delegated with %d partitions delegated to NNAPI!!",
-              nnapi_device_name, modelfile, nnapiPartitions);
-
-              return false;
-        } else {
-          __android_log_print(
-              ANDROID_LOG_INFO, LOG_TAG,
-              "NNAPI Delegate (%s) for model %s initialized successfully with %d partitions delegated to NNAPI",
-              nnapi_device_name, modelfile, nnapiPartitions);
-        }
-      } else {
+      if (delegationStatus != kTfLiteOk ||
+          *nnapiErrno != ANEURALNETWORKS_NO_ERROR) {
         __android_log_print(
-              ANDROID_LOG_ERROR, LOG_TAG,
-              "Failed to initialize NNAPI Delegate for model %s, nnapi_errno is %d",
-              modelfile, *nnapiErrno);
-          return false;
+            ANDROID_LOG_ERROR, LOG_TAG,
+            "Failed to initialize NNAPI Delegate for model %s, nnapi_errno is %d",
+            modelfile, *nnapiErrno);
+        return false;
       }
-
     } break;
     case TFLITE_GPU: {
 #if defined(NN_BENCHMARK_ENABLE_GPU)
@@ -217,15 +162,6 @@ bool BenchmarkModel::init(const char* modelfile, int tfliteBackend,
         __android_log_print(ANDROID_LOG_ERROR, LOG_TAG,
                             "Failed to initialize GPU Delegate");
         return false;
-      } else {
-        int gpuPartitions =
-          CountPartitionsDelegatedTo(mTfliteInterpreter.get(), mGpuDelegate.get());
-        if (gpuPartitions == 0) {
-              ANDROID_LOG_INFO, LOG_TAG,
-                "GPU Delegate (%s) for model %s initialized successfully with %d partitions delegated",
-                nnapi_device_name, modelfile, gpuPartitions);
-          return false;
-        }
       }
 #else  // !defined(NN_BENCHMARK_ENABLE_GPU)
         __android_log_print(ANDROID_LOG_ERROR, LOG_TAG,
@@ -473,17 +409,6 @@ bool BenchmarkModel::runCompilation(const char* cacheDir) {
                           "Failed to initialize NNAPI Delegate for model %s, nnapi_errno is %d",
                           mModelFile.c_str(), nnapiErrno);
       return false;
-    } else {
-      int nnapiPartitions =
-        CountPartitionsDelegatedTo(mTfliteInterpreter.get(), mTfliteNnapiDelegate.get());
-      if (nnapiPartitions == 0) {
-        __android_log_print(
-            ANDROID_LOG_ERROR, LOG_TAG,
-            "NNAPI Delegate (%s) for model %s was delegated with %d partitions delegated to NNAPI!!",
-            mNnApiDeviceName.c_str(), mModelFile.c_str(), nnapiPartitions);
-
-            return false;
-      }
     }
   }
   return true;
