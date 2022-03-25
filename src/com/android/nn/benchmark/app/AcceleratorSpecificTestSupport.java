@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.nn.crashtest.app;
+package com.android.nn.benchmark.app;
 
 import android.content.Context;
 import android.util.Log;
@@ -32,6 +32,7 @@ import com.android.nn.benchmark.core.TfLiteBackend;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Callable;
@@ -92,6 +93,21 @@ public interface AcceleratorSpecificTestSupport {
         return accelerators;
     }
 
+    // This method returns an empty list if no accelerator name has been specified.
+    static List<String> getOptionalTargetAcceleratorNames() {
+        List<String> accelerators = new ArrayList<>();
+        String acceleratorFilter = getTestParameter(ACCELERATOR_FILTER_PROPERTY, "");
+        if (acceleratorFilter.isEmpty()) {
+            return Collections.emptyList();
+        }
+        accelerators.addAll(NNTestBase.availableAcceleratorNames().stream().filter(
+            name -> name.matches(acceleratorFilter)).collect(
+            Collectors.toList()));
+        if (getBooleanTestParameter(INCLUDE_NNAPI_SELECTED_ACCELERATOR_PROPERTY, false)) {
+            accelerators.add(null); // running tests with no specified target accelerator too
+        }
+        return accelerators;
+    }
 
     static List<Object[]> perAcceleratorTestConfig(List<Object[]> testConfig) {
         return testConfig.stream()
@@ -104,6 +120,28 @@ public interface AcceleratorSpecificTestSupport {
                             return result;
                         }))
                 .collect(Collectors.toList());
+    }
+
+    // Generates a per-accelerator list of test configurations if an accelerator filter has been
+    // specified. Will return the origin list with an extra `null` parameter for the accelerator
+    // name if not.
+    static List<Object[]> maybeAddAcceleratorsToTestConfig(List<Object[]> testConfig) {
+        return testConfig.stream()
+            .flatMap(currConfigurationParams -> {
+                List<String> accelerators = getOptionalTargetAcceleratorNames();
+                if (accelerators.isEmpty()) {
+                    accelerators = Collections.singletonList((String)null);
+                }
+                return accelerators.stream().map(
+                    accelerator -> {
+                        Object[] result =
+                            Arrays.copyOf(currConfigurationParams,
+                                currConfigurationParams.length + 1);
+                        result[currConfigurationParams.length] = accelerator;
+                        return result;
+                    });
+            })
+            .collect(Collectors.toList());
     }
 
     class DriverLivenessChecker implements Callable<Boolean> {
@@ -145,7 +183,7 @@ public interface AcceleratorSpecificTestSupport {
                         return false;
                     }
                 } catch (IOException | BenchmarkException e) {
-                    Log.e(TAG, String.format("Error running model %s", mTestModelEntry.mModelName));
+                    Log.e(TAG, String.format("Error running model %s", mTestModelEntry.mModelName), e);
                     return false;
                 }
             }
