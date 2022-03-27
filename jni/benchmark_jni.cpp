@@ -501,7 +501,8 @@ Java_com_android_nn_benchmark_core_NNTestBase_runCompilationBenchmark(
     jlong _modelHandle,
     jint maxNumIterations,
     jfloat warmupTimeoutSec,
-    jfloat runTimeoutSec) {
+    jfloat runTimeoutSec,
+    jboolean useNnapiSl) {
   BenchmarkModel* model = reinterpret_cast<BenchmarkModel*>(_modelHandle);
 
   jclass result_class = env->FindClass("com/android/nn/benchmark/core/CompilationBenchmarkResult");
@@ -511,7 +512,8 @@ Java_com_android_nn_benchmark_core_NNTestBase_runCompilationBenchmark(
 
   CompilationBenchmarkResult result;
   bool success =
-          model->benchmarkCompilation(maxNumIterations, warmupTimeoutSec, runTimeoutSec, &result);
+          model->benchmarkCompilation(maxNumIterations, warmupTimeoutSec,
+                                      runTimeoutSec, useNnapiSl, &result);
   if (!success) return nullptr;
 
   // Convert cpp CompilationBenchmarkResult struct to java.
