@@ -298,7 +298,8 @@ public class Processor implements Runnable {
         }
 
         // Compilation benchmark
-        if (mBenchmarkCompilationCaching) {
+        // TODO (b/227342228): Re-enable compilation benchmark for support library.
+        if (mBenchmarkCompilationCaching && !mUseNnApiSupportLibrary) {
             runCompilationBenchmarkLoop(mCompilationBenchmarkWarmupTimeSeconds,
                     mCompilationBenchmarkRunTimeSeconds, mCompilationBenchmarkMaxIterations, r);
         }
