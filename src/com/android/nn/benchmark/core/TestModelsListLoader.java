@@ -17,7 +17,6 @@
 package com.android.nn.benchmark.core;
 
 import android.content.res.AssetManager;
-import android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -30,7 +29,6 @@ import java.io.Reader;
 
 /** Helper class to register test model definitions from assets data */
 public class TestModelsListLoader {
-    private static final String TAG = "NN_BENCHMARK";
 
     /**
      * Parse list of models in form of json data.
@@ -148,8 +146,8 @@ public class TestModelsListLoader {
             }
 
             TestModels.registerModel(
-                new TestModels.TestModelEntry(name, (float) baseline, inputSize, inputOutputs,
-                    datasets, testName, modelFile, evaluator, minSdkVersion, dataSize));
+                    new TestModels.TestModelEntry(name, (float) baseline, inputSize,
+                            inputOutputs, datasets, testName, modelFile, evaluator, minSdkVersion));
         }
     }
 
@@ -177,10 +175,8 @@ public class TestModelsListLoader {
                 parseJSONModelsList(readAssetsFileAsString(
                         assetManager.open(MODELS_LIST_ROOT + "/" + file)));
             } catch (JSONException e) {
-                Log.e(TAG, "error reading json model list", e);
                 throw new IOException("JSON error in " + file, e);
             } catch (Exception e) {
-                Log.e(TAG, "error parsing json model list", e);
                 // Wrap exception to add a filename to it
                 throw new IOException("Error while parsing " + file, e);
             }
