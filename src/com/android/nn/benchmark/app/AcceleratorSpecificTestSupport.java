@@ -164,6 +164,8 @@ public interface AcceleratorSpecificTestSupport {
             mProcessor.setTfLiteBackend(TfLiteBackend.NNAPI);
             mProcessor.setCompleteInputSet(false);
             mProcessor.setNnApiAcceleratorName(acceleratorName);
+            mProcessor.setUseNnApiSupportLibrary(NNTestBase.shouldUseNnApiSupportLibrary());
+            mProcessor.setExtractNnApiSupportLibrary(NNTestBase.shouldExtractNnApiSupportLibrary());
             mTestModelEntry = testModelEntry;
         }
 
