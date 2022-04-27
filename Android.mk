@@ -24,7 +24,8 @@ LOCAL_MODULE_TAGS := tests
 LOCAL_COMPATIBILITY_SUITE += device-tests
 
 # List of NNAPI SL libraries for different chipsets, which are determined by SL release notes.
-QC_SM8350_NNAPI_SL_LIBS := libnnapi_sl_driver libQnnHtp libQnnHtpPrepare libQnnHtpV68Skel libQnnHtpV68Stub libUnnhalAccGpu libUnnhalAccHtp
+QC_SM8350_NNAPI_SL_LIBS := libnnapi_sl_driver libQnnGpu libQnnHtp libQnnHtpPrepare libQnnHtpV68Skel libQnnHtpV68Stub libUnnhalAccGpu libUnnhalAccHtp
+QC_SM8450_NNAPI_SL_LIBS := libnnapi_sl_driver libQnnGpu libQnnHtp libQnnHtpPrepare libQnnHtpV69Skel libQnnHtpV69Stub libUnnhalAccGpu libUnnhalAccHtp
 
 # Set the set of SL libraries to use in this test. By default including all
 # chipsets, you can override this variable with a chipset specific one (see
