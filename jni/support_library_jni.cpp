@@ -51,5 +51,5 @@ Java_com_android_nn_benchmark_core_sl_SupportLibraryDriverHandler_loadNnApiSlHan
     return (jlong)(uintptr_t)tmp.release();
   }
 
-  return 0l;
+  return 0L;
 }
