@@ -34,6 +34,16 @@ cc_prebuilt_library_shared {
 }
 
 cc_prebuilt_library_shared {
+    name:  "libQnnGpu",
+    check_elf_files: false,
+    target: {
+        android_arm64: {
+            srcs: [  "libQnnGpu.so" ],
+       },
+   },
+}
+
+cc_prebuilt_library_shared {
     name:  "libQnnHtp",
     check_elf_files: false,
     target: {
