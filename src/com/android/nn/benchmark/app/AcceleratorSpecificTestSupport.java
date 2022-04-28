@@ -164,6 +164,8 @@ public interface AcceleratorSpecificTestSupport {
             mProcessor.setTfLiteBackend(TfLiteBackend.NNAPI);
             mProcessor.setCompleteInputSet(false);
             mProcessor.setNnApiAcceleratorName(acceleratorName);
+            mProcessor.setUseNnApiSupportLibrary(NNTestBase.shouldUseNnApiSupportLibrary());
+            mProcessor.setExtractNnApiSupportLibrary(NNTestBase.shouldExtractNnApiSupportLibrary());
             mTestModelEntry = testModelEntry;
         }
 
@@ -183,7 +185,7 @@ public interface AcceleratorSpecificTestSupport {
                         return false;
                     }
                 } catch (IOException | BenchmarkException e) {
-                    Log.e(TAG, String.format("Error running model %s", mTestModelEntry.mModelName));
+                    Log.e(TAG, String.format("Error running model %s", mTestModelEntry.mModelName), e);
                     return false;
                 }
             }
