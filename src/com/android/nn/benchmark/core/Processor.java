@@ -210,7 +210,7 @@ public class Processor implements Runnable {
             oldTestBase.destroy();
         }
         NNTestBase tb = t.createNNTestBase(mBackend, /*enableIntermediateTensorsDump=*/false,
-                mMmapModel, mUseNnApiSupportLibrary, mExtractNnApiSupportLibrary);
+            mMmapModel, mUseNnApiSupportLibrary, mExtractNnApiSupportLibrary);
         if (mBackend == TfLiteBackend.NNAPI) {
             tb.setNNApiDeviceName(mAcceleratorName);
         }
