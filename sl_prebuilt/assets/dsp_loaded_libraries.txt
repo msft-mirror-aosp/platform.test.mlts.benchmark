@@ -1,1 +1,7 @@
-libhexagon_nn_skel.so
+libQnnHtp.so
+libQnnHtpPrepare.so
+libUnnhalAccHtp.so
+libQnnHtpV68Skel.so
+libQnnHtpV68Stub.so
+libQnnHtpV69Skel.so
+libQnnHtpV69Stub.so
