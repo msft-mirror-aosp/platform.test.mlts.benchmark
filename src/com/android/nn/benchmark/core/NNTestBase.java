@@ -90,7 +90,8 @@ public class NNTestBase implements AutoCloseable {
             int flags);
 
     private synchronized native CompilationBenchmarkResult runCompilationBenchmark(
-            long modelHandle, int maxNumIterations, float warmupTimeoutSec, float runTimeoutSec);
+        long modelHandle, int maxNumIterations, float warmupTimeoutSec, float runTimeoutSec,
+        boolean useNnapiSl);
 
     private synchronized native void dumpAllLayers(
             long modelHandle,
@@ -423,7 +424,8 @@ public class NNTestBase implements AutoCloseable {
             throw new UnsupportedModelException("Unsupported model");
         }
         CompilationBenchmarkResult result = runCompilationBenchmark(
-                mModelHandle, maxIterations, warmupTimeoutSec, runTimeoutSec);
+            mModelHandle, maxIterations, warmupTimeoutSec, runTimeoutSec,
+            shouldUseNnApiSupportLibrary());
         if (result == null) {
             throw new BenchmarkException("Failed to run compilation benchmark");
         }
