@@ -26,6 +26,7 @@ import android.util.Log;
 import android.util.Pair;
 import android.widget.TextView;
 import androidx.test.InstrumentationRegistry;
+import com.android.nn.benchmark.core.sl.ArmSupportLibraryDriverHandler;
 import com.android.nn.benchmark.core.sl.QualcommSupportLibraryDriverHandler;
 import com.android.nn.benchmark.core.sl.SupportLibraryDriverHandler;
 import java.io.BufferedReader;
@@ -238,6 +239,7 @@ public class NNTestBase implements AutoCloseable {
           HashMap<String, Supplier<SupportLibraryDriverHandler>> vendors =
               new HashMap<String, Supplier<SupportLibraryDriverHandler>>() {{
                   put("qc", () -> new QualcommSupportLibraryDriverHandler());
+                  put("arm", () -> new ArmSupportLibraryDriverHandler());
               }};
           Supplier<SupportLibraryDriverHandler> vendor = vendors.get(mNnApiSupportLibraryVendor);
           if (vendor == null) {
