@@ -38,6 +38,8 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.function.Supplier;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -233,9 +235,18 @@ public class NNTestBase implements AutoCloseable {
         mContext = ipcxt;
         long nnApiLibHandle = 0;
         if (mUseNnApiSupportLibrary) {
-          // TODO: support different drivers providers maybe with a flag
-          QualcommSupportLibraryDriverHandler qcSlhandler = new QualcommSupportLibraryDriverHandler();
-          nnApiLibHandle = qcSlhandler.getOrLoadNnApiSlHandle(mContext, mExtractNnApiSupportLibrary);
+          HashMap<String, Supplier<SupportLibraryDriverHandler>> vendors =
+              new HashMap<String, Supplier<SupportLibraryDriverHandler>>() {{
+                  put("qc", () -> new QualcommSupportLibraryDriverHandler());
+              }};
+          Supplier<SupportLibraryDriverHandler> vendor = vendors.get(mNnApiSupportLibraryVendor);
+          if (vendor == null) {
+              throw new NnApiDelegationFailure(String
+                  .format("NNAPI SL vendor is invalid '%s', expected one of %s.",
+                      mNnApiSupportLibraryVendor, vendors.keySet().toString()));
+          }
+          SupportLibraryDriverHandler slHandler = vendor.get();
+          nnApiLibHandle = slHandler.getOrLoadNnApiSlHandle(mContext, mExtractNnApiSupportLibrary);
           if (nnApiLibHandle == 0) {
             Log.e(TAG, String
                 .format("Unable to find NNAPI SL entry point '%s' in embedded libraries path.",
