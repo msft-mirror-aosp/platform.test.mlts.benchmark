@@ -150,9 +150,11 @@ public class NNTestBase implements AutoCloseable {
     // from the library.
     private boolean mUseNnApiSupportLibrary = false;
     private boolean mExtractNnApiSupportLibrary = false;
+    private String mNnApiSupportLibraryVendor = "";
 
     static final String USE_NNAPI_SL_PROPERTY = "useNnApiSupportLibrary";
     static final String EXTRACT_NNAPI_SL_PROPERTY = "extractNnApiSupportLibrary";
+    static final String NNAPI_SL_VENDOR = "nnApiSupportLibraryVendor";
 
     private static boolean getBooleanTestParameter(String key, boolean defaultValue) {
       // All instrumentation arguments are passed as String so I have to convert the value here.
@@ -166,6 +168,10 @@ public class NNTestBase implements AutoCloseable {
 
     public static boolean shouldExtractNnApiSupportLibrary() {
         return getBooleanTestParameter(EXTRACT_NNAPI_SL_PROPERTY, false);
+    }
+
+    public static String getNnApiSupportLibraryVendor() {
+        return InstrumentationRegistry.getArguments().getString(NNAPI_SL_VENDOR);
     }
 
     public NNTestBase(String modelName, String modelFile, int[] inputShape,
@@ -210,6 +216,7 @@ public class NNTestBase implements AutoCloseable {
 
     public  void setUseNnApiSupportLibrary(boolean value) {mUseNnApiSupportLibrary = value;}
     public  void setExtractNnApiSupportLibrary(boolean value) {mExtractNnApiSupportLibrary = value;}
+    public  void setNnApiSupportLibraryVendor(String value) {mNnApiSupportLibraryVendor = value;}
 
     public void setNNApiDeviceName(String value) {
         if (mTfLiteBackend != TfLiteBackend.NNAPI) {
