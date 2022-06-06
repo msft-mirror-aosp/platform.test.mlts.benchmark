@@ -13,8 +13,7 @@ public class ArmSupportLibraryDriverHandler extends SupportLibraryDriverHandler 
   // Arm SL Options:
   // -v : Verbose logging
   // -c GpuAcc : Use GPU backend (rather than CPU)
-  // -f : Enable support for relaxed computation from Float32 to Float16
-  private static final String ARM_OPTIONS_VAR_VALUE = "-v -c GpuAcc -f";
+  private static final String ARM_OPTIONS_VAR_VALUE = "-v -c GpuAcc";
 
   @Override
   public void prepareDriver(Context context, String nnSupportLibFilePath) throws IOException {
