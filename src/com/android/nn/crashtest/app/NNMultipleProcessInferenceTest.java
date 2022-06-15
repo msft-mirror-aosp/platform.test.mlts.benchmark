@@ -18,7 +18,6 @@ package com.android.nn.crashtest.app;
 
 import android.content.Intent;
 
-import com.android.nn.benchmark.app.AcceleratorSpecificTestSupport;
 import com.android.nn.benchmark.core.NnApiDelegationFailure;
 import com.android.nn.crashtest.core.test.RunModelsInMultipleProcesses;
 
