@@ -180,7 +180,7 @@ bool BenchmarkModel::init(const char* modelfile, int tfliteBackend,
       }
       mTfliteNnapiDelegate =
           nnApiSl
-              ? std::make_unique<tflite::StatefulNnApiDelegate>(nnApiSl, nnapi_options)
+              ? std::make_unique<tflite::StatefulNnApiDelegate>(nnApiSl->getFL5(), nnapi_options)
               : std::make_unique<tflite::StatefulNnApiDelegate>(nnapi_options);
       int delegationStatus = mTfliteInterpreter->ModifyGraphWithDelegate(mTfliteNnapiDelegate.get());
       *nnapiErrno = mTfliteNnapiDelegate->GetNnApiErrno();
@@ -448,6 +448,7 @@ bool BenchmarkModel::benchmark(
 
 // If cacheDir is not nullptr, compilation caching will be used with NNAPI.
 bool BenchmarkModel::runCompilation(const char* cacheDir, bool useNnapiSl) {
+  std::unique_ptr<tflite::StatefulNnApiDelegate> delegate;
   std::unique_ptr<tflite::Interpreter> interpreter;
   tflite::ops::builtin::BuiltinOpResolver resolver;
   tflite::InterpreterBuilder(*mTfliteModel, resolver)(&interpreter);
@@ -466,7 +467,6 @@ bool BenchmarkModel::runCompilation(const char* cacheDir, bool useNnapiSl) {
       nnapi_options.cache_dir = cacheDir;
       nnapi_options.model_token = mModelFile.c_str();
     }
-    std::unique_ptr<tflite::StatefulNnApiDelegate> delegate;
     if (useNnapiSl) {
       __android_log_print(ANDROID_LOG_INFO, LOG_TAG,
                           "Use NNAPI SL in compilation caching benchmark.");
@@ -476,7 +476,7 @@ bool BenchmarkModel::runCompilation(const char* cacheDir, bool useNnapiSl) {
                             "NNAPI SL is null pointer when running compilation caching benchmark.");
         return false;
       }
-      delegate = std::make_unique<tflite::StatefulNnApiDelegate>(mNnApiSl, nnapi_options);
+      delegate = std::make_unique<tflite::StatefulNnApiDelegate>(mNnApiSl->getFL5(), nnapi_options);
     } else {
       delegate = std::make_unique<tflite::StatefulNnApiDelegate>(nnapi_options);
     }
