@@ -237,12 +237,10 @@ public class NNTestBase implements AutoCloseable {
         mContext = ipcxt;
         long nnApiLibHandle = 0;
         if (mUseNnApiSupportLibrary) {
-          HashMap<String, Supplier<SupportLibraryDriverHandler>> vendors =
-              new HashMap<String, Supplier<SupportLibraryDriverHandler>>() {{
-                  put("qc", () -> new QualcommSupportLibraryDriverHandler());
-                  put("arm", () -> new ArmSupportLibraryDriverHandler());
-                  put("mtk", () -> new MediaTekSupportLibraryDriverHandler());
-              }};
+          HashMap<String, Supplier<SupportLibraryDriverHandler>> vendors = new HashMap<>();
+          vendors.put("qc", () -> new QualcommSupportLibraryDriverHandler());
+          vendors.put("arm", () -> new ArmSupportLibraryDriverHandler());
+          vendors.put("mtk", () -> new MediaTekSupportLibraryDriverHandler());
           Supplier<SupportLibraryDriverHandler> vendor = vendors.get(mNnApiSupportLibraryVendor);
           if (vendor == null) {
               throw new NnApiDelegationFailure(String
