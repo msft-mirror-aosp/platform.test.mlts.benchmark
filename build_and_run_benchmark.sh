@@ -282,7 +282,7 @@ if [[ "$MODE" == "scoring" ]]; then
   LOGDIR=$(mktemp -d)/mlts-logs
   HOST_CSV=$LOGDIR/benchmark.csv
   RESULT_HTML=$LOGDIR/result.html
-  DEVICE_CSV=/sdcard/mlts_benchmark.csv
+  DEVICE_CSV=/storage/emulated/0/mlts_benchmark.csv
 
   mkdir -p $LOGDIR
   echo Creating logs in $LOGDIR
