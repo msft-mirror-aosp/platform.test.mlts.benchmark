@@ -18,7 +18,8 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 
-LOCAL_STATIC_JAVA_LIBRARIES := android-common androidx.test.rules androidx.appcompat_appcompat androidx-constraintlayout_constraintlayout
+LOCAL_STATIC_ANDROID_LIBRARIES := androidx.appcompat_appcompat androidx-constraintlayout_constraintlayout
+LOCAL_STATIC_JAVA_LIBRARIES := android-common androidx.test.rules
 LOCAL_JAVA_LIBRARIES := android.test.runner.stubs android.test.base.stubs
 
 LOCAL_MODULE_TAGS := tests
