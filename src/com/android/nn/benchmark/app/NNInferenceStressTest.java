@@ -16,7 +16,7 @@
 
 package com.android.nn.benchmark.app;
 
-import android.test.suitebuilder.annotation.LargeTest;
+import androidx.test.filters.LargeTest;
 
 import com.android.nn.benchmark.core.TestModels;
 
@@ -27,9 +27,7 @@ import org.junit.runners.Parameterized.Parameters;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Tests that ensure stability of NNAPI by running inference for a
