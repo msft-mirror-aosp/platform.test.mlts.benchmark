@@ -17,7 +17,9 @@
 package com.android.nn.benchmark.app;
 
 import android.os.Environment;
-import android.test.suitebuilder.annotation.LargeTest;
+import android.util.Log;
+
+import androidx.test.filters.LargeTest;
 
 import com.android.nn.benchmark.core.TestModels;
 import com.android.nn.benchmark.util.CSVWriter;
@@ -28,15 +30,10 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import android.util.Log;
 
 /**
  * Tests that run all models/datasets/backend that are required for scoring the device.

@@ -16,13 +16,14 @@
 
 package com.android.nn.benchmark.app;
 
-import android.test.suitebuilder.annotation.LargeTest;
-import android.test.suitebuilder.annotation.MediumTest;
+import androidx.test.filters.LargeTest;
+import androidx.test.filters.MediumTest;
 
 import com.android.nn.benchmark.core.TestModels.TestModelEntry;
+
 import org.junit.Test;
-import org.junit.runners.Parameterized;
 import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
 public class TFLiteTest extends BenchmarkTestBase {

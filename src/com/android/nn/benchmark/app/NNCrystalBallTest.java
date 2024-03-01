@@ -16,14 +16,18 @@
 
 package com.android.nn.benchmark.app;
 
-import android.test.suitebuilder.annotation.LargeTest;
+import android.util.Log;
+
 import androidx.test.InstrumentationRegistry;
+import androidx.test.filters.LargeTest;
+
 import com.android.nn.benchmark.core.TestModels;
-import java.io.IOException;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import android.util.Log;
+
+import java.io.IOException;
 
 /**
  * NNAPI benchmark test.

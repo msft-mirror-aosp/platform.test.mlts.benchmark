@@ -16,8 +16,8 @@
 
 package com.android.nn.benchmark.app;
 
-import android.test.suitebuilder.annotation.LargeTest;
-import android.test.suitebuilder.annotation.MediumTest;
+import androidx.test.filters.LargeTest;
+import androidx.test.filters.MediumTest;
 
 import com.android.nn.benchmark.core.TestModels;
 
