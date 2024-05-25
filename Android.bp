@@ -47,9 +47,8 @@ java_library {
     ],
 }
 
-android_test {
-    name: "NeuralNetworksApiCrashTestApp",
-    manifest: "crashtest/AndroidManifest.xml",
+java_defaults {
+    name: "test-mlts-benchmark-defaults",
     static_libs: [
         "androidx.appcompat_appcompat",
         "androidx-constraintlayout_constraintlayout",
@@ -64,13 +63,10 @@ android_test {
     ],
     test_suites: ["device-tests"],
     srcs: [
-        "crashtest/src/**/*.java",
         "src/com/android/nn/benchmark/core/**/*.java",
         "src/com/android/nn/benchmark/evaluators/**/*.java",
         "src/com/android/nn/benchmark/imageprocessors/**/*.java",
         "src/com/android/nn/benchmark/util/**/*.java",
-        "src/com/android/nn/crashtest/core/**/*.java",
-        "src/com/android/nn/benchmark/app/AcceleratorSpecificTestSupport.java",
     ],
     jni_libs: [
         "libnnbenchmark_jni",
@@ -79,7 +75,40 @@ android_test {
     sdk_version: "31",
     resource_dirs: [
         "res",
+    ],
+}
+
+android_test {
+    name: "NeuralNetworksApiCrashTestApp",
+    defaults: [
+        "test-mlts-benchmark-defaults",
+    ],
+    manifest: "crashtest/AndroidManifest.xml",
+    srcs: [
+        "crashtest/src/**/*.java",
+        "src/com/android/nn/crashtest/core/**/*.java",
+        "src/com/android/nn/benchmark/app/AcceleratorSpecificTestSupport.java",
+    ],
+    resource_dirs: [
         "crashtest/res",
+    ],
+}
+
+android_test {
+    name: "NeuralNetworksApiDogfood",
+    defaults: [
+        "test-mlts-benchmark-defaults",
+    ],
+    manifest: "dogfood/AndroidManifest.xml",
+    srcs: [
+        "dogfood/src/**/*.java",
+    ],
+    jni_libs: [
+        "libnnbenchmark_jni",
+        "libsupport_library_jni",
+    ],
+    resource_dirs: [
+        "dogfood/res",
     ],
 }
 
