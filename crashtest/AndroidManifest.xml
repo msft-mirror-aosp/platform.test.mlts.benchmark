@@ -12,7 +12,7 @@
       android:supportsRtl="true"
       android:debuggable="true"
       android:theme="@style/AppTheme">
-    <activity android:name="com.android.nn.crashtest.MainActivity">
+    <activity android:exported="true" android:name="com.android.nn.crashtest.MainActivity">
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
 
