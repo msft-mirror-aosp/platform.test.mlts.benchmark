@@ -28,12 +28,12 @@
                  android:debuggable="true">
         <uses-library android:name="android.test.runner" android:required="false"/>
         <uses-library android:name="android.test.base" android:required="false"/>
-        <activity android:name=".NNBenchmark">
+        <activity android:exported="true" android:name=".NNBenchmark">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
             </intent-filter>
         </activity>
-        <activity android:name=".NNControls">
+        <activity android:exported="true" android:name=".NNControls">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -43,22 +43,22 @@
         </activity>
         <activity android:exported="true" android:name="com.android.nn.benchmark.util.TestExternalStorageActivity">
         </activity>
-        <activity android:name="com.android.nn.crashtest.app.NNParallelTestActivity">
+        <activity android:exported="true" android:name="com.android.nn.crashtest.app.NNParallelTestActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
             </intent-filter>
         </activity>
-        <activity android:name="com.android.nn.crashtest.app.NNMultiProcessTestActivity">
+        <activity android:exported="true" android:name="com.android.nn.crashtest.app.NNMultiProcessTestActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
             </intent-filter>
         </activity>
-        <activity android:name="com.android.nn.crashtest.app.NNRandomGraphTestActivity">
+        <activity android:exported="true" android:name="com.android.nn.crashtest.app.NNRandomGraphTestActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
             </intent-filter>
         </activity>
-        <activity android:name="com.android.nn.crashtest.app.NNPerformanceDegradationTestActivity">
+        <activity android:exported="true" android:name="com.android.nn.crashtest.app.NNPerformanceDegradationTestActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
             </intent-filter>
