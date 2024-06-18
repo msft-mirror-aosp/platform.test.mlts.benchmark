@@ -21,10 +21,10 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.test.ActivityInstrumentationTestCase2;
 import android.test.UiThreadTest;
-import android.test.suitebuilder.annotation.LargeTest;
 import android.util.Log;
 
 import androidx.test.InstrumentationRegistry;
+import androidx.test.filters.LargeTest;
 
 import com.android.nn.benchmark.app.AcceleratorSpecificTestSupport;
 import com.android.nn.benchmark.app.BenchmarkTestBase;
